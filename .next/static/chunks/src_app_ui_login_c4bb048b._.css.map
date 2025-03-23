@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/src/app/ui/login/login.module.css"],"sourcesContent":[".container {\n  width: 100%;\n  height: 100vh;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}\n\n"],"names":[],"mappings":"AAAA","debugId":null}},
+    {"offset": {"line": 8, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}},
+    {"offset": {"line": 11, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/src/app/ui/login/loginForm/loginForm.module.css"],"sourcesContent":[".form {\n  background-color: var(--bgSoft);\n  padding: 50px;\n  border-radius: 10px;\n  width: 500px;\n  height: 500px;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 30px;\n}\n\n.form input {\n  width: 100%;\n  padding: 30px;\n  border: 2px solid #2e374a;\n  border-radius: 5px;\n  background-color: var(--bg);\n  color: var(--text);\n}\n\n.form button {\n  width: 100%;\n  padding: 30px;\n  background-color: teal;\n  color: var(--text);\n  border: none;\n  cursor: pointer;\n  border-radius: 5px;\n}\n"],"names":[],"mappings":"AAAA;;;;;;;;;;;;;AAaA;;;;;;;;;AASA","debugId":null}},
+    {"offset": {"line": 42, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
+}

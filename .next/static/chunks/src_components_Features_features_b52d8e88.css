@@ -1,0 +1,49 @@
+/* [project]/src/components/Features/features.css [app-client] (css) */
+.feature-section {
+  padding: 40px 0;
+  overflow: hidden;
+}
+
+.feature-section .slick-active {
+  border: none !important;
+}
+
+.feature-section .slick-slide {
+  padding: 10px;
+}
+
+.feature-section .card {
+  text-align: center;
+  padding: 20px;
+  margin-bottom: 20px;
+  background-color: #d3d3d3;
+  border: none !important;
+}
+
+.feature-section .card {
+  background-color: #d0cbbd;
+}
+
+.feature-section .card img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.feature-section .card-title {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.feature-section .card-text {
+  font-size: 16px;
+  color: var(--textclr);
+}
+
+.feature-section .card:hover .card-title {
+  color: var(--primaryClr);
+}
+
+/*# sourceMappingURL=src_components_Features_features_b52d8e88.css.map*/

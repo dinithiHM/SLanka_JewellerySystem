@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 6, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/src/app/ui/login/loginForm/loginForm.module.css [app-ssr] (css module)"],"sourcesContent":["__turbopack_context__.v({\n  \"form\": \"loginForm-module__8g5cgW__form\",\n});\n"],"names":[],"mappings":"AAAA;AACA;AACA"}},
+    {"offset": {"line": 9, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}},
+    {"offset": {"line": 15, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/src/app/ui/login/loginForm/loginForm.jsx"],"sourcesContent":["\"use client\";\n\nimport { authenticate } from \"@/app/lib/actions\";\nimport styles from \"./loginForm.module.css\";\nimport { useFormState } from \"react-dom\";\n\nconst LoginForm = () => {\n  const [state, formAction] = useFormState(authenticate, undefined);\n\n  return (\n    <form action={formAction} className={styles.form}>\n      <h1>Login</h1>\n      <input type=\"text\" placeholder=\"username\" name=\"username\" />\n      <input type=\"password\" placeholder=\"password\" name=\"password\" />\n      <button>Login</button>\n      {state && state}\n    </form>\n  );\n};\n\nexport default LoginForm;\n"],"names":[],"mappings":";;;;;;;;;AAGA;AACA;AAJA;;;;;AAMA,MAAM,YAAY;IAChB,MAAM,CAAC,OAAO,WAAW,GAAG,CAAA,GAAA,4MAAA,CAAA,eAAY,AAAD,EAAE,cAAc;IAEvD,qBACE,8OAAC;QAAK,QAAQ;QAAY,WAAW,+JAAA,CAAA,UAAM,CAAC,IAAI;;0BAC9C,8OAAC;0BAAG;;;;;;0BACJ,8OAAC;gBAAM,MAAK;gBAAO,aAAY;gBAAW,MAAK;;;;;;0BAC/C,8OAAC;gBAAM,MAAK;gBAAW,aAAY;gBAAW,MAAK;;;;;;0BACnD,8OAAC;0BAAO;;;;;;YACP,SAAS;;;;;;;AAGhB;uCAEe","debugId":null}},
+    {"offset": {"line": 78, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
+}
