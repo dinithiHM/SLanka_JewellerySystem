@@ -59,6 +59,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 ;
 ;
 ;
+;
 "use client";
 ;
 ;
@@ -79,6 +80,20 @@ const TeacherForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mod
             columnNumber: 18
         }, this)
 });
+const SalesAssociateForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$shared$2f$lib$2f$app$2d$dynamic$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"])(()=>__turbopack_context__.r("[project]/src/components/forms/TeacherForm.tsx [app-ssr] (ecmascript, next/dynamic entry, async loader)")(__turbopack_context__.i), {
+    loadableGenerated: {
+        modules: [
+            "[project]/src/components/forms/TeacherForm.tsx [app-client] (ecmascript, next/dynamic entry)"
+        ]
+    },
+    loading: ()=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+            children: "Loading..."
+        }, void 0, false, {
+            fileName: "[project]/src/components/FormModal.tsx",
+            lineNumber: 12,
+            columnNumber: 18
+        }, this)
+});
 const SupplierForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$shared$2f$lib$2f$app$2d$dynamic$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"])(()=>__turbopack_context__.r("[project]/src/components/forms/SupplierForm.tsx [app-ssr] (ecmascript, next/dynamic entry, async loader)")(__turbopack_context__.i), {
     loadableGenerated: {
         modules: [
@@ -89,7 +104,7 @@ const SupplierForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 12,
+            lineNumber: 15,
             columnNumber: 18
         }, this)
 });
@@ -104,7 +119,7 @@ const StoreManagerForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$nod
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 16,
+            lineNumber: 19,
             columnNumber: 18
         }, this)
 });
@@ -122,7 +137,7 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 31,
+            lineNumber: 34,
             columnNumber: 28
         }, this),
     supplier: (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SupplierForm, {
@@ -130,15 +145,23 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 32,
+            lineNumber: 35,
             columnNumber: 29
+        }, this),
+    "sales-associate": (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SalesAssociateForm, {
+            type: type,
+            data: data
+        }, void 0, false, {
+            fileName: "[project]/src/components/FormModal.tsx",
+            lineNumber: 36,
+            columnNumber: 38
         }, this),
     "store-manager": (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StoreManagerForm, {
             type: type,
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 33,
+            lineNumber: 37,
             columnNumber: 36
         }, this)
 };
@@ -162,7 +185,7 @@ const FormModal = ({ table, type, data, id })=>{
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 76,
+                        lineNumber: 80,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -170,13 +193,13 @@ const FormModal = ({ table, type, data, id })=>{
                         children: "Delete"
                     }, void 0, false, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 79,
+                        lineNumber: 83,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 75,
+                lineNumber: 79,
                 columnNumber: 9
             }, this);
         }
@@ -191,7 +214,7 @@ const FormModal = ({ table, type, data, id })=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 89,
+                lineNumber: 93,
                 columnNumber: 14
             }, this);
         }
@@ -209,12 +232,12 @@ const FormModal = ({ table, type, data, id })=>{
                     height: 16
                 }, void 0, false, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 101,
+                    lineNumber: 105,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 97,
+                lineNumber: 101,
                 columnNumber: 7
             }, this),
             open && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -224,7 +247,7 @@ const FormModal = ({ table, type, data, id })=>{
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Form, {}, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 106,
+                            lineNumber: 110,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -237,23 +260,23 @@ const FormModal = ({ table, type, data, id })=>{
                                 height: 14
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 111,
+                                lineNumber: 115,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 107,
+                            lineNumber: 111,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 105,
+                    lineNumber: 109,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 104,
+                lineNumber: 108,
                 columnNumber: 9
             }, this)
         ]

@@ -4,7 +4,6 @@
   "/login/page": "app/login/page.js",
   "/DashView/admin/page": "app/DashView/admin/page.js",
   "/DashView/list/StoreManager/page": "app/DashView/list/StoreManager/page.js",
-  "/DashView/list/SalesAssociate/page": "app/DashView/list/SalesAssociate/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
+  "/DashView/list/SalesAssociate/page": "app/DashView/list/SalesAssociate/page.js"
 }
