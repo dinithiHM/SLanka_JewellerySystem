@@ -4,24 +4,8 @@ import con from "../utils/db.js"; // Database connection
 
 const router = express.Router();
 
-// ✅ GET All Users with Branch Name (JOIN users + branches)
-router.get("/", (req, res) => {
-  const sql = `
-    SELECT users.*, branches.branch_name 
-    FROM users 
-    LEFT JOIN branches ON users.branch_id = branches.branch_id
-  `;
-
-  con.query(sql, (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: "Database error", error: err });
-    }
-    res.json(results || []); // Ensure response is always an array
-  });
-});
-
 // ✅ GET Sales Associates with Branch Name (JOIN users + branches)
-router.get("/sales-associates", (req, res) => {
+router.get("/", (req, res) => {
   const sql = `
     SELECT users.*, branches.branch_name 
     FROM users 
@@ -37,14 +21,14 @@ router.get("/sales-associates", (req, res) => {
   });
 });
 
-// ✅ GET a Single User by ID with Branch Name (JOIN users + branches)
+// ✅ GET a Single Sales Associate by ID with Branch Name (JOIN users + branches)
 router.get("/:id", (req, res) => {
   const userId = req.params.id;
   const sql = `
     SELECT users.*, branches.branch_name 
     FROM users 
     LEFT JOIN branches ON users.branch_id = branches.branch_id
-    WHERE users.id = ?
+    WHERE users.id = ? AND users.role = 'Sales Associate'
   `;
 
   con.query(sql, [userId], (err, results) => {
@@ -52,7 +36,7 @@ router.get("/:id", (req, res) => {
       return res.status(500).json({ message: "Database error", error: err });
     }
     if (results.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Sales Associate not found" });
     }
     res.json(results[0]); // Send single user object
   });
@@ -91,7 +75,7 @@ router.put("/update/:id", (req, res) => {
 
   const sql = `UPDATE users 
                SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, blood_type=?, sex=?, role=?, branch_id=? 
-               WHERE id=?`;
+               WHERE id=? AND role = 'Sales Associate'`;
   const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId, userId];
 
   con.query(sql, values, (err, result) => {
@@ -106,7 +90,7 @@ router.put("/update/:id", (req, res) => {
 router.delete("/delete/:id", (req, res) => {
   const userId = req.params.id;
 
-  con.query("SELECT img FROM users WHERE id = ?", [userId], (err, results) => {
+  con.query("SELECT img FROM users WHERE id = ? AND role = 'Sales Associate'", [userId], (err, results) => {
     if (err) return res.status(500).json({ message: "Database error", error: err });
     if (results.length === 0) return res.status(404).json({ message: "Sales Associate not found" });
 
@@ -115,7 +99,7 @@ router.delete("/delete/:id", (req, res) => {
       fs.unlinkSync(imagePath);
     }
 
-    con.query("DELETE FROM users WHERE id = ?", [userId], (err, result) => {
+    con.query("DELETE FROM users WHERE id = ? AND role = 'Sales Associate'", [userId], (err, result) => {
       if (err) return res.status(500).json({ message: "Database error", error: err });
       res.json({ message: "Sales Associate deleted successfully" });
     });
