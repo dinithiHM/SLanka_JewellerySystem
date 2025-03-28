@@ -1635,7 +1635,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TableSe
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/FormModal.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Pagination$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/Pagination.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Table$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/Table.tsx [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/data.ts [app-client] (ecmascript)"); // Assuming this is where you store user role
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/data.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 "use client";
@@ -1685,27 +1685,79 @@ const columns = [
 const SalesAssociateListPage = ()=>{
     _s();
     const [salesAssociates, setSalesAssociates] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "SalesAssociateListPage.useEffect": ()=>{
             const fetchSalesAssociates = {
                 "SalesAssociateListPage.useEffect.fetchSalesAssociates": async ()=>{
                     try {
+                        setIsLoading(true);
                         const response = await fetch("http://localhost:3002/sales-associates");
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch sales associates');
+                        }
                         const data = await response.json();
-                        console.log("Fetched data:", data); // Log the data to verify its format
                         if (Array.isArray(data)) {
-                            setSalesAssociates(data); // Set the fetched data to the state
+                            setSalesAssociates(data);
                         } else {
-                            console.error("Expected an array but got:", data);
+                            throw new Error('Invalid data format received');
                         }
                     } catch (error) {
-                        console.error("Error fetching Store Managers:", error);
+                        console.error("Error fetching Sales Associates:", error);
+                        setError(error instanceof Error ? error.message : 'An error occurred');
+                    } finally{
+                        setIsLoading(false);
                     }
                 }
             }["SalesAssociateListPage.useEffect.fetchSalesAssociates"];
             fetchSalesAssociates();
         }
     }["SalesAssociateListPage.useEffect"], []);
+    // Only show view button for non-admin users
+    const renderActions = (item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "flex items-center gap-2",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                    href: `/list/sales-associates/${item.id}`,
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        className: "w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]",
+                        title: "View details",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                            src: "/view.png",
+                            alt: "View",
+                            width: 16,
+                            height: 16
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                            lineNumber: 73,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                        lineNumber: 69,
+                        columnNumber: 9
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                    lineNumber: 68,
+                    columnNumber: 7
+                }, this),
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["role"].toLowerCase() === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                    table: "sales-associate",
+                    type: "delete",
+                    id: item.id
+                }, void 0, false, {
+                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                    lineNumber: 79,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+            lineNumber: 66,
+            columnNumber: 5
+        }, this);
     const renderRow = (item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
             className: "border-b border-gray-200 even:bg-[#FFF6BD] text-sm hover:bg-[#FDE68A]",
             children: [
@@ -1723,7 +1775,7 @@ const SalesAssociateListPage = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 61,
+                                lineNumber: 92,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1731,18 +1783,18 @@ const SalesAssociateListPage = ()=>{
                                 children: item.email
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 62,
+                                lineNumber: 93,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 60,
+                        lineNumber: 91,
                         columnNumber: 9
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 59,
+                    lineNumber: 90,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1750,7 +1802,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.username
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 65,
+                    lineNumber: 96,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1758,7 +1810,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.branch_id
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 66,
+                    lineNumber: 97,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1766,7 +1818,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.nic
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 67,
+                    lineNumber: 98,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1774,7 +1826,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.phone
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 68,
+                    lineNumber: 99,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1782,63 +1834,42 @@ const SalesAssociateListPage = ()=>{
                     children: item.address
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 69,
+                    lineNumber: 100,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "flex items-center gap-2",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                href: `/list/sales-associates/${item.id}`,
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                    className: "w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                        src: "/view.png",
-                                        alt: "",
-                                        width: 16,
-                                        height: 16
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 74,
-                                        columnNumber: 15
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                    lineNumber: 73,
-                                    columnNumber: 13
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 72,
-                                columnNumber: 11
-                            }, this),
-                            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["role"] === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                table: "sales-associate",
-                                type: "delete",
-                                id: item.id
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 78,
-                                columnNumber: 13
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 71,
-                        columnNumber: 9
-                    }, this)
+                    children: renderActions(item)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 70,
+                    lineNumber: 101,
                     columnNumber: 7
                 }, this)
             ]
         }, item.id, true, {
             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-            lineNumber: 58,
+            lineNumber: 89,
             columnNumber: 5
         }, this);
+    if (isLoading) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "flex justify-center items-center h-full",
+            children: "Loading..."
+        }, void 0, false, {
+            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+            lineNumber: 106,
+            columnNumber: 12
+        }, this);
+    }
+    if (error) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "text-red-500 text-center",
+            children: error
+        }, void 0, false, {
+            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+            lineNumber: 110,
+            columnNumber: 12
+        }, this);
+    }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "bg-white p-4 rounded-md flex-1 m-4 mt-0",
         children: [
@@ -1850,7 +1881,7 @@ const SalesAssociateListPage = ()=>{
                         children: "Sales Associates"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 89,
+                        lineNumber: 116,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1858,44 +1889,44 @@ const SalesAssociateListPage = ()=>{
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TableSearch$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 91,
+                                lineNumber: 118,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex items-center gap-4 self-end",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        className: "w-8 h-8 flex items-center justify-center rounded-full bg-#FFF6BD",
+                                        className: "w-8 h-8 flex items-center justify-center rounded-full bg-[#FFF6BD]",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                                             src: "/filter.png",
-                                            alt: "",
+                                            alt: "Filter",
                                             width: 14,
                                             height: 14
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                            lineNumber: 94,
+                                            lineNumber: 121,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 93,
+                                        lineNumber: 120,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                         className: "w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                                             src: "/sort.png",
-                                            alt: "",
+                                            alt: "Sort",
                                             width: 14,
                                             height: 14
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                            lineNumber: 97,
+                                            lineNumber: 124,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 96,
+                                        lineNumber: 123,
                                         columnNumber: 13
                                     }, this),
                                     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$data$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["role"] === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -1903,25 +1934,25 @@ const SalesAssociateListPage = ()=>{
                                         type: "create"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 100,
+                                        lineNumber: 128,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 92,
+                                lineNumber: 119,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 90,
+                        lineNumber: 117,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 88,
+                lineNumber: 115,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Table$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -1930,22 +1961,22 @@ const SalesAssociateListPage = ()=>{
                 data: salesAssociates
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 106,
+                lineNumber: 133,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Pagination$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 109,
+                lineNumber: 134,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-        lineNumber: 86,
+        lineNumber: 114,
         columnNumber: 5
     }, this);
 };
-_s(SalesAssociateListPage, "U6HMWLeRCqlb1PkuOhD0J2PU1xk=");
+_s(SalesAssociateListPage, "yTEMQDCYmco0Mzvxazj7v3R4HBE=");
 _c = SalesAssociateListPage;
 const __TURBOPACK__default__export__ = SalesAssociateListPage;
 var _c;
