@@ -6,28 +6,37 @@ import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-// import { role } from "@/lib/data";
+import DeleteConfirmationModal from "@/components/DeleteConfirmationModal";
 
-type SalesAssociate = {
+// Add interface for SalesAssociate
+interface SalesAssociate {
   id: number;
-  username: string;
-  email: string;
   first_name: string;
   last_name: string;
+  email: string;
+  username: string;
+  branch_id: number;
   nic: string;
   phone: string;
   address: string;
-  branch_id: number;
-};
+  action?: string; // Add this optional property
+}
 
-const columns = [
-  { header: "Info", accessor: "info" },
+// Add interface for column definition
+interface Column {
+  header: string;
+  accessor: keyof SalesAssociate;
+  className?: string;
+}
+
+const columns: Column[] = [
+  { header: "Info", accessor: "first_name" },
   { header: "User Name", accessor: "username", className: "hidden md:table-cell" },
   { header: "Branch", accessor: "branch_id", className: "hidden md:table-cell" },
   { header: "NIC", accessor: "nic", className: "hidden lg:table-cell" },
   { header: "Phone", accessor: "phone", className: "hidden lg:table-cell" },
   { header: "Address", accessor: "address", className: "hidden lg:table-cell" },
-  { header: "Actions", accessor: "action" },
+  { header: "Actions", accessor: "action" }
 ];
 
 const SalesAssociateListPage = () => {
@@ -36,12 +45,92 @@ const SalesAssociateListPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("");
 
+  // Add delete handler
+  const handleDelete = async (id: number) => {
+    try {
+      // Check if id is valid
+      if (!id) {
+        console.error('Invalid ID: ID is undefined or null');
+        throw new Error('Invalid ID: Cannot delete without a valid ID');
+      }
+
+      console.log(`Attempting to delete Sales Associate with ID: ${id}`);
+
+      // Try the delete endpoint with the correct ID
+      const response = await fetch(`http://localhost:3002/sales-associates/delete/${id}`, {
+        method: 'DELETE',
+      });
+
+      // Log the response status
+      console.log(`Delete response status: ${response.status}`);
+
+      // Try to parse the response as JSON
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('Response data:', responseData);
+      } catch (jsonError) {
+        console.error('Error parsing response JSON:', jsonError);
+      }
+
+      if (!response.ok) {
+        // Extract detailed error information
+        const errorMessage = responseData?.message || 'Failed to delete sales associate';
+        const detailedError = responseData?.error || '';
+        const sqlCode = responseData?.code || '';
+        const sqlState = responseData?.sqlState || '';
+        const sqlMessage = responseData?.sqlMessage || '';
+
+        console.error('Detailed database error:', {
+          message: errorMessage,
+          error: detailedError,
+          code: sqlCode,
+          sqlState: sqlState,
+          sqlMessage: sqlMessage
+        });
+
+        // Create a more informative error message
+        const fullErrorMessage = `${errorMessage}${detailedError ? ': ' + detailedError : ''}${sqlCode ? ' (Code: ' + sqlCode + ')' : ''}`;
+        throw new Error(fullErrorMessage);
+      }
+
+      // Remove the deleted item from the state
+      setSalesAssociates(prevAssociates =>
+        prevAssociates.filter(associate => associate.id !== id)
+      );
+
+      // Show success message
+      alert(responseData?.message || "Sales Associate deleted successfully");
+
+    } catch (error) {
+      console.error("Error deleting Sales Associate:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert(`Failed to delete Sales Associate: ${errorMessage}`);
+      throw error; // Re-throw the error so the modal can handle it
+    }
+  };
+
   useEffect(() => {
     // Get role from localStorage
     const storedRole = localStorage.getItem("role");
     if (storedRole) {
       setUserRole(storedRole);
     }
+
+    // Check database structure to debug
+    const checkDatabaseStructure = async () => {
+      try {
+        const response = await fetch("http://localhost:3002/sales-associates/check-table-structure");
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Database structure for users table:", data);
+        }
+      } catch (error) {
+        console.error("Error checking database structure:", error);
+      }
+    };
+
+    checkDatabaseStructure();
 
     const fetchSalesAssociates = async () => {
       try {
@@ -51,9 +140,27 @@ const SalesAssociateListPage = () => {
           throw new Error('Failed to fetch sales associates');
         }
         const data = await response.json();
-        
+
         if (Array.isArray(data)) {
-          setSalesAssociates(data);
+          // Log the first item to see its structure
+          if (data.length > 0) {
+            console.log('Sample sales associate data:', data[0]);
+          }
+
+          // Map the data to ensure it has the correct property names
+          const mappedData = data.map(item => ({
+            id: item.user_id || item.id, // Try both possible ID field names
+            first_name: item.first_name,
+            last_name: item.last_name,
+            email: item.email,
+            username: item.username,
+            branch_id: item.branch_id,
+            nic: item.nic,
+            phone: item.phone,
+            address: item.address
+          }));
+
+          setSalesAssociates(mappedData);
         } else {
           throw new Error('Invalid data format received');
         }
@@ -64,32 +171,9 @@ const SalesAssociateListPage = () => {
         setIsLoading(false);
       }
     };
-  
+
     fetchSalesAssociates();
   }, []);
-
-  const renderActions = (item: SalesAssociate) => (
-    <div className="flex items-center gap-2">
-      {/* View button - visible to all users */}
-      <Link href={`/list/sales-associates/${item.id}`}>
-        <button 
-          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]"
-          title="View details"
-        >
-          <Image src="/view.png" alt="View" width={16} height={16} />
-        </button>
-      </Link>
-      
-      {/* Delete button - only visible to admin */}
-      {userRole.toLowerCase() === "admin" && (
-        <FormModal 
-          table="sales-associate" 
-          type="delete" 
-          id={item.id}
-        />
-      )}
-    </div>
-  );
 
   const renderRow = (item: SalesAssociate) => (
     <tr key={item.id} className="border-b border-gray-200 even:bg-[#FFF6BD] text-sm hover:bg-[#FDE68A]">
@@ -108,13 +192,28 @@ const SalesAssociateListPage = () => {
     </tr>
   );
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
-  }
+  const renderActions = (item: SalesAssociate) => (
+    <div className="flex items-center gap-2">
+      <Link href={`/list/sales-associates/${item.id}`}>
+        <button
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]"
+          title="View details"
+        >
+          <Image src="/view.png" alt="View" width={16} height={16} />
+        </button>
+      </Link>
 
-  if (error) {
-    return <div className="text-red-500 text-center">{error}</div>;
-  }
+      {userRole.toLowerCase() === "admin" && (
+        <DeleteConfirmationModal
+          itemName={`${item.first_name} ${item.last_name}`}
+          onDelete={() => handleDelete(item.id)}
+        />
+      )}
+    </div>
+  );
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
@@ -129,11 +228,10 @@ const SalesAssociateListPage = () => {
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="Sort" width={14} height={14} />
             </button>
-            {/* Create button - only visible to admin */}
             {userRole.toLowerCase() === "admin" && (
               <FormModal table="sales-associate" type="create"/>
             )}
-          </div> 
+          </div>
         </div>
       </div>
       <Table columns={columns} renderRow={renderRow} data={salesAssociates} />

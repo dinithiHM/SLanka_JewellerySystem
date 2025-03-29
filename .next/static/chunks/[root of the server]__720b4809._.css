@@ -26,6 +26,7 @@
     --color-amber-700: oklch(.555 .163 48.998);
     --color-amber-800: oklch(.473 .137 46.201);
     --color-amber-900: oklch(.414 .112 45.904);
+    --color-yellow-100: oklch(.973 .071 103.193);
     --color-yellow-300: oklch(.905 .182 98.111);
     --color-yellow-500: oklch(.795 .184 86.047);
     --color-green-100: oklch(.962 .044 156.743);
@@ -521,6 +522,10 @@
     margin-right: calc(var(--spacing) * 3);
   }
 
+  .mb-2 {
+    margin-bottom: calc(var(--spacing) * 2);
+  }
+
   .mb-4 {
     margin-bottom: calc(var(--spacing) * 4);
   }
@@ -659,6 +664,10 @@
 
   .h-screen {
     height: 100vh;
+  }
+
+  .max-h-40 {
+    max-height: calc(var(--spacing) * 40);
   }
 
   .min-h-screen {
@@ -923,6 +932,10 @@
     white-space: nowrap;
   }
 
+  .overflow-auto {
+    overflow: auto;
+  }
+
   .overflow-scroll {
     overflow: scroll;
   }
@@ -1006,6 +1019,10 @@
     border-color: var(--color-gray-200);
   }
 
+  .border-red-400 {
+    border-color: var(--color-red-400);
+  }
+
   .border-red-500 {
     border-color: var(--color-red-500);
   }
@@ -1066,6 +1083,10 @@
     background-color: var(--color-gray-300);
   }
 
+  .bg-gray-500 {
+    background-color: var(--color-gray-500);
+  }
+
   .bg-orange-300 {
     background-color: var(--color-orange-300);
   }
@@ -1078,8 +1099,16 @@
     background-color: var(--color-red-50);
   }
 
+  .bg-red-100 {
+    background-color: var(--color-red-100);
+  }
+
   .bg-red-500 {
     background-color: var(--color-red-500);
+  }
+
+  .bg-red-600 {
+    background-color: var(--color-red-600);
   }
 
   .bg-red-700 {
@@ -1096,6 +1125,10 @@
 
   .bg-white {
     background-color: var(--color-white);
+  }
+
+  .bg-yellow-100 {
+    background-color: var(--color-yellow-100);
   }
 
   .bg-yellow-500 {
@@ -1156,6 +1189,10 @@
 
   .px-2 {
     padding-inline: calc(var(--spacing) * 2);
+  }
+
+  .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
   }
 
   .px-4 {
@@ -1290,6 +1327,10 @@
     color: var(--color-gray-700);
   }
 
+  .text-gray-800 {
+    color: var(--color-gray-800);
+  }
+
   .text-gray-900 {
     color: var(--color-gray-900);
   }
@@ -1312,6 +1353,10 @@
 
   .text-red-500 {
     color: var(--color-red-500);
+  }
+
+  .text-red-700 {
+    color: var(--color-red-700);
   }
 
   .text-white {

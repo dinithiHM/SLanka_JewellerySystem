@@ -1,10 +1,10 @@
 {
   "/page": "app/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/login/page": "app/login/page.js",
   "/DashView/admin/page": "app/DashView/admin/page.js",
-  "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/DashView/list/SalesAssociate/page": "app/DashView/list/SalesAssociate/page.js",
   "/DashView/list/StoreManager/page": "app/DashView/list/StoreManager/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
+  "/DashView/list/Supplier/page": "app/DashView/list/Supplier/page.js",
+  "/DashView/list/SalesAssociate/page": "app/DashView/list/SalesAssociate/page.js"
 }

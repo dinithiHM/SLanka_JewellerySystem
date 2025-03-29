@@ -38,30 +38,16 @@ const forms: {
 };
 
 
-const FormModal = ({
-  table,
-  type,
-  data,
-  id,
-}: {
-  table:
-    | "store-manager"
-    | "sales-associate"
-    | "parent"
-    | "supplier"
-    | "class"
-    | "student"
-    | "exam"
-    | "assignment"
-    | "result"
-    | "attendance"
-    | "event"
-    | "announcement";
-  type: "create" | "update" | "delete";
-  data?: any;
+interface FormModalProps {
+  table: string;
+  type: "create" | "update" | "delete";  // Make type more specific
   id?: number;
-  onClose?: () => void;
-}) => {
+  onDelete?: () => Promise<void>;  // Make onDelete return Promise
+  data?: any;
+  itemName?: string;  // Name of the item to be deleted (for confirmation message)
+}
+
+const FormModal: React.FC<FormModalProps> = ({ table, type, id, onDelete, data, itemName }) => {
   const size = type === "create" ? "w-8 h-8" : "w-7 h-7";
   const bgColor =
     type === "create"
@@ -72,17 +58,45 @@ const FormModal = ({
 
   const [open, setOpen] = useState(false);
 
+  const handleDeleteConfirm = async () => {
+    if (onDelete) {
+      try {
+        await onDelete();
+        setOpen(false);
+      } catch (error) {
+        console.error("Error deleting:", error);
+        // Show error message to user
+        alert("Failed to delete. Please try again.");
+      }
+    }
+  };
+
   // Determine the form to render based on the table value
   const Form = () => {
-     if (type === "delete" && id) {
+    if (type === "delete" && id) {
       return (
-        <form action="" className="p-4 flex flex-col gap-4">
+        <form className="p-4 flex flex-col gap-4">
           <span className="text-center font-medium">
-            All data will be lost. Are you sure you want to delete this {table}?
+            {itemName ?
+              `Are you sure you want to delete ${itemName}?` :
+              `All data will be lost. Are you sure you want to delete this ${table}?`}
           </span>
-          <button className="bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center">
-            Delete
-          </button>
+          <div className="flex justify-center gap-4 mt-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="bg-gray-500 text-white py-2 px-4 rounded-md border-none"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteConfirm}
+              className="bg-red-700 text-white py-2 px-4 rounded-md border-none"
+            >
+              Delete
+            </button>
+          </div>
         </form>
       );
     }

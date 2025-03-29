@@ -176,42 +176,70 @@ const forms = {
             columnNumber: 36
         }, this)
 };
-const FormModal = ({ table, type, data, id })=>{
+const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
     _s();
     const size = type === "create" ? "w-8 h-8" : "w-7 h-7";
     const bgColor = type === "create" ? "bg-lamaYellow" : type === "update" ? "bg-yellow" : "bg-#FFF6BD";
     const [open, setOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const handleDeleteConfirm = async ()=>{
+        if (onDelete) {
+            try {
+                await onDelete();
+                setOpen(false);
+            } catch (error) {
+                console.error("Error deleting:", error);
+                // Show error message to user
+                alert("Failed to delete. Please try again.");
+            }
+        }
+    };
     // Determine the form to render based on the table value
     const Form = ()=>{
         if (type === "delete" && id) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
-                action: "",
                 className: "p-4 flex flex-col gap-4",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         className: "text-center font-medium",
+                        children: itemName ? `Are you sure you want to delete ${itemName}?` : `All data will be lost. Are you sure you want to delete this ${table}?`
+                    }, void 0, false, {
+                        fileName: "[project]/src/components/FormModal.tsx",
+                        lineNumber: 79,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex justify-center gap-4 mt-2",
                         children: [
-                            "All data will be lost. Are you sure you want to delete this ",
-                            table,
-                            "?"
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>setOpen(false),
+                                className: "bg-gray-500 text-white py-2 px-4 rounded-md border-none",
+                                children: "Cancel"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/FormModal.tsx",
+                                lineNumber: 85,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: handleDeleteConfirm,
+                                className: "bg-red-700 text-white py-2 px-4 rounded-md border-none",
+                                children: "Delete"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/FormModal.tsx",
+                                lineNumber: 92,
+                                columnNumber: 13
+                            }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 80,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        className: "bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center",
-                        children: "Delete"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 83,
+                        lineNumber: 84,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 79,
+                lineNumber: 78,
                 columnNumber: 9
             }, this);
         }
@@ -226,7 +254,7 @@ const FormModal = ({ table, type, data, id })=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 93,
+                lineNumber: 107,
                 columnNumber: 14
             }, this);
         }
@@ -244,12 +272,12 @@ const FormModal = ({ table, type, data, id })=>{
                     height: 16
                 }, void 0, false, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 105,
+                    lineNumber: 119,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 101,
+                lineNumber: 115,
                 columnNumber: 7
             }, this),
             open && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -259,7 +287,7 @@ const FormModal = ({ table, type, data, id })=>{
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Form, {}, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 110,
+                            lineNumber: 124,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -272,23 +300,23 @@ const FormModal = ({ table, type, data, id })=>{
                                 height: 14
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 115,
+                                lineNumber: 129,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 111,
+                            lineNumber: 125,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 109,
+                    lineNumber: 123,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 108,
+                lineNumber: 122,
                 columnNumber: 9
             }, this)
         ]

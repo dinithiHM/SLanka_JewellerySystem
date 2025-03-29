@@ -165,41 +165,69 @@ const forms = {
             columnNumber: 36
         }, this)
 };
-const FormModal = ({ table, type, data, id })=>{
+const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
     const size = type === "create" ? "w-8 h-8" : "w-7 h-7";
     const bgColor = type === "create" ? "bg-lamaYellow" : type === "update" ? "bg-yellow" : "bg-#FFF6BD";
     const [open, setOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const handleDeleteConfirm = async ()=>{
+        if (onDelete) {
+            try {
+                await onDelete();
+                setOpen(false);
+            } catch (error) {
+                console.error("Error deleting:", error);
+                // Show error message to user
+                alert("Failed to delete. Please try again.");
+            }
+        }
+    };
     // Determine the form to render based on the table value
     const Form = ()=>{
         if (type === "delete" && id) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
-                action: "",
                 className: "p-4 flex flex-col gap-4",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         className: "text-center font-medium",
+                        children: itemName ? `Are you sure you want to delete ${itemName}?` : `All data will be lost. Are you sure you want to delete this ${table}?`
+                    }, void 0, false, {
+                        fileName: "[project]/src/components/FormModal.tsx",
+                        lineNumber: 79,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex justify-center gap-4 mt-2",
                         children: [
-                            "All data will be lost. Are you sure you want to delete this ",
-                            table,
-                            "?"
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>setOpen(false),
+                                className: "bg-gray-500 text-white py-2 px-4 rounded-md border-none",
+                                children: "Cancel"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/FormModal.tsx",
+                                lineNumber: 85,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: handleDeleteConfirm,
+                                className: "bg-red-700 text-white py-2 px-4 rounded-md border-none",
+                                children: "Delete"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/FormModal.tsx",
+                                lineNumber: 92,
+                                columnNumber: 13
+                            }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 80,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        className: "bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center",
-                        children: "Delete"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 83,
+                        lineNumber: 84,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 79,
+                lineNumber: 78,
                 columnNumber: 9
             }, this);
         }
@@ -214,7 +242,7 @@ const FormModal = ({ table, type, data, id })=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 93,
+                lineNumber: 107,
                 columnNumber: 14
             }, this);
         }
@@ -232,12 +260,12 @@ const FormModal = ({ table, type, data, id })=>{
                     height: 16
                 }, void 0, false, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 105,
+                    lineNumber: 119,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 101,
+                lineNumber: 115,
                 columnNumber: 7
             }, this),
             open && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -247,7 +275,7 @@ const FormModal = ({ table, type, data, id })=>{
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Form, {}, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 110,
+                            lineNumber: 124,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -260,23 +288,23 @@ const FormModal = ({ table, type, data, id })=>{
                                 height: 14
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 115,
+                                lineNumber: 129,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 111,
+                            lineNumber: 125,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 109,
+                    lineNumber: 123,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 108,
+                lineNumber: 122,
                 columnNumber: 9
             }, this)
         ]
@@ -445,7 +473,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Table$2
 const columns = [
     {
         header: "Info",
-        accessor: "info"
+        accessor: "first_name"
     },
     {
         header: "User Name",
@@ -482,6 +510,25 @@ const SalesAssociateListPage = ()=>{
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [userRole, setUserRole] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    // Add delete handler
+    const handleDelete = async (id)=>{
+        try {
+            const response = await fetch(`http://localhost:3002/sales-associates/delete/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete sales associate');
+            }
+            // Remove the deleted item from the state
+            setSalesAssociates((prevAssociates)=>prevAssociates.filter((associate)=>associate.id !== id));
+            // Show success message
+            alert("Sales Associate deleted successfully");
+        } catch (error) {
+            console.error("Error deleting Sales Associate:", error);
+            alert("Failed to delete Sales Associate");
+            throw error; // Re-throw the error so FormModal can handle it
+        }
+    };
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         // Get role from localStorage
         const storedRole = localStorage.getItem("role");
@@ -510,49 +557,6 @@ const SalesAssociateListPage = ()=>{
         };
         fetchSalesAssociates();
     }, []);
-    const renderActions = (item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "flex items-center gap-2",
-            children: [
-                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                    href: `/list/sales-associates/${item.id}`,
-                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        className: "w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]",
-                        title: "View details",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                            src: "/view.png",
-                            alt: "View",
-                            width: 16,
-                            height: 16
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                            lineNumber: 79,
-                            columnNumber: 11
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 75,
-                        columnNumber: 9
-                    }, this)
-                }, void 0, false, {
-                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 74,
-                    columnNumber: 7
-                }, this),
-                userRole.toLowerCase() === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                    table: "sales-associate",
-                    type: "delete",
-                    id: item.id
-                }, void 0, false, {
-                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 85,
-                    columnNumber: 9
-                }, this)
-            ]
-        }, void 0, true, {
-            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-            lineNumber: 72,
-            columnNumber: 5
-        }, this);
     const renderRow = (item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
             className: "border-b border-gray-200 even:bg-[#FFF6BD] text-sm hover:bg-[#FDE68A]",
             children: [
@@ -570,7 +574,7 @@ const SalesAssociateListPage = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 98,
+                                lineNumber: 109,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -578,18 +582,18 @@ const SalesAssociateListPage = ()=>{
                                 children: item.email
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 99,
+                                lineNumber: 110,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 97,
+                        lineNumber: 108,
                         columnNumber: 9
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 96,
+                    lineNumber: 107,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -597,7 +601,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.username
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 102,
+                    lineNumber: 113,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -605,7 +609,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.branch_id
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 103,
+                    lineNumber: 114,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -613,7 +617,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.nic
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 104,
+                    lineNumber: 115,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -621,7 +625,7 @@ const SalesAssociateListPage = ()=>{
                     children: item.phone
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 105,
+                    lineNumber: 116,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -629,42 +633,84 @@ const SalesAssociateListPage = ()=>{
                     children: item.address
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 106,
+                    lineNumber: 117,
                     columnNumber: 7
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                     children: renderActions(item)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                    lineNumber: 107,
+                    lineNumber: 118,
                     columnNumber: 7
                 }, this)
             ]
         }, item.id, true, {
             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-            lineNumber: 95,
+            lineNumber: 106,
             columnNumber: 5
         }, this);
-    if (isLoading) {
-        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "flex justify-center items-center h-full",
-            children: "Loading..."
-        }, void 0, false, {
+    const renderActions = (item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "flex items-center gap-2",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                    href: `/list/sales-associates/${item.id}`,
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        className: "w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]",
+                        title: "View details",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                            src: "/view.png",
+                            alt: "View",
+                            width: 16,
+                            height: 16
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                            lineNumber: 129,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                        lineNumber: 125,
+                        columnNumber: 9
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                    lineNumber: 124,
+                    columnNumber: 7
+                }, this),
+                userRole.toLowerCase() === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                    table: "sales-associate",
+                    type: "delete",
+                    id: item.id,
+                    onDelete: ()=>handleDelete(item.id),
+                    itemName: `${item.first_name} ${item.last_name}`
+                }, void 0, false, {
+                    fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+                    lineNumber: 134,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-            lineNumber: 112,
-            columnNumber: 12
+            lineNumber: 123,
+            columnNumber: 5
         }, this);
-    }
-    if (error) {
-        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "text-red-500 text-center",
-            children: error
-        }, void 0, false, {
-            fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-            lineNumber: 116,
-            columnNumber: 12
-        }, this);
-    }
+    if (isLoading) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        children: "Loading..."
+    }, void 0, false, {
+        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+        lineNumber: 145,
+        columnNumber: 25
+    }, this);
+    if (error) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        children: [
+            "Error: ",
+            error
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
+        lineNumber: 146,
+        columnNumber: 21
+    }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "bg-white p-4 rounded-md flex-1 m-4 mt-0",
         children: [
@@ -676,7 +722,7 @@ const SalesAssociateListPage = ()=>{
                         children: "Sales Associates"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 122,
+                        lineNumber: 151,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -684,7 +730,7 @@ const SalesAssociateListPage = ()=>{
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TableSearch$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 124,
+                                lineNumber: 153,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -699,12 +745,12 @@ const SalesAssociateListPage = ()=>{
                                             height: 14
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                            lineNumber: 127,
+                                            lineNumber: 156,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 126,
+                                        lineNumber: 155,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -716,12 +762,12 @@ const SalesAssociateListPage = ()=>{
                                             height: 14
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                            lineNumber: 130,
+                                            lineNumber: 159,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 129,
+                                        lineNumber: 158,
                                         columnNumber: 13
                                     }, this),
                                     userRole.toLowerCase() === "admin" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$FormModal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -729,25 +775,25 @@ const SalesAssociateListPage = ()=>{
                                         type: "create"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                        lineNumber: 134,
+                                        lineNumber: 162,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                                lineNumber: 125,
+                                lineNumber: 154,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                        lineNumber: 123,
+                        lineNumber: 152,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 121,
+                lineNumber: 150,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Table$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -756,18 +802,18 @@ const SalesAssociateListPage = ()=>{
                 data: salesAssociates
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 139,
+                lineNumber: 167,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Pagination$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                 fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-                lineNumber: 140,
+                lineNumber: 168,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/list/SalesAssociate/page.tsx",
-        lineNumber: 120,
+        lineNumber: 149,
         columnNumber: 5
     }, this);
 };
