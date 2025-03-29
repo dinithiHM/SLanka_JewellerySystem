@@ -7,9 +7,10 @@ import { adminRouter } from "./Routes/AdminRoute.js";
 import { teacherRouter } from "./Routes/TeacherRoute.js"; // ✅ Import Teacher Routes
 import { supplierRouter } from "./Routes/supplierRoutes.js";
 import { userRouter } from "./Routes/userRouter.js"; // ✅ Import User Routes
-import { salesAssociateRouter } from "./Routes/SalesAssociate.js"; 
+import { salesAssociateRouter } from "./Routes/SalesAssociate.js";
+import { storeManagerRouter } from "./Routes/StoreManagerRoute.js"; // ✅ Import Store Manager Routes
 
-const app = express(); 
+const app = express();
 
 // ✅ Enable CORS for frontend (Modify port if needed)
 app.use(
@@ -41,6 +42,7 @@ app.use("/teachers", teacherRouter); // Teacher-related routes
 app.use("/suppliers", supplierRouter);
 app.use("/users", userRouter); // ✅ Add user-related routes
 app.use("/sales-associates", salesAssociateRouter);
+app.use("/store-managers", storeManagerRouter); // ✅ Add store manager routes
 
 // ✅ Start the server
 const PORT = 3002;

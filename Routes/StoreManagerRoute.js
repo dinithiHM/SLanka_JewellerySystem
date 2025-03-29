@@ -4,13 +4,13 @@ import con from "../utils/db.js"; // Database connection
 
 const router = express.Router();
 
-// ✅ GET Sales Associates with Branch Name (JOIN users + branches)
+// ✅ GET Store Managers with Branch Name (JOIN users + branches)
 router.get("/", (req, res) => {
   const sql = `
-    SELECT users.*, branches.branch_name
-    FROM users
+    SELECT users.*, branches.branch_name 
+    FROM users 
     LEFT JOIN branches ON users.branch_id = branches.branch_id
-    WHERE users.role = 'Sales Associate'
+    WHERE users.role = 'Store Manager'
   `;
 
   con.query(sql, (err, results) => {
@@ -21,14 +21,14 @@ router.get("/", (req, res) => {
   });
 });
 
-// ✅ GET a Single Sales Associate by ID with Branch Name (JOIN users + branches)
+// ✅ GET a Single Store Manager by ID with Branch Name (JOIN users + branches)
 router.get("/:id", (req, res) => {
   const userId = req.params.id;
   const sql = `
-    SELECT users.*, branches.branch_name
-    FROM users
+    SELECT users.*, branches.branch_name 
+    FROM users 
     LEFT JOIN branches ON users.branch_id = branches.branch_id
-    WHERE users.user_id = ? AND users.role = 'Sales Associate'
+    WHERE users.user_id = ? AND users.role = 'Store Manager'
   `;
 
   con.query(sql, [userId], (err, results) => {
@@ -36,13 +36,13 @@ router.get("/:id", (req, res) => {
       return res.status(500).json({ message: "Database error", error: err });
     }
     if (results.length === 0) {
-      return res.status(404).json({ message: "Sales Associate not found" });
+      return res.status(404).json({ message: "Store Manager not found" });
     }
     res.json(results[0]); // Send single user object
   });
 });
 
-// ✅ CREATE Sales Associate
+// ✅ CREATE Store Manager
 router.post("/create", (req, res) => {
   const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
 
@@ -59,11 +59,11 @@ router.post("/create", (req, res) => {
     if (err) {
       return res.status(500).json({ message: "Database error", error: err });
     }
-    res.status(201).json({ message: "Sales Associate created successfully", userId: result.insertId });
+    res.status(201).json({ message: "Store Manager created successfully", userId: result.insertId });
   });
 });
 
-// ✅ UPDATE Sales Associate
+// ✅ UPDATE Store Manager
 router.put("/update/:id", (req, res) => {
   const userId = req.params.id;
   const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
@@ -73,38 +73,38 @@ router.put("/update/:id", (req, res) => {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `UPDATE users
-               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, blood_type=?, sex=?, role=?, branch_id=?
-               WHERE id=? AND role = 'Sales Associate'`;
+  const sql = `UPDATE users 
+               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, blood_type=?, sex=?, role=?, branch_id=? 
+               WHERE user_id=? AND role = 'Store Manager'`;
   const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId, userId];
 
   con.query(sql, values, (err, result) => {
     if (err) {
       return res.status(500).json({ message: "Database error", error: err });
     }
-    res.json({ message: "Sales Associate updated successfully" });
+    res.json({ message: "Store Manager updated successfully" });
   });
 });
 
-// ✅ DELETE Sales Associate
+// ✅ DELETE Store Manager
 router.delete("/delete/:id", (req, res) => {
   const userId = req.params.id;
-  console.log(`Attempting to delete Sales Associate with ID: ${userId}`);
+  console.log(`Attempting to delete Store Manager with ID: ${userId}`);
 
   // First check if the user exists
-  con.query("SELECT * FROM users WHERE user_id = ? AND role = 'Sales Associate'", [userId], (err, results) => {
+  con.query("SELECT * FROM users WHERE user_id = ? AND role = 'Store Manager'", [userId], (err, results) => {
     if (err) {
       console.error('Error checking if user exists:', err);
       return res.status(500).json({ message: "Database error", error: err.message });
     }
-
+    
     if (results.length === 0) {
-      console.log(`Sales Associate with ID ${userId} not found`);
-      return res.status(404).json({ message: "Sales Associate not found" });
+      console.log(`Store Manager with ID ${userId} not found`);
+      return res.status(404).json({ message: "Store Manager not found" });
     }
 
-    console.log(`Found Sales Associate:`, results[0]);
-
+    console.log(`Found Store Manager:`, results[0]);
+    
     // Try to delete the image if it exists
     try {
       const imagePath = results[0].img;
@@ -117,41 +117,21 @@ router.delete("/delete/:id", (req, res) => {
       console.error('Error deleting image:', imageError);
     }
 
-    // Check for foreign key constraints first
-    con.query(
-      `SELECT
-        TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
-      FROM
-        INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-      WHERE
-        REFERENCED_TABLE_NAME = 'users' AND
-        CONSTRAINT_SCHEMA = 'slanakajewel'`,
-      (constraintErr, constraints) => {
-        if (constraintErr) {
-          console.error('Error checking constraints:', constraintErr);
-        } else {
-          console.log('Foreign key constraints that reference users table:', constraints);
-        }
-
-        // Try to delete the user from the database
-        con.query("DELETE FROM users WHERE user_id = ? AND role = 'Sales Associate'", [userId], (deleteErr, result) => {
-          if (deleteErr) {
-            console.error('Error deleting user from database:', deleteErr);
-            // Send detailed error information
-            return res.status(500).json({
-              message: "Database error",
-              error: deleteErr.message,
-              code: deleteErr.code,
-              sqlState: deleteErr.sqlState,
-              sqlMessage: deleteErr.sqlMessage
-            });
-          }
-
-          console.log(`Successfully deleted Sales Associate with ID: ${userId}`);
-          res.json({ message: "Sales Associate deleted successfully" });
+    // Delete the user from the database
+    con.query("DELETE FROM users WHERE user_id = ? AND role = 'Store Manager'", [userId], (deleteErr, result) => {
+      if (deleteErr) {
+        console.error('Error deleting user from database:', deleteErr);
+        return res.status(500).json({ 
+          message: "Database error", 
+          error: deleteErr.message,
+          code: deleteErr.code,
+          sqlState: deleteErr.sqlState
         });
       }
-    );
+      
+      console.log(`Successfully deleted Store Manager with ID: ${userId}`);
+      res.json({ message: "Store Manager deleted successfully" });
+    });
   });
 });
 
@@ -165,4 +145,4 @@ router.get("/check-table-structure", (req, res) => {
   });
 });
 
-export { router as salesAssociateRouter };
+export { router as storeManagerRouter };
