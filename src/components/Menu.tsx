@@ -17,7 +17,7 @@ const menuItems = [
       { icon: Users, label: "Sales Associates", href: "/DashView/list/SalesAssociate", visible: ["Admin", "Store Manager"] },
       { icon: Users, label: "Cashiers", href: "/list/parents", visible: ["Admin"] },
       { icon: ClipboardList, label: "Suppliers", href: "/DashView/list/Supplier", visible: ["Admin"] }, // Only Admin
-      { icon: ClipboardList, label: "Orders", href: "/list/classes", visible: ["Admin", "Store Manager"] },
+      { icon: ClipboardList, label: "Orders", href: "/DashView/orders", visible: ["Admin", "Store Manager"] },
       { icon: Boxes, label: "Jewellery Stock", href: "/list/lessons", visible: ["Admin", "Store Manager"] },
       { icon: Coins, label: "Gold Stock", href: "/list/exams", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: Tag, label: "Categories", href: "/list/assignments", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },

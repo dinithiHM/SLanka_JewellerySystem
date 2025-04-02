@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/src/app/DashView/orders/page.tsx"],"sourcesContent":["\"use client\";\r\nimport React from 'react';\r\nconst OrdersPage = () => {  return (\r\n    <div>      <h1>This is orders</h1>\r\n    </div>\r\n  );};\r\n\r\nexport default OrdersPage;\r\n\r\n\r\n\r\n\r\n\r\n"],"names":[],"mappings":";;;;AAAA;;AAEA,MAAM,aAAa;IAAS,qBACxB,6LAAC;;YAAI;0BAAM,6LAAC;0BAAG;;;;;;;;;;;;AAEf;KAHE;uCAKS","debugId":null}},
+    {"offset": {"line": 38, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
+}

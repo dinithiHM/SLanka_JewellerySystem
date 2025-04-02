@@ -18,9 +18,9 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-  
+
     const data = { email, password };
-  
+
     try {
       const adminResponse = await axios.post("http://localhost:3002/auth/adminlogin", data);
       if (adminResponse.data.loginStatus) {
@@ -32,12 +32,48 @@ const Login = () => {
     } catch (adminError) {
       console.error("Admin login error:", adminError);
     }
-  
+
     try {
       const userResponse = await axios.post("http://localhost:3002/users/userlogin", data);
       if (userResponse.data.loginStatus) {
-        localStorage.setItem("token", userResponse.data.accessToken);
-        localStorage.setItem("role", userResponse.data.role); // Store role from response
+        // Make sure we're running in the browser
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("token", userResponse.data.accessToken);
+          localStorage.setItem("role", userResponse.data.role); // Store role from response
+
+          // Store user name if available
+          if (userResponse.data.userName) {
+            localStorage.setItem("userName", userResponse.data.userName);
+          }
+
+          // Store branch information if available
+          if (userResponse.data.branchName) {
+            localStorage.setItem("branchName", userResponse.data.branchName);
+            console.log("Stored branch name:", userResponse.data.branchName);
+          }
+          if (userResponse.data.branchId) {
+            localStorage.setItem("branchId", userResponse.data.branchId.toString());
+            console.log("Stored branch ID:", userResponse.data.branchId);
+          }
+
+          // For Store Managers, set a hardcoded branch name based on branch ID if not provided
+          if (userResponse.data.role === "Store Manager" && userResponse.data.branchId && !userResponse.data.branchName) {
+            const branchId = userResponse.data.branchId;
+            let branchName = "";
+
+            if (branchId === 1) {
+              branchName = "Mahiyanganaya Branch";
+            } else if (branchId === 2) {
+              branchName = "Mahaoya Branch";
+            } else {
+              branchName = `Branch ${branchId}`;
+            }
+
+            localStorage.setItem("branchName", branchName);
+            console.log("Set hardcoded branch name:", branchName);
+          }
+        }
+
         router.push(userResponse.data.redirectUrl || "/DashView/user");
         return;
       }
@@ -46,7 +82,7 @@ const Login = () => {
       setError("Invalid credentials.");
     }
   };
-  
+
 
   return (
     <div
