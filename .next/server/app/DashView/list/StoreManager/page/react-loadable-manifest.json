@@ -4,7 +4,7 @@
     "files": [
       "static/chunks/node_modules_5d4092e4._.js",
       "static/chunks/src_components_forms_TeacherForm_tsx_a431adc7._.js",
-      "static/chunks/src_components_forms_TeacherForm_tsx_2c2b7dd6._.js"
+      "static/chunks/src_components_forms_TeacherForm_tsx_f34e4386._.js"
     ]
   },
   "[project]/src/components/forms/SupplierForm.tsx [app-client] (ecmascript, next/dynamic entry)": {
@@ -12,7 +12,7 @@
     "files": [
       "static/chunks/node_modules_5d4092e4._.js",
       "static/chunks/src_components_forms_SupplierForm_tsx_82f6c205._.js",
-      "static/chunks/src_components_forms_SupplierForm_tsx_2c2b7dd6._.js"
+      "static/chunks/src_components_forms_SupplierForm_tsx_f34e4386._.js"
     ]
   }
 }

@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react"; // Importing useState and useEffect hooks from React
 import { useSession } from "next-auth/react"; // Importing the session hook
 import Link from "next/link";
-import { 
-  Home, Users, Tag, ClipboardList, Coins, ShoppingCart, BarChart, CalendarCheck, CreditCard, 
-  Bell, UserCircle, Settings, LogOut, Boxes 
+import {
+  Home, Users, Tag, ClipboardList, Coins, ShoppingCart, BarChart, CalendarCheck, CreditCard,
+  Bell, UserCircle, Settings, LogOut, Boxes
 } from "lucide-react"; // Importing correct icons
 
 const menuItems = [
@@ -17,6 +17,7 @@ const menuItems = [
       { icon: Users, label: "Sales Associates", href: "/DashView/list/SalesAssociate", visible: ["Admin", "Store Manager"] },
       { icon: Users, label: "Cashiers", href: "/list/parents", visible: ["Admin"] },
       { icon: ClipboardList, label: "Suppliers", href: "/DashView/list/Supplier", visible: ["Admin"] }, // Only Admin
+      { icon: BarChart, label: "Supplier Details", href: "/DashView/supplier-details", visible: ["Admin", "Store Manager"] },
       { icon: ClipboardList, label: "Orders", href: "/DashView/orders", visible: ["Admin", "Store Manager"] },
       { icon: Boxes, label: "Jewellery Stock", href: "/list/lessons", visible: ["Admin", "Store Manager"] },
       { icon: Coins, label: "Gold Stock", href: "/list/exams", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },

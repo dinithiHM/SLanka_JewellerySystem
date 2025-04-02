@@ -5,7 +5,7 @@
 (globalThis.TURBOPACK_CHUNK_LISTS = globalThis.TURBOPACK_CHUNK_LISTS || []).push({
   "path": "static/chunks/src_app_DashView_orders_page_tsx_8d1b9d53._.js",
   "chunks": [
-    "static/chunks/src_app_DashView_orders_page_tsx_2a8106a7._.js"
+    "static/chunks/_96af7876._.js"
   ],
   "source": "dynamic"
 });
