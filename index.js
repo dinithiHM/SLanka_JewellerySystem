@@ -2,6 +2,13 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import fileUpload from "express-fileupload";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { adminRouter } from "./Routes/AdminRoute.js";
 import { teacherRouter } from "./Routes/TeacherRoute.js"; // ✅ Import Teacher Routes
@@ -9,6 +16,7 @@ import { supplierRouter } from "./Routes/supplierRoutes.js";
 import { userRouter } from "./Routes/userRouter.js"; // ✅ Import User Routes
 import { salesAssociateRouter } from "./Routes/SalesAssociate.js";
 import { storeManagerRouter } from "./Routes/StoreManagerRoute.js"; // ✅ Import Store Manager Routes
+import { orderRouter } from "./Routes/orderRoutes.js"; // ✅ Import Order Routes
 
 const app = express();
 
@@ -21,17 +29,40 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Increase JSON payload limit to 50MB
+app.use(express.json({ limit: '50mb' }));
+// Increase URL-encoded payload limit to 50MB
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
-// ✅ Enable file upload handling
-app.use(fileUpload());
+// ✅ Enable file upload handling with increased limits
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+  abortOnLimit: true,
+  responseOnLimit: "File size is too large. Maximum file size allowed is 50MB."
+}));
 
 // ✅ Serve static files (Images, etc.)
 app.use(express.static("Public"));
 
+// Create a specific route for serving uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'Public', 'uploads')));
+console.log(`Serving images from: ${path.join(__dirname, 'Public', 'uploads')}`);
+
+// Add a route to check if an image exists
+app.get('/check-image/:imagePath', (req, res) => {
+  const imagePath = req.params.imagePath;
+  const fullPath = path.join(__dirname, 'Public', 'uploads', imagePath);
+
+  if (fs.existsSync(fullPath)) {
+    res.json({ exists: true, path: `/uploads/${imagePath}` });
+  } else {
+    res.json({ exists: false });
+  }
+});
+
 // ✅ Debug Middleware (Logs incoming requests)
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`[${req.method}] ${req.url}`);
   next();
 });
@@ -43,6 +74,7 @@ app.use("/suppliers", supplierRouter);
 app.use("/users", userRouter); // ✅ Add user-related routes
 app.use("/sales-associates", salesAssociateRouter);
 app.use("/store-managers", storeManagerRouter); // ✅ Add store manager routes
+app.use("/orders", orderRouter); // ✅ Add order-related routes
 
 // ✅ Start the server
 const PORT = 3002;
