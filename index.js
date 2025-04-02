@@ -17,6 +17,8 @@ import { userRouter } from "./Routes/userRouter.js"; // ✅ Import User Routes
 import { salesAssociateRouter } from "./Routes/SalesAssociate.js";
 import { storeManagerRouter } from "./Routes/StoreManagerRoute.js"; // ✅ Import Store Manager Routes
 import { orderRouter } from "./Routes/orderRoutes.js"; // ✅ Import Order Routes
+import { jewelleryItemsRouter } from "./Routes/jewelleryItemsRoutes.js"; // ✅ Import Jewellery Items Routes
+import { salesRouter } from "./Routes/salesRoutes.js"; // ✅ Import Sales Routes
 
 const app = express();
 
@@ -75,6 +77,8 @@ app.use("/users", userRouter); // ✅ Add user-related routes
 app.use("/sales-associates", salesAssociateRouter);
 app.use("/store-managers", storeManagerRouter); // ✅ Add store manager routes
 app.use("/orders", orderRouter); // ✅ Add order-related routes
+app.use("/jewellery-items", jewelleryItemsRouter); // ✅ Add jewellery items routes
+app.use("/sales", salesRouter); // ✅ Add sales routes
 
 // ✅ Start the server
 const PORT = 3002;
