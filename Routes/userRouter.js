@@ -40,10 +40,11 @@ router.post("/userlogin", (req, res) => {
             let redirectUrl = "/DashView/user";
             if (user.role === "Store Manager") redirectUrl = "/DashView/storeManager";
             if (user.role === "Sales Associate") redirectUrl = "/DashView/salesAssociate";
+            if (user.role === "Cashier") redirectUrl = "/DashView/cashier";
             if (user.role === "Admin") redirectUrl = "/DashView/admin";
 
-            // If user is a Store Manager, handle branch information
-            if (user.role === "Store Manager" && user.branch_id) {
+            // If user is a Store Manager, Sales Associate, or Cashier, handle branch information
+            if ((user.role === "Store Manager" || user.role === "Sales Associate" || user.role === "Cashier") && user.branch_id) {
                 // Map branch_id to branch name directly
                 let branchName = null;
                 // Convert branch_id to number for comparison

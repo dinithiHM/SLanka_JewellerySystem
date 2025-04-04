@@ -19,6 +19,8 @@ import { storeManagerRouter } from "./Routes/StoreManagerRoute.js"; // ✅ Impor
 import { orderRouter } from "./Routes/orderRoutes.js"; // ✅ Import Order Routes
 import { jewelleryItemsRouter } from "./Routes/jewelleryItemsRoutes.js"; // ✅ Import Jewellery Items Routes
 import { salesRouter } from "./Routes/salesRoutes.js"; // ✅ Import Sales Routes
+import { saleItemsRouter } from "./Routes/saleItemsRoutes.js"; // ✅ Import Sale Items Routes
+import { cashierRouter } from "./Routes/cashierRoutes.js"; // ✅ Import Cashier Routes
 
 const app = express();
 
@@ -79,6 +81,8 @@ app.use("/store-managers", storeManagerRouter); // ✅ Add store manager routes
 app.use("/orders", orderRouter); // ✅ Add order-related routes
 app.use("/jewellery-items", jewelleryItemsRouter); // ✅ Add jewellery items routes
 app.use("/sales", salesRouter); // ✅ Add sales routes
+app.use("/sale-items", saleItemsRouter); // ✅ Add sale items routes
+app.use("/cashiers", cashierRouter); // ✅ Add cashier routes
 
 // ✅ Start the server
 const PORT = 3002;
