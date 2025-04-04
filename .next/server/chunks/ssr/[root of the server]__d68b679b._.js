@@ -89,9 +89,10 @@ const menuItems = [
             {
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$users$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Users$3e$__["Users"],
                 label: "Cashiers",
-                href: "/list/parents",
+                href: "/DashView/list/cashier",
                 visible: [
-                    "Admin"
+                    "Admin",
+                    "Store Manager"
                 ]
             },
             {
@@ -123,16 +124,17 @@ const menuItems = [
             {
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$boxes$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Boxes$3e$__["Boxes"],
                 label: "Jewellery Stock",
-                href: "/list/lessons",
+                href: "/DashView/jewellery-stock",
                 visible: [
                     "Admin",
-                    "Store Manager"
+                    "Store Manager",
+                    "Sales Associate"
                 ]
             },
             {
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$coins$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Coins$3e$__["Coins"],
                 label: "Gold Stock",
-                href: "/list/exams",
+                href: "/DashView/gold-stock",
                 visible: [
                     "Admin",
                     "Store Manager",
@@ -154,7 +156,7 @@ const menuItems = [
             {
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$shopping$2d$cart$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ShoppingCart$3e$__["ShoppingCart"],
                 label: "Sales",
-                href: "/list/results",
+                href: "/DashView/sales/manage",
                 visible: [
                     "Admin",
                     "Store Manager",
@@ -167,10 +169,17 @@ const menuItems = [
                 label: "Reports",
                 href: "/list/attendance",
                 visible: [
-                    "Admin",
                     "Store Manager",
                     "Sales Associate",
                     "Cashier"
+                ]
+            },
+            {
+                icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chart$2d$no$2d$axes$2d$column$2d$increasing$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__BarChart$3e$__["BarChart"],
+                label: "Sales Report",
+                href: "/DashView/admin/sales-report",
+                visible: [
+                    "Admin"
                 ]
             },
             {
@@ -263,7 +272,7 @@ const Menu = ()=>{
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/Menu.tsx",
-            lineNumber: 56,
+            lineNumber: 57,
             columnNumber: 12
         }, this); // Show loading while fetching role
     }
@@ -277,7 +286,7 @@ const Menu = ()=>{
                         children: section.title
                     }, void 0, false, {
                         fileName: "[project]/src/components/Menu.tsx",
-                        lineNumber: 63,
+                        lineNumber: 64,
                         columnNumber: 11
                     }, this),
                     section.items.map((item)=>{
@@ -292,7 +301,7 @@ const Menu = ()=>{
                                         className: "text-black"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 75,
+                                        lineNumber: 76,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -300,13 +309,13 @@ const Menu = ()=>{
                                         children: item.label
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 76,
+                                        lineNumber: 77,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, item.label, true, {
                                 fileName: "[project]/src/components/Menu.tsx",
-                                lineNumber: 70,
+                                lineNumber: 71,
                                 columnNumber: 17
                             }, this);
                         }
@@ -315,12 +324,12 @@ const Menu = ()=>{
                 ]
             }, section.title, true, {
                 fileName: "[project]/src/components/Menu.tsx",
-                lineNumber: 62,
+                lineNumber: 63,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/src/components/Menu.tsx",
-        lineNumber: 60,
+        lineNumber: 61,
         columnNumber: 5
     }, this);
 };

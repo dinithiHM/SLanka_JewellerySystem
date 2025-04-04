@@ -18,6 +18,9 @@ const SupplierForm = dynamic(() => import("./forms/SupplierForm"), {
 const StoreManagerForm = dynamic(() => import("./forms/TeacherForm"), {
   loading: () => <h1>Loading...</h1>,
 });
+const CashierForm = dynamic(() => import("./forms/CashierForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
 // const ParentForm = dynamic(() => import("./forms/SupplierForm"), {
 //   loading: () => <h1>Loading...</h1>,
 // });
@@ -35,6 +38,7 @@ const forms: {
   supplier: (type, data) => <SupplierForm type={type} data={data} />, // ✅ Corrected
   "sales-associate": (type, data) => <SalesAssociateForm type={type} data={data} />, // ✅ Corrected
   "store-manager": (type, data) => <StoreManagerForm type={type} data={data} />,
+  cashier: (type, data) => <CashierForm type={type} data={data} />, // ✅ Added Cashier form
 };
 
 

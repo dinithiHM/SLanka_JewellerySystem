@@ -46,6 +46,12 @@ const Login = () => {
             localStorage.setItem("userName", userResponse.data.userName);
           }
 
+          // Store user ID if available
+          if (userResponse.data.userId) {
+            localStorage.setItem("userId", userResponse.data.userId.toString());
+            console.log("Stored user ID:", userResponse.data.userId);
+          }
+
           // Store branch information if available
           if (userResponse.data.branchName) {
             localStorage.setItem("branchName", userResponse.data.branchName);

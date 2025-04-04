@@ -67,6 +67,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 ;
 ;
 ;
+;
 var _s = __turbopack_context__.k.signature();
 "use client";
 ;
@@ -134,6 +135,21 @@ const StoreManagerForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$nod
         }, this)
 });
 _c3 = StoreManagerForm;
+const CashierForm = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$shared$2f$lib$2f$app$2d$dynamic$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(()=>__turbopack_context__.r("[project]/src/components/forms/CashierForm.tsx [app-client] (ecmascript, next/dynamic entry, async loader)")(__turbopack_context__.i), {
+    loadableGenerated: {
+        modules: [
+            "[project]/src/components/forms/CashierForm.tsx [app-client] (ecmascript, next/dynamic entry)"
+        ]
+    },
+    loading: ()=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+            children: "Loading..."
+        }, void 0, false, {
+            fileName: "[project]/src/components/FormModal.tsx",
+            lineNumber: 22,
+            columnNumber: 18
+        }, this)
+});
+_c4 = CashierForm;
 // const ParentForm = dynamic(() => import("./forms/SupplierForm"), {
 //   loading: () => <h1>Loading...</h1>,
 // });
@@ -148,7 +164,7 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 34,
+            lineNumber: 37,
             columnNumber: 28
         }, this),
     supplier: (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SupplierForm, {
@@ -156,7 +172,7 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 35,
+            lineNumber: 38,
             columnNumber: 29
         }, this),
     "sales-associate": (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SalesAssociateForm, {
@@ -164,7 +180,7 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 36,
+            lineNumber: 39,
             columnNumber: 38
         }, this),
     "store-manager": (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StoreManagerForm, {
@@ -172,8 +188,16 @@ const forms = {
             data: data
         }, void 0, false, {
             fileName: "[project]/src/components/FormModal.tsx",
-            lineNumber: 37,
+            lineNumber: 40,
             columnNumber: 36
+        }, this),
+    cashier: (type, data)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CashierForm, {
+            type: type,
+            data: data
+        }, void 0, false, {
+            fileName: "[project]/src/components/FormModal.tsx",
+            lineNumber: 41,
+            columnNumber: 28
         }, this)
 };
 const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
@@ -204,7 +228,7 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                         children: itemName ? `Are you sure you want to delete ${itemName}?` : `All data will be lost. Are you sure you want to delete this ${table}?`
                     }, void 0, false, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 79,
+                        lineNumber: 83,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -217,7 +241,7 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                                 children: "Cancel"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 85,
+                                lineNumber: 89,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -227,19 +251,19 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                                 children: "Delete"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 92,
+                                lineNumber: 96,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/FormModal.tsx",
-                        lineNumber: 84,
+                        lineNumber: 88,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 78,
+                lineNumber: 82,
                 columnNumber: 9
             }, this);
         }
@@ -254,7 +278,7 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 107,
+                lineNumber: 111,
                 columnNumber: 14
             }, this);
         }
@@ -272,12 +296,12 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                     height: 16
                 }, void 0, false, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 119,
+                    lineNumber: 123,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 115,
+                lineNumber: 119,
                 columnNumber: 7
             }, this),
             open && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -287,7 +311,7 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Form, {}, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 124,
+                            lineNumber: 128,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -300,37 +324,38 @@ const FormModal = ({ table, type, id, onDelete, data, itemName })=>{
                                 height: 14
                             }, void 0, false, {
                                 fileName: "[project]/src/components/FormModal.tsx",
-                                lineNumber: 129,
+                                lineNumber: 133,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/FormModal.tsx",
-                            lineNumber: 125,
+                            lineNumber: 129,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/FormModal.tsx",
-                    lineNumber: 123,
+                    lineNumber: 127,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/FormModal.tsx",
-                lineNumber: 122,
+                lineNumber: 126,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true);
 };
 _s(FormModal, "xG1TONbKtDWtdOTrXaTAsNhPg/Q=");
-_c4 = FormModal;
+_c5 = FormModal;
 const __TURBOPACK__default__export__ = FormModal;
-var _c, _c1, _c2, _c3, _c4;
+var _c, _c1, _c2, _c3, _c4, _c5;
 __turbopack_context__.k.register(_c, "TeacherForm");
 __turbopack_context__.k.register(_c1, "SalesAssociateForm");
 __turbopack_context__.k.register(_c2, "SupplierForm");
 __turbopack_context__.k.register(_c3, "StoreManagerForm");
-__turbopack_context__.k.register(_c4, "FormModal");
+__turbopack_context__.k.register(_c4, "CashierForm");
+__turbopack_context__.k.register(_c5, "FormModal");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(module, globalThis.$RefreshHelpers$);
 }

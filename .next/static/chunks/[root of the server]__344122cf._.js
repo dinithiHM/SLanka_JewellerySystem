@@ -7422,11 +7422,11 @@ class Router {
                     });
                     return new Promise(()=>{});
                 }
-                const routerFilterSValue = ("TURBOPACK compile-time value", JSON.parse('{"numItems":12,"errorRate":0.0001,"numBits":231,"numHashes":14,"bitArray":[0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,1,0,1,1,1,0,0,0,1,0,0,0,1,1,1,1,1,0,1,1,1,1,1,1,0,0,0,0,1,0,0,0,1,1,0,1,0,0,0,1,0,1,0,1,1,0,1,0,1,0,1,0,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,1,1,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,1,1,0,1,0,0,1,0,0,0,1,0,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,0,0,0,1,1,1,1,0,1,0,1,0,1,1,1,1,0,1,0,1,1,0,1,0,1,0,1,1,0,0,0,0,1,1,1,0,1,0,1,0,1,1,1,1,1,0,1,1,0,1,1,0,0,0,1,1,1,1,0,0,1,0,0,0,1,0,0]}'));
+                const routerFilterSValue = ("TURBOPACK compile-time value", JSON.parse('{"numItems":18,"errorRate":0.0001,"numBits":346,"numHashes":14,"bitArray":[1,1,0,1,0,1,0,1,1,1,1,1,0,0,1,0,0,1,1,1,1,1,0,1,1,1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,0,0,1,1,0,0,0,0,1,1,0,1,0,1,1,0,0,1,1,0,0,0,1,1,0,0,1,0,1,1,1,1,0,0,0,0,0,1,0,1,1,1,1,0,1,1,0,0,0,1,0,1,0,1,1,0,1,1,1,0,1,1,0,1,0,0,1,1,1,1,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,0,0,1,0,0,1,0,1,0,1,1,0,1,0,0,1,1,1,0,1,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,0,1,1,0,0,1,0,0,0,0,0,0,1,0,1,0,1,0,1,0,0,1,1,1,0,1,0,1,0,0,0,1,0,0,1,0,1,1,1,1,0,1,1,1,0,0,1,1,1,0,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,0,0,0,1,0,0,0,0,1,0,1,0,1,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1,0,0,1,1,1,1,1,0,1,0,0,0,0,0,1,1,1,0,0,0,1,0,1,0,1,1,0,1,1,1,0,1,0,1,1,0,1,0,1,1,1,0,1,1,1,1,0,0,0,1,1]}'));
                 if (!staticFilterData && routerFilterSValue) {
                     staticFilterData = routerFilterSValue ? routerFilterSValue : undefined;
                 }
-                const routerFilterDValue = ("TURBOPACK compile-time value", JSON.parse('{"numItems":3,"errorRate":0.0001,"numBits":58,"numHashes":14,"bitArray":[1,1,1,1,1,0,1,0,0,1,1,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,1,0,1,0,1,0,1,0,0,1,0,1,1,0,1,1,1,1,0,0,1,1,1,0,1,1,1,0,0,0,0,0]}'));
+                const routerFilterDValue = ("TURBOPACK compile-time value", JSON.parse('{"numItems":4,"errorRate":0.0001,"numBits":77,"numHashes":14,"bitArray":[0,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1,1,1,0,1,0,0,1,1,1,0,1,1,1,1,1,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,1,1,0,0,1,0,1,1,1,0,0,1,0,1,0,0,1,1,0,1,1,1,1]}'));
                 if (!dynamicFilterData && routerFilterDValue) {
                     dynamicFilterData = routerFilterDValue ? routerFilterDValue : undefined;
                 }
@@ -24445,7 +24445,7 @@ function AppContainer(param) {
                             children: /*#__PURE__*/ (0, _jsxruntime.jsx)(_headmanagercontextsharedruntime.HeadManagerContext.Provider, {
                                 value: headManager,
                                 children: /*#__PURE__*/ (0, _jsxruntime.jsx)(_imageconfigcontextsharedruntime.ImageConfigContext.Provider, {
-                                    value: ("TURBOPACK compile-time value", JSON.parse('{"deviceSizes":[640,750,828,1080,1200,1920,2048,3840],"imageSizes":[16,32,48,64,96,128,256,384],"path":"/_next/image","loader":"default","dangerouslyAllowSVG":false,"unoptimized":false,"domains":[],"remotePatterns":[{"hostname":"images.pexels.com"}]}')),
+                                    value: ("TURBOPACK compile-time value", JSON.parse('{"deviceSizes":[640,750,828,1080,1200,1920,2048,3840],"imageSizes":[16,32,48,64,96,128,256,384],"path":"/_next/image","loader":"default","dangerouslyAllowSVG":false,"unoptimized":false,"domains":["localhost"],"remotePatterns":[{"protocol":"http","hostname":"localhost","port":"3002","pathname":"/uploads/**"}]}')),
                                     children: children
                                 })
                             })
