@@ -6,15 +6,24 @@
  * @returns Formatted currency string
  */
 export const formatCurrency = (
-  value: number,
+  value: number | string,
   locale: string = 'en-US',
   currency: string = 'LKR'
 ): string => {
-  return new Intl.NumberFormat(locale, {
+  // Convert to number if it's a string
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  // Handle NaN values
+  if (isNaN(numericValue)) {
+    console.warn('Invalid value for currency formatting:', value);
+    return 'LKR 0.00';
+  }
+
+  return 'LKR ' + new Intl.NumberFormat(locale, {
     style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(numericValue);
 };
 
 /**

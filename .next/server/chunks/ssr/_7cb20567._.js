@@ -162,7 +162,7 @@ const CashierPage = ()=>{
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
                         icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$credit$2d$card$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__CreditCard$3e$__["CreditCard"],
                         title: "Total Sales",
-                        value: "₹78,500",
+                        value: "LKR 78,500",
                         color: "border-l-4 border-green-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
@@ -172,7 +172,7 @@ const CashierPage = ()=>{
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
                         icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calculator$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Calculator$3e$__["Calculator"],
                         title: "Cash Balance",
-                        value: "₹45,200",
+                        value: "LKR 45,200",
                         color: "border-l-4 border-purple-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
@@ -182,7 +182,7 @@ const CashierPage = ()=>{
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
                         icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$coins$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Coins$3e$__["Coins"],
                         title: "Gold Price",
-                        value: "₹5,842/g",
+                        value: "LKR 5,842/g",
                         color: "border-l-4 border-yellow-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
@@ -575,7 +575,7 @@ const CashierPage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹45,000"
+                                                children: "LKR 45,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
                                                 lineNumber: 145,
@@ -640,7 +640,7 @@ const CashierPage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹28,500"
+                                                children: "LKR 28,500"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
                                                 lineNumber: 157,
@@ -705,7 +705,7 @@ const CashierPage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹5,000"
+                                                children: "LKR 5,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
                                                 lineNumber: 169,

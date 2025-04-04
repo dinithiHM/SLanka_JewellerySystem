@@ -97,7 +97,7 @@ const StoreManagerDashboard = () => {
         <DashboardCard
           icon={ShoppingCart}
           title="Today's Sales"
-          value="₹124,500"
+          value="LKR 124,500"
           color="border-l-4 border-blue-500"
         />
         <DashboardCard

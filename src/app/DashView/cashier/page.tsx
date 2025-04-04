@@ -64,19 +64,19 @@ const CashierPage: React.FC = () => {
                 <DashboardCard
                     icon={CreditCard}
                     title="Total Sales"
-                    value="₹78,500"
+                    value="LKR 78,500"
                     color="border-l-4 border-green-500"
                 />
                 <DashboardCard
                     icon={Calculator}
                     title="Cash Balance"
-                    value="₹45,200"
+                    value="LKR 45,200"
                     color="border-l-4 border-purple-500"
                 />
                 <DashboardCard
                     icon={Coins}
                     title="Gold Price"
-                    value="₹5,842/g"
+                    value="LKR 5,842/g"
                     color="border-l-4 border-yellow-500"
                 />
             </div>
@@ -142,7 +142,7 @@ const CashierPage: React.FC = () => {
                                     <p className="text-sm text-gray-500">12 transactions</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹45,000</p>
+                            <p className="font-bold">LKR 45,000</p>
                         </div>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center">
@@ -154,7 +154,7 @@ const CashierPage: React.FC = () => {
                                     <p className="text-sm text-gray-500">15 transactions</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹28,500</p>
+                            <p className="font-bold">LKR 28,500</p>
                         </div>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center">
@@ -166,7 +166,7 @@ const CashierPage: React.FC = () => {
                                     <p className="text-sm text-gray-500">5 transactions</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹5,000</p>
+                            <p className="font-bold">LKR 5,000</p>
                         </div>
                     </div>
                 </div>

@@ -40,7 +40,7 @@ const SalesAssociatePage: React.FC = () => {
                 <DashboardCard
                     icon={ShoppingCart}
                     title="Today's Sales"
-                    value="₹24,500"
+                    value="LKR 24,500"
                     color="border-l-4 border-blue-500"
                 />
                 <DashboardCard
@@ -58,7 +58,7 @@ const SalesAssociatePage: React.FC = () => {
                 <DashboardCard
                     icon={Coins}
                     title="Gold Price"
-                    value="₹5,842/g"
+                    value="LKR 5,842/g"
                     color="border-l-4 border-yellow-500"
                 />
             </div>
