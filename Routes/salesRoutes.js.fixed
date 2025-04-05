@@ -11,10 +11,9 @@ const router = express.Router();
 
 // Get all sales with their items
 router.get("/", (req, res) => {
-  // Get query parameters
+  // Check if branch_id filter is provided
   const branchId = req.query.branch_id;
   const userId = req.query.user_id;
-  const date = req.query.date; // Add date filter
 
   let sql = `
     SELECT
@@ -51,12 +50,6 @@ router.get("/", (req, res) => {
   if (userId) {
     whereConditions.push('s.user_id = ?');
     queryParams.push(userId);
-  }
-
-  // Add date filter if provided
-  if (date) {
-    whereConditions.push('DATE(s.sale_date) = ?');
-    queryParams.push(date);
   }
 
   if (whereConditions.length > 0) {
@@ -165,10 +158,10 @@ router.get("/finance", (req, res) => {
       console.error("Error fetching finance data:", err);
       return res.status(500).json({ message: "Database error", error: err.message });
     }
-
+    
     // Process results to format for the chart
     const formattedData = processFinanceData(results, period);
-
+    
     res.json(formattedData);
   });
 });
@@ -278,7 +271,7 @@ router.post("/create", (req, res) => {
 
       // Prepare SQL based on available columns
       let saleSql, saleParams;
-
+      
       if (hasUserIdColumn && hasBranchIdColumn) {
         // Both columns exist, use them
         saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method, user_id, branch_id) VALUES (?, ?, ?, ?, ?)";
@@ -288,7 +281,7 @@ router.post("/create", (req, res) => {
         saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method) VALUES (?, ?, ?)";
         saleParams = [customer_name, total_amount, payment_method];
       }
-
+      
       // Insert sale
       con.query(saleSql, saleParams, (err, saleResult) => {
         if (err) {
@@ -350,7 +343,7 @@ router.post("/create", (req, res) => {
             // Generate invoice number
             const invoiceNumber = `INV-${new Date().getFullYear()}-${saleId.toString().padStart(4, '0')}`;
             const invoiceSql = "INSERT INTO invoices (sale_id, invoice_number) VALUES (?, ?)";
-
+            
             con.query(invoiceSql, [saleId, invoiceNumber], (err) => {
               if (err) {
                 return con.rollback(() => {
@@ -398,102 +391,6 @@ router.get("/test", (_req, res) => {
   return res.json({ message: 'Sales router is working!' });
 });
 
-// Get recent sales by date (for calendar view)
-router.get("/recent", (req, res) => {
-  console.log('GET /sales/recent - Fetching recent sales');
-
-  // Get query parameters
-  const date = req.query.date; // Optional date filter (YYYY-MM-DD)
-  const limit = parseInt(req.query.limit) || 5; // Number of sales to return per branch, default 5
-
-  console.log(`Fetching recent sales${date ? ' for date: ' + date : ''}`);
-
-  let sql = `
-    SELECT
-      s.sale_id,
-      s.customer_name,
-      s.total_amount,
-      s.payment_method,
-      s.sale_date,
-      s.branch_id,
-      b.branch_name,
-      u.first_name AS cashier_first_name,
-      u.last_name AS cashier_last_name,
-      GROUP_CONCAT(ji.product_title SEPARATOR ', ') AS sold_items
-    FROM
-      sales s
-    LEFT JOIN
-      branches b ON s.branch_id = b.branch_id
-    LEFT JOIN
-      users u ON s.user_id = u.user_id
-    LEFT JOIN
-      sale_items si ON s.sale_id = si.sale_id
-    LEFT JOIN
-      jewellery_items ji ON si.item_id = ji.item_id
-  `;
-
-  // Add WHERE clause if date filter is provided
-  const whereConditions = [];
-  const queryParams = [];
-
-  if (date) {
-    whereConditions.push('DATE(s.sale_date) = ?');
-    queryParams.push(date);
-  }
-
-  if (whereConditions.length > 0) {
-    sql += ' WHERE ' + whereConditions.join(' AND ');
-  }
-
-  // Group by sale_id to combine sold items
-  sql += ' GROUP BY s.sale_id, s.customer_name, s.total_amount, s.payment_method, s.sale_date, s.branch_id, b.branch_name, u.first_name, u.last_name';
-
-  // Order by date (most recent first)
-  sql += ' ORDER BY s.sale_date DESC';
-
-  console.log('Executing SQL:', sql);
-  console.log('With parameters:', queryParams);
-
-  con.query(sql, queryParams, (err, results) => {
-    if (err) {
-      console.error("Error fetching recent sales:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
-    }
-
-    // Group sales by branch
-    const salesByBranch = {};
-
-    results.forEach(sale => {
-      const branchId = sale.branch_id;
-      if (!salesByBranch[branchId]) {
-        salesByBranch[branchId] = {
-          branch_id: branchId,
-          branch_name: sale.branch_name,
-          sales: []
-        };
-      }
-
-      // Only add if we haven't reached the limit for this branch
-      if (salesByBranch[branchId].sales.length < limit) {
-        salesByBranch[branchId].sales.push({
-          sale_id: sale.sale_id,
-          customer_name: sale.customer_name,
-          total_amount: sale.total_amount,
-          payment_method: sale.payment_method,
-          sale_date: sale.sale_date,
-          cashier_name: `${sale.cashier_first_name} ${sale.cashier_last_name}`,
-          sold_items: sale.sold_items
-        });
-      }
-    });
-
-    // Convert to array
-    const response = Object.values(salesByBranch);
-
-    res.json(response);
-  });
-});
-
 // Generate empty finance data (no sample data)
 function generateSampleFinanceData() {
   // Return empty chart data with just the structure
@@ -524,50 +421,18 @@ function processFinanceData(results, period) {
   const branches = new Set();
 
   results.forEach(row => {
-    // Handle date properly to avoid timezone issues
+    const date = new Date(row.date);
     let key;
 
     if (period === 'daily') {
-      // For daily data, use the date string directly from the database
-      // This ensures we use the correct date without timezone issues
-      if (typeof row.date === 'string' && row.date.includes('-')) {
-        // If it's already in YYYY-MM-DD format, use it directly
-        key = row.date.split('T')[0]; // Remove any time component
-      } else {
-        // Fallback to parsing the date
-        const date = new Date(row.date);
-        // Use local date string to avoid timezone issues
-        key = date.getFullYear() + '-' +
-              String(date.getMonth() + 1).padStart(2, '0') + '-' +
-              String(date.getDate()).padStart(2, '0');
-      }
+      key = date.toISOString().split('T')[0]; // YYYY-MM-DD
     } else { // monthly
-      // For monthly data, extract year and month
-      if (typeof row.date === 'string' && row.date.includes('-')) {
-        // If it's already in YYYY-MM format or YYYY-MM-DD format
-        const parts = row.date.split('-');
-        key = `${parts[0]}-${parts[1]}`;
-      } else {
-        // Fallback to parsing the date
-        const date = new Date(row.date);
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      }
+      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
     }
 
     if (!groupedData[key]) {
-      // Extract month for display name if it's a monthly view
-      let displayName;
-      if (period === 'daily') {
-        // For daily view, use the day part of the date
-        displayName = key.split('-')[2]; // Get the day part
-      } else {
-        // For monthly view, use the month name
-        const monthIndex = parseInt(key.split('-')[1], 10) - 1; // Convert month to 0-based index
-        displayName = getMonthName(monthIndex);
-      }
-
       groupedData[key] = {
-        name: displayName,
+        name: period === 'daily' ? key : getMonthName(date.getMonth()),
         date: key
       };
     }
