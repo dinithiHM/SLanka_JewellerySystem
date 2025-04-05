@@ -11,7 +11,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { adminRouter } from "./Routes/AdminRoute.js";
-import { teacherRouter } from "./Routes/TeacherRoute.js"; // ✅ Import Teacher Routes
 import { supplierRouter } from "./Routes/supplierRoutes.js";
 import { userRouter } from "./Routes/userRouter.js"; // ✅ Import User Routes
 import { salesAssociateRouter } from "./Routes/SalesAssociate.js";
@@ -73,7 +72,6 @@ app.use((req, _res, next) => {
 
 // ✅ API Routes
 app.use("/auth", adminRouter);
-app.use("/teachers", teacherRouter); // Teacher-related routes
 app.use("/suppliers", supplierRouter);
 app.use("/users", userRouter); // ✅ Add user-related routes
 app.use("/sales-associates", salesAssociateRouter);

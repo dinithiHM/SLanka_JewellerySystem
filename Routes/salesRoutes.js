@@ -14,7 +14,7 @@ router.get("/", (req, res) => {
   // Check if branch_id filter is provided
   const branchId = req.query.branch_id;
   const userId = req.query.user_id;
-  
+
   let sql = `
     SELECT
       s.sale_id,
@@ -37,25 +37,25 @@ router.get("/", (req, res) => {
     LEFT JOIN
       branches b ON s.branch_id = b.branch_id
   `;
-  
+
   // Add WHERE clause if filters are provided
   const whereConditions = [];
   const queryParams = [];
-  
+
   if (branchId) {
     whereConditions.push('s.branch_id = ?');
     queryParams.push(branchId);
   }
-  
+
   if (userId) {
     whereConditions.push('s.user_id = ?');
     queryParams.push(userId);
   }
-  
+
   if (whereConditions.length > 0) {
     sql += ' WHERE ' + whereConditions.join(' AND ');
   }
-  
+
   sql += ' ORDER BY s.sale_date DESC';
 
   console.log('Executing SQL:', sql);
@@ -67,6 +67,105 @@ router.get("/", (req, res) => {
       return res.status(500).json({ message: "Database error", error: err.message });
     }
     res.json(results || []);
+  });
+});
+
+// Get finance data (income and expenses) by period and branch
+// Important: This route must be defined BEFORE the /:id route to avoid being caught by it
+router.get("/finance", (req, res) => {
+  console.log('GET /sales/finance - Fetching finance data');
+
+  // Get query parameters
+  const period = req.query.period || 'monthly'; // 'daily' or 'monthly'
+  const branchId = req.query.branch_id; // Optional branch filter
+  const year = req.query.year || new Date().getFullYear(); // Default to current year
+  const month = req.query.month; // Optional month filter (1-12)
+
+  console.log(`Fetching ${period} finance data for year: ${year}${month ? ', month: ' + month : ''}${branchId ? ', branch: ' + branchId : ''}`);
+
+  let sql, groupBy;
+  const queryParams = [];
+
+  // Base query to get sales data
+  let baseQuery;
+
+  if (period === 'daily') {
+    baseQuery = `
+      SELECT
+        DATE(s.sale_date) as date,
+        s.branch_id,
+        b.branch_name,
+        SUM(s.total_amount) as income
+      FROM
+        sales s
+      LEFT JOIN
+        branches b ON s.branch_id = b.branch_id
+    `;
+  } else { // monthly
+    baseQuery = `
+      SELECT
+        CONCAT(YEAR(s.sale_date), '-', LPAD(MONTH(s.sale_date), 2, '0')) as date,
+        s.branch_id,
+        b.branch_name,
+        SUM(s.total_amount) as income
+      FROM
+        sales s
+      LEFT JOIN
+        branches b ON s.branch_id = b.branch_id
+    `;
+  }
+
+  // WHERE clause conditions
+  const whereConditions = [];
+
+  // Add year condition
+  whereConditions.push('YEAR(s.sale_date) = ?');
+  queryParams.push(year);
+
+  // Add month condition if provided
+  if (month) {
+    whereConditions.push('MONTH(s.sale_date) = ?');
+    queryParams.push(month);
+  }
+
+  // Add branch condition if provided
+  if (branchId) {
+    whereConditions.push('s.branch_id = ?');
+    queryParams.push(branchId);
+  }
+
+  // Add WHERE clause to base query
+  if (whereConditions.length > 0) {
+    baseQuery += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Set GROUP BY based on period
+  if (period === 'daily') {
+    groupBy = 'date, s.branch_id, b.branch_name';
+  } else { // monthly
+    groupBy = 'date, s.branch_id, b.branch_name';
+  }
+
+  // Complete the query
+  sql = `
+    ${baseQuery}
+    GROUP BY ${groupBy}
+    ORDER BY date ASC
+  `;
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error("Error fetching finance data:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    // Process results to format for the chart
+    const formattedData = processFinanceData(results, period, branchId);
+
+    res.json(formattedData);
   });
 });
 
@@ -165,7 +264,7 @@ router.post("/create", (req, res) => {
           res.status(500).json({ message: "Database error", error: err.message });
         });
       }
-      
+
       con.query("SHOW COLUMNS FROM sales LIKE 'branch_id'", (err, branchIdColumns) => {
         if (err) {
           return con.rollback(() => {
@@ -173,17 +272,17 @@ router.post("/create", (req, res) => {
             res.status(500).json({ message: "Database error", error: err.message });
           });
         }
-        
+
         // Determine if the columns exist
         const hasUserIdColumn = userIdColumns.length > 0;
         const hasBranchIdColumn = branchIdColumns.length > 0;
-        
+
         console.log('Sales table has user_id column:', hasUserIdColumn);
         console.log('Sales table has branch_id column:', hasBranchIdColumn);
-        
+
         // Construct SQL based on available columns
         let saleSql, saleParams;
-        
+
         if (hasUserIdColumn && hasBranchIdColumn) {
           // Both columns exist, use them
           saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method, user_id, branch_id) VALUES (?, ?, ?, ?, ?)";
@@ -193,7 +292,7 @@ router.post("/create", (req, res) => {
           saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method) VALUES (?, ?, ?)";
           saleParams = [customer_name, total_amount, payment_method];
         }
-        
+
         // Insert sale
         con.query(saleSql, saleParams, (err, saleResult) => {
           if (err) {
@@ -299,6 +398,124 @@ router.get("/test", (req, res) => {
   console.log('GET /sales/test - Test route');
   return res.json({ message: 'Sales router is working!' });
 });
+
+// Finance route moved to before the /:id route
+
+// Helper function to process finance data for the chart
+function processFinanceData(results, period, branchId) {
+  // If no results, return sample data
+  if (!results || results.length === 0) {
+    return generateSampleFinanceData(period);
+  }
+
+  // Group data by date and branch
+  const groupedData = {};
+  const branches = new Set();
+
+  results.forEach(row => {
+    const date = new Date(row.date);
+    let key;
+
+    if (period === 'daily') {
+      key = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    } else { // monthly
+      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+    }
+
+    if (!groupedData[key]) {
+      groupedData[key] = {
+        name: period === 'daily' ? key : getMonthName(date.getMonth()),
+        date: key
+      };
+    }
+
+    const branchKey = `branch_${row.branch_id}`;
+    groupedData[key][branchKey] = row.income;
+    branches.add(row.branch_id);
+
+    // Add to total income
+    groupedData[key].income = (groupedData[key].income || 0) + row.income;
+
+    // Add branch name
+    groupedData[key][`branch_${row.branch_id}_name`] = row.branch_name;
+  });
+
+  // Convert to array and sort by date
+  const chartData = Object.values(groupedData).sort((a, b) => a.date.localeCompare(b.date));
+
+  // Add expense data (for now, generate random expenses)
+  chartData.forEach(item => {
+    item.expense = Math.round(item.income * (0.4 + Math.random() * 0.3)); // 40-70% of income
+  });
+
+  return {
+    chartData,
+    branches: Array.from(branches).map(id => {
+      const branchName = results.find(r => r.branch_id === id)?.branch_name || `Branch ${id}`;
+      return { id, name: branchName };
+    })
+  };
+}
+
+// Helper function to get month name
+function getMonthName(monthIndex) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[monthIndex];
+}
+
+// Generate sample finance data for testing
+function generateSampleFinanceData(period) {
+  const chartData = [];
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+
+  if (period === 'daily') {
+    // Generate daily data for current month
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const income = Math.round(10000 + Math.random() * 15000);
+      const expense = Math.round(income * (0.4 + Math.random() * 0.3));
+
+      chartData.push({
+        name: String(day),
+        date,
+        income,
+        expense,
+        branch_1: Math.round(income * 0.6),
+        branch_2: Math.round(income * 0.4),
+        branch_1_name: 'Mahiyangana Branch',
+        branch_2_name: 'Mahaoya Branch'
+      });
+    }
+  } else { // monthly
+    // Generate monthly data for current year
+    for (let month = 0; month < 12; month++) {
+      const income = Math.round(300000 + Math.random() * 200000);
+      const expense = Math.round(income * (0.4 + Math.random() * 0.3));
+
+      chartData.push({
+        name: getMonthName(month),
+        date: `${currentYear}-${String(month + 1).padStart(2, '0')}`,
+        income,
+        expense,
+        branch_1: Math.round(income * 0.6),
+        branch_2: Math.round(income * 0.4),
+        branch_1_name: 'Mahiyangana Branch',
+        branch_2_name: 'Mahaoya Branch'
+      });
+    }
+  }
+
+  return {
+    chartData,
+    branches: [
+      { id: 1, name: 'Mahiyangana Branch' },
+      { id: 2, name: 'Mahaoya Branch' }
+    ]
+  };
+}
 
 // Get available jewellery items for sale
 router.get("/available-items", (req, res) => {

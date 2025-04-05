@@ -44,16 +44,16 @@ router.get("/:id", (req, res) => {
 
 // ✅ CREATE Sales Associate
 router.post("/create", (req, res) => {
-  const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
+  const { username, email, password, firstName, lastName, nic, phone, address, sex, role, branchId } = req.body;
 
   const parsedBranchId = parseInt(branchId, 10);
   if (isNaN(parsedBranchId)) {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, blood_type, sex, role, branch_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId];
+  const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, sex, role, branch_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId];
 
   con.query(sql, values, (err, result) => {
     if (err) {
@@ -66,7 +66,7 @@ router.post("/create", (req, res) => {
 // ✅ UPDATE Sales Associate
 router.put("/update/:id", (req, res) => {
   const userId = req.params.id;
-  const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
+  const { username, email, password, firstName, lastName, nic, phone, address, sex, role, branchId } = req.body;
 
   const parsedBranchId = parseInt(branchId, 10);
   if (isNaN(parsedBranchId)) {
@@ -74,9 +74,9 @@ router.put("/update/:id", (req, res) => {
   }
 
   const sql = `UPDATE users
-               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, blood_type=?, sex=?, role=?, branch_id=?
+               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, sex=?, role=?, branch_id=?
                WHERE id=? AND role = 'Sales Associate'`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId, userId];
+  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId, userId];
 
   con.query(sql, values, (err, result) => {
     if (err) {

@@ -7,8 +7,8 @@ const router = express.Router();
 // ✅ GET Store Managers with Branch Name (JOIN users + branches)
 router.get("/", (req, res) => {
   const sql = `
-    SELECT users.*, branches.branch_name 
-    FROM users 
+    SELECT users.*, branches.branch_name
+    FROM users
     LEFT JOIN branches ON users.branch_id = branches.branch_id
     WHERE users.role = 'Store Manager'
   `;
@@ -25,8 +25,8 @@ router.get("/", (req, res) => {
 router.get("/:id", (req, res) => {
   const userId = req.params.id;
   const sql = `
-    SELECT users.*, branches.branch_name 
-    FROM users 
+    SELECT users.*, branches.branch_name
+    FROM users
     LEFT JOIN branches ON users.branch_id = branches.branch_id
     WHERE users.user_id = ? AND users.role = 'Store Manager'
   `;
@@ -44,16 +44,16 @@ router.get("/:id", (req, res) => {
 
 // ✅ CREATE Store Manager
 router.post("/create", (req, res) => {
-  const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
+  const { username, email, password, firstName, lastName, nic, phone, address, sex, role, branchId } = req.body;
 
   const parsedBranchId = parseInt(branchId, 10);
   if (isNaN(parsedBranchId)) {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, blood_type, sex, role, branch_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId];
+  const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, sex, role, branch_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId];
 
   con.query(sql, values, (err, result) => {
     if (err) {
@@ -66,17 +66,17 @@ router.post("/create", (req, res) => {
 // ✅ UPDATE Store Manager
 router.put("/update/:id", (req, res) => {
   const userId = req.params.id;
-  const { username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, branchId } = req.body;
+  const { username, email, password, firstName, lastName, nic, phone, address, sex, role, branchId } = req.body;
 
   const parsedBranchId = parseInt(branchId, 10);
   if (isNaN(parsedBranchId)) {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `UPDATE users 
-               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, blood_type=?, sex=?, role=?, branch_id=? 
+  const sql = `UPDATE users
+               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, sex=?, role=?, branch_id=?
                WHERE user_id=? AND role = 'Store Manager'`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, bloodType, sex, role, parsedBranchId, userId];
+  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId, userId];
 
   con.query(sql, values, (err, result) => {
     if (err) {
@@ -97,14 +97,14 @@ router.delete("/delete/:id", (req, res) => {
       console.error('Error checking if user exists:', err);
       return res.status(500).json({ message: "Database error", error: err.message });
     }
-    
+
     if (results.length === 0) {
       console.log(`Store Manager with ID ${userId} not found`);
       return res.status(404).json({ message: "Store Manager not found" });
     }
 
     console.log(`Found Store Manager:`, results[0]);
-    
+
     // Try to delete the image if it exists
     try {
       const imagePath = results[0].img;
@@ -121,14 +121,14 @@ router.delete("/delete/:id", (req, res) => {
     con.query("DELETE FROM users WHERE user_id = ? AND role = 'Store Manager'", [userId], (deleteErr, result) => {
       if (deleteErr) {
         console.error('Error deleting user from database:', deleteErr);
-        return res.status(500).json({ 
-          message: "Database error", 
+        return res.status(500).json({
+          message: "Database error",
           error: deleteErr.message,
           code: deleteErr.code,
           sqlState: deleteErr.sqlState
         });
       }
-      
+
       console.log(`Successfully deleted Store Manager with ID: ${userId}`);
       res.json({ message: "Store Manager deleted successfully" });
     });
