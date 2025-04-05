@@ -6,7 +6,7 @@ import { role } from "@/lib/data";
 import Image from "next/image";
 import Link from "next/link";
 
-const SingleTeacherPage = () => {
+const SingleStoreManagerPage = () => {
   return (
     <div className="flex-1 p-4 flex flex-col gap-4 xl:flex-row">
       {/* LEFT */}
@@ -153,7 +153,7 @@ const SingleTeacherPage = () => {
               Reports
             </Link>
             {/* <Link className="p-3 rounded-md bg-lamaSkyLight" href="/">
-              Teacher&apos;s Assignments
+             
             </Link> */}
           </div>
         </div>
@@ -164,4 +164,4 @@ const SingleTeacherPage = () => {
   );
 };
 
-export default SingleTeacherPage;
+export default SingleStoreManagerPage;

@@ -155,7 +155,7 @@ const StoreManagerListPage = () => {
       <td className="hidden lg:table-cell">{item.address}</td>
       <td>
         <div className="flex items-center gap-2">
-          <Link href={`/list/teachers/${item.id}`}>
+          <Link href={`/list/StoreManager/${item.id}`}>
             <button className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]">
               <Image src="/view.png" alt="" width={16} height={16} />
             </button>

@@ -15,7 +15,6 @@ const schema = z.object({
   nic: z.string().min(1, { message: "NIC is required!" }).max(20, { message: "NIC must be at most 20 characters long!" }),
   phone: z.string().min(1, { message: "Phone is required!" }),
   address: z.string().min(1, { message: "Address is required!" }),
-  bloodType: z.string().min(1, { message: "Blood Type is required!" }),
   sex: z.enum(["male", "female", "other"], { message: "Sex is required!" }),
   role: z.enum(["Admin", "Store Manager", "Sales Associate", "Cashier"], { message: "Role is required!" }),
   branchId: z.number().min(1, { message: "Branch ID is required!" }),
@@ -23,7 +22,7 @@ const schema = z.object({
 
 type Inputs = z.infer<typeof schema>;
 
-const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) => {
+const StoreManagerForm = ({ type, data }: { type: "create" | "update"; data?: any }) => {
   const [username, setUsername] = useState(data?.username || "");
   const [email, setEmail] = useState(data?.email || "");
   const [password, setPassword] = useState(data?.password || "");
@@ -32,10 +31,16 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
   const [nic, setNic] = useState(data?.nic || "");
   const [phone, setPhone] = useState(data?.phone || "");
   const [address, setAddress] = useState(data?.address || "");
-  const [bloodType, setBloodType] = useState(data?.bloodType || "");
+  // Blood type field removed
   const [sex, setSex] = useState(data?.sex || "male");
   const [role, setRole] = useState(data?.role || "Admin");
   const [branchId, setBranchId] = useState(data?.branchId || 1); // Assuming default branch_id 1
+
+  // Define branches for dropdown
+  const branches = [
+    { branch_id: 1, branch_name: "Mahiyangana Branch" },
+    { branch_id: 2, branch_name: "Mahaoya Branch" }
+  ];
 
   const { handleSubmit, register, formState: { errors } } = useForm<Inputs>({
     resolver: zodResolver(schema),
@@ -43,7 +48,7 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
 
   const onSubmit = handleSubmit(async () => {
     try {
-      const teacherData = {
+      const storeManagerData = {
         username,
         email,
         password,
@@ -52,36 +57,35 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
         nic,
         phone,
         address,
-        bloodType,
         sex,
         role,
         branchId,
       };
 
-      const response = await fetch("http://localhost:3002/teachers/create", {
+      const response = await fetch("http://localhost:3002/store-managers/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(teacherData),
+        body: JSON.stringify(storeManagerData),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        alert("New Store Manager Added successfully!");
+        alert("Store Manager added successfully!");
       } else {
         alert(`Error: ${result.message}`);
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to create New Store Manager!");
+      alert("Failed to create Store Manager!");
     }
   });
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">{type === "create" ? "Create a new New Store Manager" : "Update New Store Manager details"}</h1>
+      <h1 className="text-xl font-semibold">{type === "create" ? "Create a new Store Manager" : "Update Store Manager details"}</h1>
       <span className="text-xs text-gray-400 font-medium">Authentication Information</span>
 
       <div className="flex justify-between flex-wrap gap-4">
@@ -178,16 +182,7 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
           {errors.address && <p className="text-xs text-red-400">{errors.address.message}</p>}
         </div>
 
-        <div className="flex flex-col w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Blood Type</label>
-          <input
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("bloodType")}
-            value={bloodType}
-            onChange={(e) => setBloodType(e.target.value)}
-          />
-          {errors.bloodType && <p className="text-xs text-red-400">{errors.bloodType.message}</p>}
-        </div>
+        {/* Blood type field removed */}
 
         <div className="flex flex-col w-full md:w-1/4">
           <label className="text-xs text-gray-500">Sex</label>
@@ -225,19 +220,21 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
         </div>
 
         <div className="flex flex-col w-full md:w-1/4">
-  <label className="text-xs text-gray-500">Branch</label>
-  <select
-    className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-    {...register("branchId", { valueAsNumber: true })} // Ensures value is parsed as a number
-    value={branchId}
-    onChange={(e) => setBranchId(Number(e.target.value))} // Convert string to number
-  >
-    <option value={1}>1</option>
-    <option value={2}>2</option>
-  </select>
-  {errors.branchId && <p className="text-xs text-red-400">{errors.branchId.message}</p>}
-</div>
-
+          <label className="text-xs text-gray-500">Branch</label>
+          <select
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            {...register("branchId", { valueAsNumber: true })} // Ensures value is parsed as a number
+            value={branchId}
+            onChange={(e) => setBranchId(Number(e.target.value))} // Convert string to number
+          >
+            {branches.map((branch) => (
+              <option key={branch.branch_id} value={branch.branch_id}>
+                {branch.branch_name}
+              </option>
+            ))}
+          </select>
+          {errors.branchId && <p className="text-xs text-red-400">{errors.branchId.message}</p>}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -252,4 +249,4 @@ const TeacherForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
   );
 };
 
-export default TeacherForm;
+export default StoreManagerForm;

@@ -39,8 +39,8 @@ const CashierForm = ({ type, data }: { type: "create" | "update"; data?: any }) 
   useEffect(() => {
     // Hardcoded branches as specified
     const hardcodedBranches = [
-      { branch_id: 1, branch_name: "Mahiyangana" },
-      { branch_id: 2, branch_name: "Mahaoya" }
+      { branch_id: 1, branch_name: "Mahiyangana Branch" },
+      { branch_id: 2, branch_name: "Mahaoya Branch" }
     ];
 
     setBranches(hardcodedBranches);

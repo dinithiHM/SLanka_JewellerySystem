@@ -73,11 +73,11 @@ const CashierForm = ({ type, data })=>{
         const hardcodedBranches = [
             {
                 branch_id: 1,
-                branch_name: "Mahiyangana"
+                branch_name: "Mahiyangana Branch"
             },
             {
                 branch_id: 2,
-                branch_name: "Mahaoya"
+                branch_name: "Mahaoya Branch"
             }
         ];
         setBranches(hardcodedBranches);

@@ -1,13 +1,7 @@
 {
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/page": "app/page.js",
-  "/login/page": "app/login/page.js",
-  "/DashView/admin/page": "app/DashView/admin/page.js",
-  "/DashView/sales/manage/page": "app/DashView/sales/manage/page.js",
-  "/DashView/sales/view/page": "app/DashView/sales/view/page.js",
-  "/DashView/admin/sales-report/page": "app/DashView/admin/sales-report/page.js",
-  "/DashView/cashier/page": "app/DashView/cashier/page.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/DashView/sales/add/page": "app/DashView/sales/add/page.js",
-  "/DashView/sales/details/[id]/page": "app/DashView/sales/details/[id]/page.js"
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/login/page": "app/login/page.js",
+  "/DashView/admin/page": "app/DashView/admin/page.js"
 }

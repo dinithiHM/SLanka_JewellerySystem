@@ -5,17 +5,13 @@ import Image from "next/image";
 import { useState, JSX } from "react";
 
 // Dynamic imports for forms
-const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
+const StoreManagerForm = dynamic(() => import("./forms/StoreManagerForm"), {
   loading: () => <h1>Loading...</h1>,
 });
-const SalesAssociateForm = dynamic(() => import("./forms/TeacherForm"), {
+const SalesAssociateForm = dynamic(() => import("./forms/StoreManagerForm"), {
   loading: () => <h1>Loading...</h1>,
 });
 const SupplierForm = dynamic(() => import("./forms/SupplierForm"), {
-  loading: () => <h1>Loading...</h1>,
-});
-// Add dynamic imports for other forms as needed
-const StoreManagerForm = dynamic(() => import("./forms/TeacherForm"), {
   loading: () => <h1>Loading...</h1>,
 });
 const CashierForm = dynamic(() => import("./forms/CashierForm"), {
@@ -34,10 +30,9 @@ const CashierForm = dynamic(() => import("./forms/CashierForm"), {
 const forms: {
   [key: string]: (type: "create" | "update", data?: any) => JSX.Element;
 } = {
-  teacher: (type, data) => <TeacherForm type={type} data={data} />,
+  "store-manager": (type, data) => <StoreManagerForm type={type} data={data} />,
   supplier: (type, data) => <SupplierForm type={type} data={data} />, // ✅ Corrected
   "sales-associate": (type, data) => <SalesAssociateForm type={type} data={data} />, // ✅ Corrected
-  "store-manager": (type, data) => <StoreManagerForm type={type} data={data} />,
   cashier: (type, data) => <CashierForm type={type} data={data} />, // ✅ Added Cashier form
 };
 
