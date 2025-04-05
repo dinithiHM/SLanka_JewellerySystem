@@ -538,7 +538,7 @@ const EventCalendar = ()=>{
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
                         className: "text-xl font-semibold my-4",
-                        children: "Events"
+                        children: "Recent sales"
                     }, void 0, false, {
                         fileName: "[project]/src/components/EventCalendar.tsx",
                         lineNumber: 41,
@@ -1433,11 +1433,23 @@ const FinanceChart = ()=>{
                         className: "grid grid-cols-2 gap-3",
                         children: financeData?.branches.map((branch)=>{
                             const branchKey = `branch_${branch.id}`;
+                            // Calculate the total for this branch across all periods
                             const branchTotal = financeData?.chartData.reduce((sum, item)=>{
                                 const value = item[branchKey];
                                 return sum + (value ? typeof value === 'string' ? parseFloat(value) : value : 0);
                             }, 0);
-                            const percentage = totalIncome > 0 ? Math.round(branchTotal / totalIncome * 100) : 0;
+                            // Calculate branch percentages correctly
+                            // We need to sum up all branch totals first to get the actual total
+                            const allBranchesTotals = financeData.branches.reduce((total, b)=>{
+                                const bKey = `branch_${b.id}`;
+                                const bTotal = financeData.chartData.reduce((sum, item)=>{
+                                    const value = item[bKey];
+                                    return sum + (value ? typeof value === 'string' ? parseFloat(value) : value : 0);
+                                }, 0);
+                                return total + bTotal;
+                            }, 0);
+                            // Now calculate the percentage based on the sum of all branch totals
+                            const percentage = allBranchesTotals > 0 ? Math.round(branchTotal / allBranchesTotals * 100) : 0;
                             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "bg-white p-3 rounded-md shadow-sm",
                                 children: [
@@ -1449,7 +1461,7 @@ const FinanceChart = ()=>{
                                                 children: branch.name
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/FinanceChart.tsx",
-                                                lineNumber: 366,
+                                                lineNumber: 383,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1460,13 +1472,13 @@ const FinanceChart = ()=>{
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/FinanceChart.tsx",
-                                                lineNumber: 367,
+                                                lineNumber: 384,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/FinanceChart.tsx",
-                                        lineNumber: 365,
+                                        lineNumber: 382,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1474,7 +1486,7 @@ const FinanceChart = ()=>{
                                         children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatCurrency"])(branchTotal)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/FinanceChart.tsx",
-                                        lineNumber: 369,
+                                        lineNumber: 386,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1486,18 +1498,18 @@ const FinanceChart = ()=>{
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/FinanceChart.tsx",
-                                            lineNumber: 371,
+                                            lineNumber: 388,
                                             columnNumber: 21
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/FinanceChart.tsx",
-                                        lineNumber: 370,
+                                        lineNumber: 387,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, branch.id, true, {
                                 fileName: "[project]/src/components/FinanceChart.tsx",
-                                lineNumber: 364,
+                                lineNumber: 381,
                                 columnNumber: 17
                             }, this);
                         })

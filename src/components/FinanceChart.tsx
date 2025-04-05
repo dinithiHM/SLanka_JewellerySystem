@@ -349,6 +349,7 @@ const FinanceChart = () => {
           <div className="grid grid-cols-2 gap-3">
             {financeData?.branches.map(branch => {
               const branchKey = `branch_${branch.id}`;
+              // Calculate the total for this branch across all periods
               const branchTotal = financeData?.chartData.reduce(
                 (sum, item) => {
                   const value = item[branchKey];
@@ -356,8 +357,24 @@ const FinanceChart = () => {
                 },
                 0
               );
-              const percentage = totalIncome > 0
-                ? Math.round((branchTotal / totalIncome) * 100)
+
+              // Calculate branch percentages correctly
+              // We need to sum up all branch totals first to get the actual total
+              const allBranchesTotals = financeData.branches.reduce((total, b) => {
+                const bKey = `branch_${b.id}`;
+                const bTotal = financeData.chartData.reduce(
+                  (sum, item) => {
+                    const value = item[bKey];
+                    return sum + (value ? (typeof value === 'string' ? parseFloat(value) : value) : 0);
+                  },
+                  0
+                );
+                return total + bTotal;
+              }, 0);
+
+              // Now calculate the percentage based on the sum of all branch totals
+              const percentage = allBranchesTotals > 0
+                ? Math.round((branchTotal / allBranchesTotals) * 100)
                 : 0;
 
               return (

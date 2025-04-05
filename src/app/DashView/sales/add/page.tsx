@@ -252,6 +252,7 @@ const AddSalePage = () => {
     try {
       const saleData = {
         customer_name: customerName,
+        total_amount: totalAmount, // Add the total amount field
         payment_method: paymentMethod,
         items: saleItems.map(item => ({
           item_id: item.item_id,
