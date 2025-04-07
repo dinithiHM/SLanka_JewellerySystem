@@ -100,12 +100,7 @@ const StoreManagerDashboard = () => {
           value="LKR 124,500"
           color="border-l-4 border-blue-500"
         />
-        <DashboardCard
-          icon={Users}
-          title="Staff Present"
-          value="8/10"
-          color="border-l-4 border-green-500"
-        />
+        
         <DashboardCard
           icon={Package}
           title="Inventory Items"
@@ -129,13 +124,13 @@ const StoreManagerDashboard = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Sales Target</span>
-              <span className="text-sm font-medium">₹500,000</span>
+              <span className="text-sm font-medium">LKR 500,000</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '75%' }}></div>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Current: ₹375,000</span>
+              <span>Current: LKR 375,000</span>
               <span>75% of monthly target</span>
             </div>
           </div>
@@ -168,13 +163,13 @@ const StoreManagerDashboard = () => {
                   <td className="px-4 py-3 whitespace-nowrap">Amal Perera</td>
                   <td className="px-4 py-3 whitespace-nowrap">Sales Associate</td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap">₹42,500</td>
+                  <td className="px-4 py-3 whitespace-nowrap">LKR 42,500</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 whitespace-nowrap">Nimal Silva</td>
                   <td className="px-4 py-3 whitespace-nowrap">Sales Associate</td>
                   <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap">₹38,750</td>
+                  <td className="px-4 py-3 whitespace-nowrap">LKR 38,750</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 whitespace-nowrap">Kamala Jayawardene</td>

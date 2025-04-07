@@ -139,6 +139,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$settings$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Settings$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/settings.js [app-client] (ecmascript) <export default as Settings>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$log$2d$out$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__LogOut$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/log-out.js [app-client] (ecmascript) <export default as LogOut>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$boxes$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Boxes$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/boxes.js [app-client] (ecmascript) <export default as Boxes>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$package$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Package$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/package.js [app-client] (ecmascript) <export default as Package>");
 ;
 var _s = __turbopack_context__.k.signature();
 'use client'; // This marks it as a client-side component
@@ -287,12 +288,22 @@ const menuItems = [
             {
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$credit$2d$card$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__CreditCard$3e$__["CreditCard"],
                 label: "Advance Payment",
-                href: "/list/messages",
+                href: "/DashView/advance-payment",
                 visible: [
                     "Admin",
                     "Store Manager",
                     "Sales Associate",
                     "Cashier"
+                ]
+            },
+            {
+                icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$package$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Package$3e$__["Package"],
+                label: "Custom Orders",
+                href: "/DashView/custom-orders",
+                visible: [
+                    "Admin",
+                    "Store Manager",
+                    "Sales Associate"
                 ]
             },
             {
@@ -366,7 +377,7 @@ const Menu = ()=>{
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/Menu.tsx",
-            lineNumber: 57,
+            lineNumber: 58,
             columnNumber: 12
         }, this); // Show loading while fetching role
     }
@@ -380,7 +391,7 @@ const Menu = ()=>{
                         children: section.title
                     }, void 0, false, {
                         fileName: "[project]/src/components/Menu.tsx",
-                        lineNumber: 64,
+                        lineNumber: 65,
                         columnNumber: 11
                     }, this),
                     section.items.map((item)=>{
@@ -395,7 +406,7 @@ const Menu = ()=>{
                                         className: "text-black"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 76,
+                                        lineNumber: 77,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -403,13 +414,13 @@ const Menu = ()=>{
                                         children: item.label
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 77,
+                                        lineNumber: 78,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, item.label, true, {
                                 fileName: "[project]/src/components/Menu.tsx",
-                                lineNumber: 71,
+                                lineNumber: 72,
                                 columnNumber: 17
                             }, this);
                         }
@@ -418,12 +429,12 @@ const Menu = ()=>{
                 ]
             }, section.title, true, {
                 fileName: "[project]/src/components/Menu.tsx",
-                lineNumber: 63,
+                lineNumber: 64,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/src/components/Menu.tsx",
-        lineNumber: 61,
+        lineNumber: 62,
         columnNumber: 5
     }, this);
 };

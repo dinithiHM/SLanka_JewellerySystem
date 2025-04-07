@@ -496,9 +496,10 @@ const formatCurrency = (value, locale = 'en-US', currency = 'LKR')=>{
     // Handle NaN values
     if (isNaN(numericValue)) {
         console.warn('Invalid value for currency formatting:', value);
-        return 'LKR 0.00';
+        return 'Rs. 0.00';
     }
-    return 'LKR ' + new Intl.NumberFormat(locale, {
+    // Use the Sri Lankan Rupee symbol (Rs) instead of LKR text
+    return 'Rs. ' + new Intl.NumberFormat(locale, {
         style: 'decimal',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2

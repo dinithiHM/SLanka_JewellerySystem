@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"; // Importing the session hook
 import Link from "next/link";
 import {
   Home, Users, Tag, ClipboardList, Coins, ShoppingCart, BarChart, CalendarCheck, CreditCard,
-  Bell, UserCircle, Settings, LogOut, Boxes
+  Bell, UserCircle, Settings, LogOut, Boxes, Package
 } from "lucide-react"; // Importing correct icons
 
 const menuItems = [
@@ -26,7 +26,8 @@ const menuItems = [
       { icon: BarChart, label: "Reports", href: "/list/attendance", visible: ["Store Manager", "Sales Associate", "Cashier"] },
       { icon: BarChart, label: "Sales Report", href: "/DashView/admin/sales-report", visible: ["Admin"] },
       { icon: CalendarCheck, label: "Events", href: "/list/events", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: CreditCard, label: "Advance Payment", href: "/list/messages", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: CreditCard, label: "Advance Payment", href: "/DashView/advance-payment", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Package, label: "Custom Orders", href: "/DashView/custom-orders", visible: ["Admin", "Store Manager", "Sales Associate"] },
       { icon: Bell, label: "Notifications", href: "/list/announcements", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
     ],
   },

@@ -33,30 +33,121 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                 "SupplierCategoryChart.useEffect.fetchData": async ()=>{
                     try {
                         setLoading(true);
-                        // Skip API call if no category is selected
+                        setError(null);
+                        // Skip if no category is selected
                         if (!selectedCategory) {
                             setChartData([]);
                             setLoading(false);
                             return;
                         }
-                        // Fetch supplier order statistics from the dedicated API endpoint
-                        const response = await fetch(`http://localhost:3002/suppliers/order-stats/${selectedCategory}`);
-                        if (!response.ok) {
-                            throw new Error(`Failed to fetch supplier statistics: ${response.status}`);
+                        console.log(`Fetching suppliers for category: ${selectedCategory}`);
+                        // Add a timestamp to prevent caching and ensure fresh data
+                        const timestamp = new Date().getTime();
+                        // First, fetch all suppliers from the database
+                        const suppliersResponse = await fetch(`http://localhost:3002/suppliers?t=${timestamp}`);
+                        if (!suppliersResponse.ok) {
+                            throw new Error(`Failed to fetch suppliers: ${suppliersResponse.status}`);
                         }
-                        const data = await response.json();
-                        // Process data for the chart
-                        const processedData = data.map({
-                            "SupplierCategoryChart.useEffect.fetchData.processedData": (item)=>({
-                                    supplier_id: item.supplier_id,
-                                    name: item.name,
-                                    orderCount: item.order_count
-                                })
-                        }["SupplierCategoryChart.useEffect.fetchData.processedData"]);
-                        setChartData(processedData);
+                        let suppliers = await suppliersResponse.json();
+                        console.log('Fetched suppliers:', suppliers);
+                        // Log each supplier's name and ID for debugging
+                        suppliers.forEach({
+                            "SupplierCategoryChart.useEffect.fetchData": (supplier)=>{
+                                console.log(`Supplier ID: ${supplier.supplier_id}, Name: ${supplier.supplier_name || supplier.name || 'No name'}, Category: ${supplier.category || 'No category'}`);
+                            }
+                        }["SupplierCategoryChart.useEffect.fetchData"]);
+                        // Filter suppliers by category if a specific category is selected
+                        if (selectedCategory !== 'All') {
+                            suppliers = suppliers.filter({
+                                "SupplierCategoryChart.useEffect.fetchData": (supplier)=>supplier.category === selectedCategory || supplier.manufacturing_items && supplier.manufacturing_items.includes(selectedCategory)
+                            }["SupplierCategoryChart.useEffect.fetchData"]);
+                            console.log(`Filtered suppliers for category ${selectedCategory}:`, suppliers);
+                        }
+                        // Then, fetch all orders to count them manually (with timestamp to prevent caching)
+                        const ordersResponse = await fetch(`http://localhost:3002/suppliers/check-orders-data?t=${timestamp}`);
+                        let orders = [];
+                        if (ordersResponse.ok) {
+                            orders = await ordersResponse.json();
+                            console.log('Fetched orders:', orders);
+                        } else {
+                            console.warn('Could not fetch orders, will show suppliers with zero orders');
+                        }
+                        // Count orders for each supplier
+                        const orderCountMap = {};
+                        if (orders && orders.length > 0) {
+                            orders.forEach({
+                                "SupplierCategoryChart.useEffect.fetchData": (order)=>{
+                                    if (order.supplier_id) {
+                                        orderCountMap[order.supplier_id] = (orderCountMap[order.supplier_id] || 0) + 1;
+                                    }
+                                }
+                            }["SupplierCategoryChart.useEffect.fetchData"]);
+                        }
+                        console.log('Order counts by supplier:', orderCountMap);
+                        // Create chart data with real suppliers and their order counts
+                        const realData = suppliers.map({
+                            "SupplierCategoryChart.useEffect.fetchData.realData": (supplier)=>{
+                                // Get the actual name from the supplier data
+                                // Check all possible name fields and use the first one that exists
+                                let supplierName = '';
+                                if (supplier.name && supplier.name !== '') {
+                                    supplierName = supplier.name;
+                                } else if (supplier.supplier_name && supplier.supplier_name !== '') {
+                                    supplierName = supplier.supplier_name;
+                                } else {
+                                    // If no name is found, use a generic name but log this issue
+                                    supplierName = `Unknown Supplier ${supplier.supplier_id}`;
+                                    console.warn(`No name found for supplier with ID ${supplier.supplier_id}`);
+                                }
+                                // Log the name we're using
+                                console.log(`Using name "${supplierName}" for supplier ID ${supplier.supplier_id}`);
+                                return {
+                                    supplier_id: supplier.supplier_id || 'unknown',
+                                    name: supplierName,
+                                    orderCount: supplier.supplier_id ? orderCountMap[supplier.supplier_id] || 0 : 0
+                                };
+                            }
+                        }["SupplierCategoryChart.useEffect.fetchData.realData"]);
+                        // Sort by order count (highest first)
+                        realData.sort({
+                            "SupplierCategoryChart.useEffect.fetchData": (a, b)=>b.orderCount - a.orderCount
+                        }["SupplierCategoryChart.useEffect.fetchData"]);
+                        // For a specific category, show ALL suppliers in that category
+                        // For 'All' categories, show suppliers with orders or top suppliers
+                        let finalData = [];
+                        if (selectedCategory !== 'All') {
+                            // For a specific category, show ALL suppliers regardless of order count
+                            // This ensures new suppliers are always displayed
+                            finalData = [
+                                ...realData
+                            ];
+                            console.log(`Showing all ${finalData.length} suppliers in the ${selectedCategory} category`);
+                        } else {
+                            // For 'All' categories, show suppliers with orders
+                            const suppliersWithOrders = realData.filter({
+                                "SupplierCategoryChart.useEffect.fetchData.suppliersWithOrders": (item)=>item.orderCount > 0
+                            }["SupplierCategoryChart.useEffect.fetchData.suppliersWithOrders"]);
+                            if (suppliersWithOrders.length > 0) {
+                                // We have suppliers with orders, show them
+                                finalData = suppliersWithOrders;
+                            } else {
+                                // No suppliers with orders, show top suppliers
+                                finalData = realData.slice(0, 5);
+                            }
+                        }
+                        console.log('Final chart data:', finalData);
+                        // Log each item in the final chart data for debugging
+                        finalData.forEach({
+                            "SupplierCategoryChart.useEffect.fetchData": (item)=>{
+                                console.log(`Chart item - ID: ${item.supplier_id}, Name: ${item.name}, Orders: ${item.orderCount}`);
+                            }
+                        }["SupplierCategoryChart.useEffect.fetchData"]);
+                        setChartData(finalData);
                     } catch (err) {
                         console.error('Error fetching chart data:', err);
                         setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
+                        // Fallback to empty data
+                        setChartData([]);
                     } finally{
                         setLoading(false);
                     }
@@ -74,12 +165,12 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                lineNumber: 73,
+                lineNumber: 181,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-            lineNumber: 72,
+            lineNumber: 180,
             columnNumber: 12
         }, this);
     }
@@ -92,17 +183,58 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-            lineNumber: 78,
+            lineNumber: 186,
             columnNumber: 12
         }, this);
     }
     if (chartData.length === 0) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "text-center py-10",
-            children: selectedCategory ? `No data available for ${selectedCategory === 'All' ? 'any category' : `the ${selectedCategory} category`}` : 'Please select a category to see supplier performance'
-        }, void 0, false, {
+            className: "bg-white p-6 rounded-lg shadow-md",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                    className: "text-xl font-bold mb-6 text-center",
+                    children: "Leading Supplier Experts by Order Count"
+                }, void 0, false, {
+                    fileName: "[project]/src/components/SupplierCategoryChart.tsx",
+                    lineNumber: 191,
+                    columnNumber: 7
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "text-right mb-2",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "inline-block bg-yellow-400 w-4 h-4 mr-2"
+                        }, void 0, false, {
+                            fileName: "[project]/src/components/SupplierCategoryChart.tsx",
+                            lineNumber: 193,
+                            columnNumber: 9
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                            className: "text-sm",
+                            children: selectedCategory === 'All' ? 'All Categories' : selectedCategory
+                        }, void 0, false, {
+                            fileName: "[project]/src/components/SupplierCategoryChart.tsx",
+                            lineNumber: 194,
+                            columnNumber: 9
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/components/SupplierCategoryChart.tsx",
+                    lineNumber: 192,
+                    columnNumber: 7
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "text-center py-10 text-gray-500",
+                    children: selectedCategory ? `No suppliers found for ${selectedCategory === 'All' ? 'any category' : `the ${selectedCategory} category`}. Please select a different category or add suppliers for this category.` : 'Please select a category to see supplier performance'
+                }, void 0, false, {
+                    fileName: "[project]/src/components/SupplierCategoryChart.tsx",
+                    lineNumber: 196,
+                    columnNumber: 7
+                }, this)
+            ]
+        }, void 0, true, {
             fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-            lineNumber: 82,
+            lineNumber: 190,
             columnNumber: 12
         }, this);
     }
@@ -111,10 +243,10 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                 className: "text-xl font-bold mb-6 text-center",
-                children: "Leading Supplier Expert in the Field"
+                children: "Leading Supplier Experts by Order Count"
             }, void 0, false, {
                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                lineNumber: 91,
+                lineNumber: 206,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -124,7 +256,7 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                         className: "inline-block bg-yellow-400 w-4 h-4 mr-2"
                     }, void 0, false, {
                         fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                        lineNumber: 93,
+                        lineNumber: 208,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -132,21 +264,24 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                         children: selectedCategory === 'All' ? 'All Categories' : selectedCategory
                     }, void 0, false, {
                         fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                        lineNumber: 94,
+                        lineNumber: 209,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                lineNumber: 92,
+                lineNumber: 207,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "text-center text-sm text-gray-500 mb-2",
-                children: "Showing supplier performance by order count"
-            }, void 0, false, {
+                children: [
+                    "Showing suppliers ranked by number of orders in ",
+                    selectedCategory === 'All' ? 'all categories' : `the ${selectedCategory} category`
+                ]
+            }, void 0, true, {
                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                lineNumber: 96,
+                lineNumber: 211,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -170,7 +305,7 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                                 vertical: false
                             }, void 0, false, {
                                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                                lineNumber: 106,
+                                lineNumber: 221,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$XAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XAxis"], {
@@ -186,35 +321,41 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                                lineNumber: 107,
+                                lineNumber: 222,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$YAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["YAxis"], {
                                 type: "category",
-                                dataKey: "supplier_id",
-                                width: 50,
+                                dataKey: "name",
+                                width: 120,
                                 label: {
-                                    value: 'Supplier ID',
+                                    value: 'Supplier Name',
                                     angle: -90,
                                     position: 'left'
+                                },
+                                tick: {
+                                    fontSize: 12
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                                lineNumber: 108,
+                                lineNumber: 223,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
-                                formatter: (value, name)=>[
+                                formatter: (value)=>[
                                         `${value} orders`,
                                         'Orders'
                                     ],
                                 labelFormatter: (label)=>{
-                                    const supplier = chartData.find((item)=>item.supplier_id === label);
-                                    return supplier ? `${supplier.name} (${label})` : label;
+                                    // Find the supplier by name
+                                    const supplier = chartData.find((item)=>item.name === label);
+                                    if (!supplier) return label;
+                                    // Just return the supplier name as is
+                                    return label;
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                                lineNumber: 114,
+                                lineNumber: 230,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Bar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Bar"], {
@@ -223,29 +364,29 @@ const SupplierCategoryChart = ({ selectedCategory })=>{
                                 barSize: 30
                             }, void 0, false, {
                                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                                lineNumber: 121,
+                                lineNumber: 241,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                        lineNumber: 101,
+                        lineNumber: 216,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                    lineNumber: 100,
+                    lineNumber: 215,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-                lineNumber: 99,
+                lineNumber: 214,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/SupplierCategoryChart.tsx",
-        lineNumber: 90,
+        lineNumber: 205,
         columnNumber: 5
     }, this);
 };
@@ -291,31 +432,56 @@ const SupplierDetailsPage = ()=>{
                 "SupplierDetailsPage.useEffect.fetchSuppliers": async ()=>{
                     try {
                         setLoading(true);
-                        const response = await fetch("http://localhost:3002/suppliers");
+                        // Add timestamp to prevent caching
+                        const timestamp = new Date().getTime();
+                        const response = await fetch(`http://localhost:3002/suppliers?t=${timestamp}`);
                         if (!response.ok) {
                             throw new Error(`Failed to fetch suppliers: ${response.status}`);
                         }
                         const data = await response.json();
                         if (Array.isArray(data)) {
                             setSuppliers(data);
-                            // Extract unique categories from suppliers
-                            const uniqueCategories = new Set();
-                            uniqueCategories.add('All'); // Add 'All' as default option
-                            data.forEach({
-                                "SupplierDetailsPage.useEffect.fetchSuppliers": (supplier)=>{
-                                    if (supplier.category) {
-                                        uniqueCategories.add(supplier.category);
-                                    }
-                                    // Also add manufacturing items as categories
-                                    if (supplier.manufacturing_items) {
-                                        const items = supplier.manufacturing_items.split(',');
-                                        items.forEach({
-                                            "SupplierDetailsPage.useEffect.fetchSuppliers": (item)=>uniqueCategories.add(item.trim())
-                                        }["SupplierDetailsPage.useEffect.fetchSuppliers"]);
-                                    }
+                            // Fetch categories from the database
+                            try {
+                                const categoriesResponse = await fetch(`http://localhost:3002/categories?t=${timestamp}`);
+                                if (categoriesResponse.ok) {
+                                    const categoriesData = await categoriesResponse.json();
+                                    // Create an array with 'All' as the first option, followed by category names
+                                    const categoryNames = [
+                                        'All',
+                                        ...categoriesData.map({
+                                            "SupplierDetailsPage.useEffect.fetchSuppliers": (cat)=>cat.category_name
+                                        }["SupplierDetailsPage.useEffect.fetchSuppliers"])
+                                    ];
+                                    setCategories(categoryNames);
+                                } else {
+                                    console.error('Failed to fetch categories');
+                                    // Fallback: Extract unique categories from suppliers
+                                    const uniqueCategories = new Set();
+                                    uniqueCategories.add('All'); // Add 'All' as default option
+                                    data.forEach({
+                                        "SupplierDetailsPage.useEffect.fetchSuppliers": (supplier)=>{
+                                            if (supplier.category) {
+                                                uniqueCategories.add(supplier.category);
+                                            }
+                                        }
+                                    }["SupplierDetailsPage.useEffect.fetchSuppliers"]);
+                                    setCategories(Array.from(uniqueCategories));
                                 }
-                            }["SupplierDetailsPage.useEffect.fetchSuppliers"]);
-                            setCategories(Array.from(uniqueCategories));
+                            } catch (error) {
+                                console.error('Error fetching categories:', error);
+                                // Fallback: Extract unique categories from suppliers
+                                const uniqueCategories = new Set();
+                                uniqueCategories.add('All'); // Add 'All' as default option
+                                data.forEach({
+                                    "SupplierDetailsPage.useEffect.fetchSuppliers": (supplier)=>{
+                                        if (supplier.category) {
+                                            uniqueCategories.add(supplier.category);
+                                        }
+                                    }
+                                }["SupplierDetailsPage.useEffect.fetchSuppliers"]);
+                                setCategories(Array.from(uniqueCategories));
+                            }
                         } else {
                             throw new Error("Unexpected data format");
                         }
@@ -336,12 +502,12 @@ const SupplierDetailsPage = ()=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                lineNumber: 71,
+                lineNumber: 95,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-            lineNumber: 70,
+            lineNumber: 94,
             columnNumber: 12
         }, this);
     }
@@ -354,7 +520,7 @@ const SupplierDetailsPage = ()=>{
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-            lineNumber: 76,
+            lineNumber: 100,
             columnNumber: 12
         }, this);
     }
@@ -372,7 +538,7 @@ const SupplierDetailsPage = ()=>{
                                 children: "Supplier Details"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                lineNumber: 84,
+                                lineNumber: 108,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -380,13 +546,13 @@ const SupplierDetailsPage = ()=>{
                                 children: "Add new Supplier"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                lineNumber: 85,
+                                lineNumber: 109,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                        lineNumber: 83,
+                        lineNumber: 107,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -402,7 +568,7 @@ const SupplierDetailsPage = ()=>{
                                                 children: "Name"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 94,
+                                                lineNumber: 118,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -410,7 +576,7 @@ const SupplierDetailsPage = ()=>{
                                                 children: "Supplier ID"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 97,
+                                                lineNumber: 121,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -418,7 +584,7 @@ const SupplierDetailsPage = ()=>{
                                                 children: "Address"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 100,
+                                                lineNumber: 124,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -426,7 +592,7 @@ const SupplierDetailsPage = ()=>{
                                                 children: "Phone No"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 103,
+                                                lineNumber: 127,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -434,18 +600,18 @@ const SupplierDetailsPage = ()=>{
                                                 children: "Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 106,
+                                                lineNumber: 130,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                        lineNumber: 93,
+                                        lineNumber: 117,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                    lineNumber: 92,
+                                    lineNumber: 116,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -458,7 +624,7 @@ const SupplierDetailsPage = ()=>{
                                                     children: supplier.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 114,
+                                                    lineNumber: 138,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -466,7 +632,7 @@ const SupplierDetailsPage = ()=>{
                                                     children: supplier.supplier_id
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 117,
+                                                    lineNumber: 141,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -474,7 +640,7 @@ const SupplierDetailsPage = ()=>{
                                                     children: supplier.address
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 120,
+                                                    lineNumber: 144,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -482,7 +648,7 @@ const SupplierDetailsPage = ()=>{
                                                     children: supplier.contact_no
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 123,
+                                                    lineNumber: 147,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -490,35 +656,35 @@ const SupplierDetailsPage = ()=>{
                                                     children: supplier.category || 'Not specified'
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 126,
+                                                    lineNumber: 150,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, supplier.id, true, {
                                             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                            lineNumber: 113,
+                                            lineNumber: 137,
                                             columnNumber: 17
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                    lineNumber: 111,
+                                    lineNumber: 135,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                            lineNumber: 91,
+                            lineNumber: 115,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                        lineNumber: 90,
+                        lineNumber: 114,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                lineNumber: 82,
+                lineNumber: 106,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -534,7 +700,7 @@ const SupplierDetailsPage = ()=>{
                                     children: "Select Category"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                    lineNumber: 140,
+                                    lineNumber: 164,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -549,12 +715,12 @@ const SupplierDetailsPage = ()=>{
                                                     children: category
                                                 }, category, false, {
                                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                    lineNumber: 148,
+                                                    lineNumber: 172,
                                                     columnNumber: 19
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                            lineNumber: 142,
+                                            lineNumber: 166,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -563,48 +729,48 @@ const SupplierDetailsPage = ()=>{
                                                 size: 16
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                                lineNumber: 154,
+                                                lineNumber: 178,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                            lineNumber: 153,
+                                            lineNumber: 177,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                                    lineNumber: 141,
+                                    lineNumber: 165,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                            lineNumber: 139,
+                            lineNumber: 163,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                        lineNumber: 138,
+                        lineNumber: 162,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$SupplierCategoryChart$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                         selectedCategory: selectedCategory
-                    }, void 0, false, {
+                    }, `supplier-chart-${selectedCategory}-${new Date().getTime()}`, false, {
                         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                        lineNumber: 161,
+                        lineNumber: 185,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-                lineNumber: 137,
+                lineNumber: 161,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/supplier-details/page.tsx",
-        lineNumber: 80,
+        lineNumber: 104,
         columnNumber: 5
     }, this);
 };

@@ -83,21 +83,21 @@ const SalesAssociatePage: React.FC = () => {
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">Amal Perera</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Gold Necklace</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹12,500</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 12,500</td>
                                 <td className="px-6 py-4 whitespace-nowrap">10:30 AM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span></td>
                             </tr>
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">Nimal Silva</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Diamond Ring</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹8,750</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 8,750</td>
                                 <td className="px-6 py-4 whitespace-nowrap">11:45 AM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span></td>
                             </tr>
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">Kamala Jayawardene</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Silver Bracelet</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹3,250</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 3,250</td>
                                 <td className="px-6 py-4 whitespace-nowrap">1:15 PM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span></td>
                             </tr>
@@ -120,7 +120,7 @@ const SalesAssociatePage: React.FC = () => {
                                     <p className="text-sm text-gray-500">22K Gold</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹45,000</p>
+                            <p className="font-bold">LKR 45,000</p>
                         </div>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center">
@@ -132,7 +132,7 @@ const SalesAssociatePage: React.FC = () => {
                                     <p className="text-sm text-gray-500">1.2 Carat</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹38,500</p>
+                            <p className="font-bold">LKR 38,500</p>
                         </div>
                         <div className="flex justify-between items-center">
                             <div className="flex items-center">
@@ -144,7 +144,7 @@ const SalesAssociatePage: React.FC = () => {
                                     <p className="text-sm text-gray-500">Set of 4</p>
                                 </div>
                             </div>
-                            <p className="font-bold">₹32,000</p>
+                            <p className="font-bold">LKR 32,000</p>
                         </div>
                     </div>
                 </div>

@@ -126,7 +126,7 @@ const SalesAssociatePage = ()=>{
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
                         icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$shopping$2d$cart$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ShoppingCart$3e$__["ShoppingCart"],
                         title: "Today's Sales",
-                        value: "₹24,500",
+                        value: "LKR 24,500",
                         color: "border-l-4 border-blue-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
@@ -156,7 +156,7 @@ const SalesAssociatePage = ()=>{
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
                         icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$coins$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Coins$3e$__["Coins"],
                         title: "Gold Price",
-                        value: "₹5,842/g",
+                        value: "LKR 5,842/g",
                         color: "border-l-4 border-yellow-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
@@ -279,7 +279,7 @@ const SalesAssociatePage = ()=>{
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
-                                                    children: "₹12,500"
+                                                    children: "LKR 12,500"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                     lineNumber: 86,
@@ -334,7 +334,7 @@ const SalesAssociatePage = ()=>{
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
-                                                    children: "₹8,750"
+                                                    children: "LKR 8,750"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                     lineNumber: 93,
@@ -389,7 +389,7 @@ const SalesAssociatePage = ()=>{
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
-                                                    children: "₹3,250"
+                                                    children: "LKR 3,250"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                     lineNumber: 100,
@@ -517,7 +517,7 @@ const SalesAssociatePage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹45,000"
+                                                children: "LKR 45,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                 lineNumber: 123,
@@ -582,7 +582,7 @@ const SalesAssociatePage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹38,500"
+                                                children: "LKR 38,500"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                 lineNumber: 135,
@@ -647,7 +647,7 @@ const SalesAssociatePage = ()=>{
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "font-bold",
-                                                children: "₹32,000"
+                                                children: "LKR 32,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/salesAssociate/page.tsx",
                                                 lineNumber: 147,

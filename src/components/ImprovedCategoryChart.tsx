@@ -1,0 +1,276 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+
+interface ChartProps {
+  selectedCategory: string;
+  onSupplierSelect?: (supplierId: string, supplierName: string) => void;
+}
+
+interface Supplier {
+  supplier_id: string;
+  supplier_name: string;
+  name?: string;
+  category?: string;
+  manufacturing_items?: string;
+}
+
+interface Category {
+  category_id: number;
+  category_name: string;
+}
+
+interface ChartDataItem {
+  name: string;
+  categoryId?: number;
+  [key: string]: any;
+}
+
+const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSupplierSelect }) => {
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Skip if no category is selected
+        if (!selectedCategory) {
+          setChartData([]);
+          setLoading(false);
+          return;
+        }
+
+        console.log(`Fetching suppliers for category: ${selectedCategory}`);
+
+        // Add a timestamp to prevent caching and ensure fresh data
+        const timestamp = new Date().getTime();
+
+        // First, fetch all suppliers from the database
+        const suppliersResponse = await fetch(`http://localhost:3002/suppliers?t=${timestamp}`);
+        if (!suppliersResponse.ok) {
+          throw new Error(`Failed to fetch suppliers: ${suppliersResponse.status}`);
+        }
+
+        let suppliersData = await suppliersResponse.json() as Supplier[];
+        console.log('Fetched suppliers:', suppliersData);
+
+        // Log each supplier's name and ID for debugging
+        suppliersData.forEach(supplier => {
+          console.log(`Supplier ID: ${supplier.supplier_id}, Name: ${supplier.supplier_name || supplier.name || 'No name'}, Category: ${supplier.category || 'No category'}`);
+        });
+
+        // Filter suppliers by category if a specific category is selected
+        if (selectedCategory !== 'All') {
+          suppliersData = suppliersData.filter(supplier =>
+            supplier.category === selectedCategory ||
+            (supplier.manufacturing_items && supplier.manufacturing_items.includes(selectedCategory))
+          );
+          console.log(`Filtered suppliers for category ${selectedCategory}:`, suppliersData);
+        }
+
+        // Store the suppliers for the dropdown
+        setSuppliers(suppliersData);
+
+        // Fetch categories
+        const categoriesResponse = await fetch(`http://localhost:3002/categories?t=${timestamp}`);
+        if (!categoriesResponse.ok) {
+          throw new Error(`Failed to fetch categories: ${categoriesResponse.status}`);
+        }
+        
+        const categoriesData = await categoriesResponse.json() as Category[];
+        
+        // Create chart data
+        let finalChartData: ChartDataItem[] = [];
+        
+        if (selectedCategory === 'All') {
+          // For 'All' categories, show all categories with supplier counts
+          finalChartData = categoriesData.map(category => {
+            const item: ChartDataItem = {
+              name: category.category_name,
+              categoryId: category.category_id
+            };
+            
+            // Count suppliers for each category
+            suppliersData.forEach(supplier => {
+              const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
+              
+              if (supplier.category === category.category_name || 
+                  (supplier.manufacturing_items && supplier.manufacturing_items.includes(category.category_name))) {
+                item[supplierName] = 1; // Mark as available
+              } else {
+                item[supplierName] = 0; // Mark as unavailable
+              }
+            });
+            
+            return item;
+          });
+        } else {
+          // For a specific category, create a single item with all suppliers
+          const item: ChartDataItem = {
+            name: selectedCategory
+          };
+          
+          // Add all suppliers as 1 (available)
+          suppliersData.forEach(supplier => {
+            const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
+            item[supplierName] = 1;
+          });
+          
+          finalChartData = [item];
+        }
+        
+        console.log('Final chart data:', finalChartData);
+        setChartData(finalChartData);
+      } catch (err) {
+        console.error('Error fetching chart data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
+
+        // Fallback to empty data
+        setChartData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedCategory]);
+
+  const handleSupplierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const supplierId = e.target.value;
+    setSelectedSupplier(supplierId);
+    
+    if (onSupplierSelect && supplierId) {
+      const supplier = suppliers.find(s => s.supplier_id === supplierId);
+      if (supplier) {
+        onSupplierSelect(supplierId, supplier.supplier_name || supplier.name || `Supplier ${supplierId}`);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">
+      <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error loading chart: {error}</div>;
+  }
+
+  if (chartData.length === 0) {
+    return <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-xl font-bold mb-6 text-center">Supplier Distribution by Category</h2>
+      <div className="text-right mb-2">
+        <span className="inline-block bg-yellow-400 w-4 h-4 mr-2"></span>
+        <span className="text-sm">{selectedCategory === 'All' ? 'All Categories' : selectedCategory}</span>
+      </div>
+      <div className="text-center py-10 text-gray-500">
+        {selectedCategory ?
+          `No suppliers found for ${selectedCategory === 'All' ? 'any category' : `the ${selectedCategory} category`}. Please select a different category or add suppliers for this category.` :
+          'Please select a category to see supplier availability'}
+      </div>
+    </div>;
+  }
+
+  // Generate colors for suppliers
+  const colors = suppliers.map((_, index) => {
+    const colorPalette = [
+      '#FFDD00', // Yellow
+      '#FFB347', // Pastel Orange
+      '#FF6B6B', // Light Red
+      '#4ECDC4', // Turquoise
+      '#7FB800', // Apple Green
+      '#9D81BA', // Light Purple
+      '#FF8066', // Salmon
+      '#45B7D1', // Sky Blue
+      '#EF798A', // Pink
+      '#7D82B8'  // Periwinkle
+    ];
+    return colorPalette[index % colorPalette.length];
+  });
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-xl font-bold mb-6 text-center">Supplier Distribution by Category</h2>
+      
+      {/* Supplier Selection Dropdown */}
+      <div className="mb-6">
+        <label htmlFor="supplier-select" className="block text-sm font-medium text-gray-700 mb-2">
+          Select Supplier
+        </label>
+        <select
+          id="supplier-select"
+          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          value={selectedSupplier}
+          onChange={handleSupplierChange}
+        >
+          <option value="">-- Select a Supplier --</option>
+          {suppliers.map(supplier => (
+            <option key={supplier.supplier_id} value={supplier.supplier_id}>
+              {supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      <div className="text-right mb-2">
+        <span className="inline-block bg-yellow-400 w-4 h-4 mr-2"></span>
+        <span className="text-sm">{selectedCategory === 'All' ? 'All Categories' : selectedCategory}</span>
+      </div>
+      
+      <div className="text-center text-sm text-gray-500 mb-4">
+        Showing supplier availability for {selectedCategory === 'All' ? 'all categories' : `the ${selectedCategory} category`}
+      </div>
+      
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="name" 
+              angle={-45} 
+              textAnchor="end" 
+              height={60} 
+              interval={0}
+            />
+            <YAxis label={{ value: 'Supplier Availability', angle: -90, position: 'insideLeft' }} />
+            <Tooltip />
+            <Legend wrapperStyle={{ bottom: 0 }} />
+            {suppliers.map((supplier, index) => {
+              const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
+              return (
+                <Bar 
+                  key={supplier.supplier_id} 
+                  dataKey={supplierName} 
+                  fill={colors[index]} 
+                  name={supplierName}
+                />
+              );
+            })}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+export default ImprovedCategoryChart;

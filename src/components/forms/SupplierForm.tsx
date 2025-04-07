@@ -1,8 +1,8 @@
-"use client"; 
+"use client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Zod schema for form validation
 const schema = z.object({
@@ -21,21 +21,49 @@ const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any })
   const [contactNo, setContactNo] = useState(data?.contact_no || "");
   const [manufacturingItems, setManufacturingItems] = useState(data?.manufacturing_items || "");
   const [category, setCategory] = useState(data?.category || "");
+  const [categories, setCategories] = useState<{category_id: number, category_name: string}[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const { handleSubmit, register, formState: { errors } } = useForm<Inputs>({
     resolver: zodResolver(schema),
   });
 
-  const categories = [
-    "Gold Rings",
-    "Necklaces",
-    "Bracelets",
-    "Earrings",
-    "Gold Bars",
-    "Custom Jewelry",
-    "Gold Coins",
-    "Jewelry Chains",
-  ];
+  // Fetch categories from the database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
+        } else {
+          console.error('Failed to fetch categories');
+          // Fallback to default categories if fetch fails
+          setCategories([
+            { category_id: 1, category_name: "Necklace" },
+            { category_id: 2, category_name: "Ring" },
+            { category_id: 3, category_name: "Earrings" },
+            { category_id: 4, category_name: "Bracelet" },
+            { category_id: 5, category_name: "Other" }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to default categories if fetch fails
+        setCategories([
+          { category_id: 1, category_name: "Necklace" },
+          { category_id: 2, category_name: "Ring" },
+          { category_id: 3, category_name: "Earrings" },
+          { category_id: 4, category_name: "Bracelet" },
+          { category_id: 5, category_name: "Other" }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const onSubmit = handleSubmit(async () => {
     try {
@@ -128,9 +156,9 @@ const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any })
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">Select Category</option>
-            {categories.map((cat, index) => (
-              <option key={index} value={cat}>
-                {cat}
+            {categories.map((cat) => (
+              <option key={cat.category_id} value={cat.category_name}>
+                {cat.category_name}
               </option>
             ))}
           </select>

@@ -28,16 +28,43 @@ const AddOrderPage = () => {
   const [imagePreview, setImagePreview] = useState<string | 'loading' | null>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
-  // Hardcoded categories for now
-  const categories = [
-    'Wedding Sets',
-    'Rings',
-    'Necklaces',
-    'Bracelets',
-    'Earrings',
-    'Pendants',
-    'Chains'
-  ];
+  // State for categories
+  const [categories, setCategories] = useState<{category_id: number, category_name: string}[]>([]);
+
+  // Fetch categories from the database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
+        } else {
+          console.error('Failed to fetch categories');
+          // Fallback to default categories if fetch fails
+          setCategories([
+            { category_id: 1, category_name: "Necklace" },
+            { category_id: 2, category_name: "Ring" },
+            { category_id: 3, category_name: "Earrings" },
+            { category_id: 4, category_name: "Bracelet" },
+            { category_id: 5, category_name: "Other" }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to default categories if fetch fails
+        setCategories([
+          { category_id: 1, category_name: "Necklace" },
+          { category_id: 2, category_name: "Ring" },
+          { category_id: 3, category_name: "Earrings" },
+          { category_id: 4, category_name: "Bracelet" },
+          { category_id: 5, category_name: "Other" }
+        ]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Fetch suppliers from the database
   useEffect(() => {
@@ -216,7 +243,7 @@ const AddOrderPage = () => {
             >
               <option value="">Select Category</option>
               {categories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.category_id} value={cat.category_name}>{cat.category_name}</option>
               ))}
             </select>
           </div>

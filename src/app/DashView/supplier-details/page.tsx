@@ -25,7 +25,9 @@ const SupplierDetailsPage = () => {
     const fetchSuppliers = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:3002/suppliers");
+        // Add timestamp to prevent caching
+        const timestamp = new Date().getTime();
+        const response = await fetch(`http://localhost:3002/suppliers?t=${timestamp}`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch suppliers: ${response.status}`);
@@ -36,23 +38,45 @@ const SupplierDetailsPage = () => {
         if (Array.isArray(data)) {
           setSuppliers(data);
 
-          // Extract unique categories from suppliers
-          const uniqueCategories = new Set<string>();
-          uniqueCategories.add('All'); // Add 'All' as default option
+          // Fetch categories from the database
+          try {
+            const categoriesResponse = await fetch(`http://localhost:3002/categories?t=${timestamp}`);
+            if (categoriesResponse.ok) {
+              const categoriesData = await categoriesResponse.json();
 
-          data.forEach((supplier) => {
-            if (supplier.category) {
-              uniqueCategories.add(supplier.category);
+              // Create an array with 'All' as the first option, followed by category names
+              const categoryNames = ['All', ...categoriesData.map((cat: any) => cat.category_name)];
+              setCategories(categoryNames);
+            } else {
+              console.error('Failed to fetch categories');
+
+              // Fallback: Extract unique categories from suppliers
+              const uniqueCategories = new Set<string>();
+              uniqueCategories.add('All'); // Add 'All' as default option
+
+              data.forEach((supplier) => {
+                if (supplier.category) {
+                  uniqueCategories.add(supplier.category);
+                }
+              });
+
+              setCategories(Array.from(uniqueCategories));
             }
+          } catch (error) {
+            console.error('Error fetching categories:', error);
 
-            // Also add manufacturing items as categories
-            if (supplier.manufacturing_items) {
-              const items = supplier.manufacturing_items.split(',');
-              items.forEach((item: string) => uniqueCategories.add(item.trim()));
-            }
-          });
+            // Fallback: Extract unique categories from suppliers
+            const uniqueCategories = new Set<string>();
+            uniqueCategories.add('All'); // Add 'All' as default option
 
-          setCategories(Array.from(uniqueCategories));
+            data.forEach((supplier) => {
+              if (supplier.category) {
+                uniqueCategories.add(supplier.category);
+              }
+            });
+
+            setCategories(Array.from(uniqueCategories));
+          }
         } else {
           throw new Error("Unexpected data format");
         }
@@ -157,8 +181,11 @@ const SupplierDetailsPage = () => {
           </div>
         </div>
 
-        {/* Supplier Category Chart */}
-        <SupplierCategoryChart selectedCategory={selectedCategory} />
+        {/* Supplier Category Chart - with key to force re-render when category changes */}
+        <SupplierCategoryChart
+          key={`supplier-chart-${selectedCategory}-${new Date().getTime()}`}
+          selectedCategory={selectedCategory}
+        />
       </div>
     </div>
   );

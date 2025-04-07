@@ -102,7 +102,7 @@ const CashierPage: React.FC = () => {
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">TRX-2023-001</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Amal Perera</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹12,500</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 12,500</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Cash</td>
                                 <td className="px-6 py-4 whitespace-nowrap">10:30 AM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span></td>
@@ -110,7 +110,7 @@ const CashierPage: React.FC = () => {
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">TRX-2023-002</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Nimal Silva</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹8,750</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 8,750</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Credit Card</td>
                                 <td className="px-6 py-4 whitespace-nowrap">11:45 AM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span></td>
@@ -118,7 +118,7 @@ const CashierPage: React.FC = () => {
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap">TRX-2023-003</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Kamala Jayawardene</td>
-                                <td className="px-6 py-4 whitespace-nowrap">₹3,250</td>
+                                <td className="px-6 py-4 whitespace-nowrap">LKR 3,250</td>
                                 <td className="px-6 py-4 whitespace-nowrap">Debit Card</td>
                                 <td className="px-6 py-4 whitespace-nowrap">1:15 PM</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span></td>
