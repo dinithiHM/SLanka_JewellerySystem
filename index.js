@@ -20,6 +20,9 @@ import { jewelleryItemsRouter } from "./Routes/jewelleryItemsRoutes.js"; // ✅ 
 import { salesRouter } from "./Routes/salesRoutes.js"; // ✅ Import Sales Routes
 import { saleItemsRouter } from "./Routes/saleItemsRoutes.js"; // ✅ Import Sale Items Routes
 import { cashierRouter } from "./Routes/cashierRoutes.js"; // ✅ Import Cashier Routes
+import { advancePaymentRouter } from "./Routes/advancePaymentRoutes.js"; // ✅ Import Advance Payment Routes
+import { customOrderRouter } from "./Routes/customOrderRoutes.simple.js"; // ✅ Import Simplified Custom Order Routes
+import { categoryRouter } from "./Routes/categoryRoutes.js"; // ✅ Import Category Routes
 
 const app = express();
 
@@ -81,6 +84,9 @@ app.use("/jewellery-items", jewelleryItemsRouter); // ✅ Add jewellery items ro
 app.use("/sales", salesRouter); // ✅ Add sales routes
 app.use("/sale-items", saleItemsRouter); // ✅ Add sale items routes
 app.use("/cashiers", cashierRouter); // ✅ Add cashier routes
+app.use("/advance-payments", advancePaymentRouter); // ✅ Add advance payment routes
+app.use("/custom-orders", customOrderRouter); // ✅ Add custom order routes
+app.use("/categories", categoryRouter); // ✅ Add category routes
 
 // ✅ Start the server
 const PORT = 3002;
