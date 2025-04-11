@@ -4,15 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CreditCard,
-  DollarSign,
   Package,
   ShoppingBag,
   User,
-  Calendar,
   FileText,
   CheckCircle,
   X
 } from 'lucide-react';
+import LKRIcon from '@/components/icons/LKRIcon';
 import { formatCurrency } from '@/utils/formatters';
 
 // Define types
@@ -29,7 +28,14 @@ interface CustomOrder {
   order_reference: string;
   customer_name: string;
   total_amount: number;
+  estimated_amount?: number;
+  advance_amount?: number;
   status: string;
+  payment_status?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  description?: string;
+  special_requirements?: string;
 }
 
 // Payment type enum
@@ -71,6 +77,66 @@ const AdvancePaymentPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
 
+  // State for existing payments
+  const [existingPayments, setExistingPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  // Fetch existing payments
+  const fetchExistingPayments = async () => {
+    setLoadingPayments(true);
+    try {
+      const response = await fetch('http://localhost:3002/advance-payments');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched existing payments:', data);
+        setExistingPayments(data);
+      } else {
+        console.error('Failed to fetch existing payments');
+      }
+    } catch (err) {
+      console.error('Error fetching existing payments:', err);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // Check for order ID in URL query parameters
+  useEffect(() => {
+    // Get the URL search params
+    const searchParams = new URLSearchParams(window.location.search);
+    const orderIdParam = searchParams.get('order');
+
+    if (orderIdParam) {
+      // If order ID is in URL, set payment type to custom order
+      setPaymentType(PaymentType.CUSTOM_ORDER);
+      console.log(`Order ID found in URL: ${orderIdParam}`);
+
+      // Wait for custom orders to load before selecting
+      const checkAndSelectOrder = () => {
+        if (customOrders.length > 0) {
+          const orderId = parseInt(orderIdParam);
+          setSelectedOrderId(orderId);
+
+          // Scroll to the payment form
+          const paymentForm = document.getElementById('payment-form');
+          if (paymentForm) {
+            paymentForm.scrollIntoView({ behavior: 'smooth' });
+          }
+        } else {
+          // If custom orders not loaded yet, try again in 500ms
+          setTimeout(checkAndSelectOrder, 500);
+        }
+      };
+
+      checkAndSelectOrder();
+    }
+  }, [customOrders]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchExistingPayments();
+  }, []);
+
   // Fetch available items and custom orders on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -82,11 +148,36 @@ const AdvancePaymentPage = () => {
           const itemsData = await itemsResponse.json();
           setAvailableItems(itemsData);
 
-          // Extract unique categories
-          const uniqueCategories = Array.from(new Set(itemsData.map((item: JewelleryItem) => item.category)));
-          setCategories(uniqueCategories);
-          if (uniqueCategories.length > 0) {
-            setSelectedCategory(uniqueCategories[0]);
+          // Fetch categories from the database instead of extracting from items
+          try {
+            const categoriesResponse = await fetch('http://localhost:3002/categories');
+            if (categoriesResponse.ok) {
+              const categoriesData = await categoriesResponse.json();
+              // Extract category names from the response
+              const categoryNames = categoriesData.map((cat: any) => cat.category_name);
+              console.log('Fetched categories from database:', categoryNames);
+              setCategories(categoryNames);
+
+              if (categoryNames.length > 0) {
+                setSelectedCategory(categoryNames[0]);
+              }
+            } else {
+              // Fallback to extracting from items if API fails
+              console.warn('Failed to fetch categories, falling back to item categories');
+              const uniqueCategories = Array.from(new Set(itemsData.map((item: JewelleryItem) => item.category))) as string[];
+              setCategories(uniqueCategories);
+              if (uniqueCategories.length > 0) {
+                setSelectedCategory(uniqueCategories[0]);
+              }
+            }
+          } catch (catErr) {
+            console.error('Error fetching categories:', catErr);
+            // Fallback to extracting from items
+            const uniqueCategories = Array.from(new Set(itemsData.map((item: JewelleryItem) => item.category))) as string[];
+            setCategories(uniqueCategories);
+            if (uniqueCategories.length > 0) {
+              setSelectedCategory(uniqueCategories[0]);
+            }
           }
         }
 
@@ -94,6 +185,8 @@ const AdvancePaymentPage = () => {
         const ordersResponse = await fetch('http://localhost:3002/advance-payments/orders/custom');
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
+
+          // The backend now filters out completed orders
           setCustomOrders(ordersData);
         }
       } catch (err) {
@@ -140,19 +233,95 @@ const AdvancePaymentPage = () => {
       setSelectedOrder(order || null);
 
       if (order) {
-        // Set customer name and total amount from the order
+        // Set all available fields from the order
         setCustomerName(order.customer_name);
-        setTotalAmount(order.total_amount);
+
+        // Set total amount from the estimated amount
+        if (order.estimated_amount) {
+          setTotalAmount(typeof order.estimated_amount === 'string' ?
+            parseFloat(order.estimated_amount) : order.estimated_amount);
+        }
+
+        // If there's already an advance amount, calculate the remaining balance
+        if (order.advance_amount && order.advance_amount > 0) {
+          const advanceAmount = typeof order.advance_amount === 'string' ?
+            parseFloat(order.advance_amount) : order.advance_amount;
+
+          console.log(`This order already has an advance payment of ${advanceAmount}`);
+
+          // Calculate the remaining balance (total - advance)
+          const totalAmt = typeof order.estimated_amount === 'string' ?
+            parseFloat(order.estimated_amount) : (order.estimated_amount || 0);
+
+          const remainingBalance = totalAmt - advanceAmount;
+          console.log(`Total amount: ${totalAmt}, Advance: ${advanceAmount}, Remaining: ${remainingBalance}`);
+
+          // Update the balance amount field
+          setBalanceAmount(remainingBalance);
+        }
+
+        // Fetch additional order details if needed
+        fetchOrderDetails(selectedOrderId);
       }
     } else {
       setSelectedOrder(null);
     }
   }, [selectedOrderId, customOrders]);
 
+  // Function to fetch more details about a custom order
+  const fetchOrderDetails = async (orderId: number) => {
+    try {
+      const response = await fetch(`http://localhost:3002/custom-orders/${orderId}`);
+      if (response.ok) {
+        const orderDetails = await response.json();
+        console.log('Fetched order details:', orderDetails);
+
+        // Update form with additional details
+        if (orderDetails.customer_phone) {
+          // We don't have a phone field in the advance payment form,
+          // but we can log it for reference
+          console.log(`Customer phone: ${orderDetails.customer_phone}`);
+        }
+
+        if (orderDetails.customer_email) {
+          // We don't have an email field in the advance payment form,
+          // but we can log it for reference
+          console.log(`Customer email: ${orderDetails.customer_email}`);
+        }
+
+        // Add any notes about the order
+        let orderNotes = '';
+        if (orderDetails.description) {
+          orderNotes += `Description: ${orderDetails.description}\n`;
+        }
+        if (orderDetails.special_requirements) {
+          orderNotes += `Special Requirements: ${orderDetails.special_requirements}\n`;
+        }
+        if (orderNotes) {
+          setNotes(orderNotes);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+    }
+  };
+
   // Calculate balance amount when total or advance amount changes
   useEffect(() => {
-    setBalanceAmount(totalAmount - advanceAmount);
-  }, [totalAmount, advanceAmount]);
+    // If this is a custom order with existing advance payment, account for it
+    if (selectedOrder && selectedOrder.advance_amount && selectedOrder.advance_amount > 0) {
+      const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
+        parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
+
+      // The balance is: total - (existing advance + new advance)
+      setBalanceAmount(totalAmount - (existingAdvance + advanceAmount));
+      console.log(`Balance calculation: ${totalAmount} - (${existingAdvance} + ${advanceAmount}) = ${totalAmount - (existingAdvance + advanceAmount)}`);
+    } else {
+      // Normal calculation for new payments
+      setBalanceAmount(totalAmount - advanceAmount);
+      console.log(`Standard balance calculation: ${totalAmount} - ${advanceAmount} = ${totalAmount - advanceAmount}`);
+    }
+  }, [totalAmount, advanceAmount, selectedOrder]);
 
   // Handle payment type change
   const handlePaymentTypeChange = (type: PaymentType) => {
@@ -237,7 +406,7 @@ const AdvancePaymentPage = () => {
     const branchId = localStorage.getItem('branchId');
 
     // Prepare data for submission
-    const paymentData = {
+    const paymentData: any = {
       customer_name: customerName,
       total_amount: totalAmount,
       advance_amount: advanceAmount,
@@ -250,6 +419,21 @@ const AdvancePaymentPage = () => {
       item_id: paymentType === PaymentType.INVENTORY_ITEM ? selectedItemId : null,
       item_quantity: paymentType === PaymentType.INVENTORY_ITEM ? quantity : null
     };
+
+    // If this is a custom order with existing advance payment, include it
+    if (paymentType === PaymentType.CUSTOM_ORDER && selectedOrder?.advance_amount) {
+      const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
+        parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
+
+      paymentData.existing_advance_amount = existingAdvance;
+      console.log(`Including existing advance amount: ${existingAdvance}`);
+
+      // Also include the calculated balance amount
+      paymentData.balance_amount = totalAmount - (existingAdvance + advanceAmount);
+    } else {
+      // Standard balance calculation
+      paymentData.balance_amount = totalAmount - advanceAmount;
+    }
 
     // Log the data being sent
     console.log('Sending payment data:', paymentData);
@@ -278,6 +462,9 @@ const AdvancePaymentPage = () => {
       setPaymentReference(result.payment_reference);
       setShowSuccessModal(true);
 
+      // Refresh the payments list
+      fetchExistingPayments();
+
       // Reset form after successful submission
       if (paymentType === PaymentType.INVENTORY_ITEM) {
         setSelectedItemId(null);
@@ -305,8 +492,75 @@ const AdvancePaymentPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Advance Payment</h1>
+
+      {/* Existing Payments Table */}
+      <div className="mb-10 bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Existing Advance Payments</h2>
+          <button
+            onClick={fetchExistingPayments}
+            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md flex items-center text-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
+
+        {loadingPayments ? (
+          <div className="flex justify-center items-center h-20">
+            <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : existingPayments.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 border-b text-left">ID</th>
+                  <th className="py-2 px-4 border-b text-left">Reference</th>
+                  <th className="py-2 px-4 border-b text-left">Customer</th>
+                  <th className="py-2 px-4 border-b text-left">Date</th>
+                  <th className="py-2 px-4 border-b text-right">Total Amount</th>
+                  <th className="py-2 px-4 border-b text-right">Advance Amount</th>
+                  <th className="py-2 px-4 border-b text-right">Balance</th>
+                  <th className="py-2 px-4 border-b text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {existingPayments.map((payment) => (
+                  <tr key={payment.payment_id} className="hover:bg-gray-50">
+                    <td className="py-2 px-4 border-b">{payment.payment_id}</td>
+                    <td className="py-2 px-4 border-b">{payment.payment_reference}</td>
+                    <td className="py-2 px-4 border-b">{payment.customer_name}</td>
+                    <td className="py-2 px-4 border-b">{new Date(payment.payment_date).toLocaleDateString()}</td>
+                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.total_amount)}</td>
+                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.advance_amount)}</td>
+                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.balance_amount)}</td>
+                    <td className="py-2 px-4 border-b text-center">
+                      <span
+                        className={`inline-block px-2 py-1 text-xs rounded-full ${
+                          payment.payment_status === 'Completed'
+                            ? 'bg-green-100 text-green-800'
+                            : payment.payment_status === 'Partially Paid'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {payment.payment_status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-4 text-gray-500">No advance payments found</div>
+        )}
+      </div>
 
       {/* Error message */}
       {error && (
@@ -365,7 +619,7 @@ const AdvancePaymentPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
+      <form id="payment-form" onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
         {/* Item or Order Selection */}
         {paymentType === PaymentType.INVENTORY_ITEM ? (
           <div className="mb-6 space-y-4">
@@ -429,7 +683,7 @@ const AdvancePaymentPage = () => {
         ) : (
           <div className="mb-6">
             <label htmlFor="order" className="block text-sm font-medium text-gray-700 mb-1">
-              Custom Order
+              Custom Order <span className="text-xs text-gray-500">(Only showing orders that need payment)</span>
             </label>
             <div className="relative">
               <select
@@ -439,13 +693,41 @@ const AdvancePaymentPage = () => {
                 onChange={handleOrderChange}
               >
                 <option value="">Select a custom order</option>
-                {customOrders.map(order => (
-                  <option key={order.order_id} value={order.order_id}>
-                    {order.order_reference} - {order.customer_name} - {formatCurrency(order.total_amount)}
-                  </option>
-                ))}
+                {customOrders.length > 0 ? (
+                  customOrders.map(order => (
+                    <option key={order.order_id} value={order.order_id}>
+                      {order.order_reference} - {order.customer_name} - {formatCurrency(order.estimated_amount || order.total_amount)}
+                      {order.advance_amount && order.advance_amount > 0 ? ` (Advance: ${formatCurrency(order.advance_amount)})` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>No orders requiring payment found</option>
+                )}
               </select>
             </div>
+
+            {selectedOrder && (
+              <div className="mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
+                <strong>Order Status:</strong> {selectedOrder.payment_status || 'Not Paid'}
+                {selectedOrder.advance_amount && selectedOrder.advance_amount > 0 ? (
+                  <>
+                    <br />
+                    <strong>Current advance payment:</strong> {formatCurrency(selectedOrder.advance_amount || 0)}
+                    <br />
+                    <strong>Remaining balance:</strong> {formatCurrency((selectedOrder.estimated_amount || 0) - (selectedOrder.advance_amount || 0))}
+                    <br />
+                    <span className="text-green-700">Any amount entered below will be an additional payment.</span>
+                  </>
+                ) : (
+                  <>
+                    <br />
+                    <strong>Total amount:</strong> {formatCurrency(selectedOrder.estimated_amount || 0)}
+                    <br />
+                    <span className="text-green-700">No payments have been made yet.</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -478,7 +760,7 @@ const AdvancePaymentPage = () => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <DollarSign className="h-5 w-5 text-gray-400" />
+                <LKRIcon className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="number"
@@ -503,7 +785,7 @@ const AdvancePaymentPage = () => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <DollarSign className="h-5 w-5 text-gray-400" />
+                <LKRIcon className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="number"
@@ -525,7 +807,7 @@ const AdvancePaymentPage = () => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <DollarSign className="h-5 w-5 text-gray-400" />
+                <LKRIcon className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="number"

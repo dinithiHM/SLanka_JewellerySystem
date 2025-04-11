@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { 
-  DollarSign, 
-  CreditCard, 
+import {
+  CreditCard,
   FileText,
   CheckCircle,
   X,
   ArrowLeft
 } from 'lucide-react';
+import LKRIcon from '@/components/icons/LKRIcon';
 import { formatCurrency } from '@/utils/formatters';
 
 // Define types
@@ -34,22 +34,22 @@ const CompleteAdvancePaymentPage = () => {
   const router = useRouter();
   const params = useParams();
   const paymentId = params.id;
-  
+
   // State for data
   const [payment, setPayment] = useState<AdvancePayment | null>(null);
-  
+
   // State for form fields
   const [additionalAmount, setAdditionalAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
-  
+
   // State for UI
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  
+
   // Fetch payment details on component mount
   useEffect(() => {
     const fetchPaymentDetails = async () => {
@@ -59,10 +59,10 @@ const CompleteAdvancePaymentPage = () => {
         if (!response.ok) {
           throw new Error(`Failed to fetch payment details: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setPayment(data);
-        
+
         // Set default additional amount to the balance
         setAdditionalAmount(data.balance_amount);
       } catch (err) {
@@ -72,12 +72,12 @@ const CompleteAdvancePaymentPage = () => {
         setLoading(false);
       }
     };
-    
+
     if (paymentId) {
       fetchPaymentDetails();
     }
   }, [paymentId]);
-  
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -87,25 +87,25 @@ const CompleteAdvancePaymentPage = () => {
       day: 'numeric'
     });
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     if (additionalAmount <= 0) {
       setError('Additional amount must be greater than zero');
       return;
     }
-    
+
     if (payment && additionalAmount > payment.balance_amount) {
       setError('Additional amount cannot be greater than the balance amount');
       return;
     }
-    
+
     setSubmitting(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`http://localhost:3002/advance-payments/${paymentId}`, {
         method: 'PUT',
@@ -117,18 +117,18 @@ const CompleteAdvancePaymentPage = () => {
           notes
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to update payment');
       }
-      
+
       const result = await response.json();
-      
+
       // Show success message
       setSuccess('Payment updated successfully!');
       setShowSuccessModal(true);
-      
+
       // Update payment data with new values
       if (payment) {
         setPayment({
@@ -145,12 +145,12 @@ const CompleteAdvancePaymentPage = () => {
       setSubmitting(false);
     }
   };
-  
+
   // Handle cancel button
   const handleCancel = () => {
     router.back();
   };
-  
+
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center min-h-[60vh]">
@@ -158,7 +158,7 @@ const CompleteAdvancePaymentPage = () => {
       </div>
     );
   }
-  
+
   if (!payment) {
     return (
       <div className="p-6">
@@ -175,7 +175,7 @@ const CompleteAdvancePaymentPage = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center mb-6">
@@ -187,12 +187,12 @@ const CompleteAdvancePaymentPage = () => {
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Complete Advance Payment</h1>
       </div>
-      
+
       {/* Error message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
           <span className="block sm:inline">{error}</span>
-          <button 
+          <button
             className="absolute top-0 bottom-0 right-0 px-4 py-3"
             onClick={() => setError(null)}
           >
@@ -200,12 +200,12 @@ const CompleteAdvancePaymentPage = () => {
           </button>
         </div>
       )}
-      
+
       {/* Success message */}
       {success && !showSuccessModal && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
           <span className="block sm:inline">{success}</span>
-          <button 
+          <button
             className="absolute top-0 bottom-0 right-0 px-4 py-3"
             onClick={() => setSuccess(null)}
           >
@@ -213,11 +213,11 @@ const CompleteAdvancePaymentPage = () => {
           </button>
         </div>
       )}
-      
+
       {/* Payment Details */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-lg font-semibold mb-4">Payment Details</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <p className="text-sm text-gray-500">Reference</p>
@@ -250,7 +250,7 @@ const CompleteAdvancePaymentPage = () => {
             </div>
           )}
         </div>
-        
+
         <div className="grid grid-cols-3 gap-4 bg-gray-50 p-4 rounded-md">
           <div>
             <p className="text-sm text-gray-500">Total Amount</p>
@@ -266,18 +266,18 @@ const CompleteAdvancePaymentPage = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Additional Payment Form */}
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Make Additional Payment</h2>
-        
+
         <div className="mb-4">
           <label htmlFor="additionalAmount" className="block text-sm font-medium text-gray-700 mb-1">
             Payment Amount
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <DollarSign className="h-5 w-5 text-gray-400" />
+              <LKRIcon className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="number"
@@ -295,7 +295,7 @@ const CompleteAdvancePaymentPage = () => {
             Maximum amount: {formatCurrency(payment.balance_amount)}
           </p>
         </div>
-        
+
         <div className="mb-4">
           <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-1">
             Payment Method
@@ -318,7 +318,7 @@ const CompleteAdvancePaymentPage = () => {
             </select>
           </div>
         </div>
-        
+
         <div className="mb-6">
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
             Notes (Optional)
@@ -337,7 +337,7 @@ const CompleteAdvancePaymentPage = () => {
             />
           </div>
         </div>
-        
+
         <div className="flex justify-between">
           <button
             type="button"
@@ -355,7 +355,7 @@ const CompleteAdvancePaymentPage = () => {
           </button>
         </div>
       </form>
-      
+
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -375,22 +375,35 @@ const CompleteAdvancePaymentPage = () => {
                 </>
               )}
             </p>
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => router.push('/DashView/advance-payment/view')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                View All Payments
-              </button>
-              <button
-                onClick={() => {
-                  // Implement print functionality here
-                  window.print();
-                }}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-              >
-                Print Receipt
-              </button>
+            <div className="flex flex-col space-y-3">
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => router.push('/DashView/advance-payment/view')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  View All Payments
+                </button>
+                <button
+                  onClick={() => {
+                    // Implement print functionality here
+                    window.print();
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Print Receipt
+                </button>
+              </div>
+
+              {payment.is_custom_order && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => router.push('/DashView/custom-orders')}
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                  >
+                    View Custom Orders
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

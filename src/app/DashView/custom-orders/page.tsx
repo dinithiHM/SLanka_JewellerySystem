@@ -15,7 +15,8 @@ import {
   CheckCircle,
   AlertCircle,
   Truck,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import Image from 'next/image';
 import { formatCurrency } from '@/utils/formatters';
@@ -34,7 +35,7 @@ interface CustomOrder {
   advance_amount: number;
   balance_amount: number;
   order_status: 'Pending' | 'In Progress' | 'Completed' | 'Delivered' | 'Cancelled';
-  payment_status: 'Not Paid' | 'Partially Paid' | 'Fully Paid';
+  payment_status: 'Not Paid' | 'Partially Paid' | 'Fully Paid' | 'Completed';
   category_name: string | null;
   description: string | null;
   special_requirements: string | null;
@@ -44,6 +45,9 @@ interface CustomOrder {
   images: string | null;
   payment_count: number;
   total_paid: number;
+  min_balance?: number | null;
+  latest_payment_status?: string | null;
+  current_payment_status?: string | null;
 }
 
 const CustomOrdersPage = () => {
@@ -55,35 +59,121 @@ const CustomOrdersPage = () => {
 
   // State for UI
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('order_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedOrder, setSelectedOrder] = useState<CustomOrder | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'info' | 'warning' | 'error'} | null>(null);
+  const [previousOrders, setPreviousOrders] = useState<CustomOrder[]>([]);
+  const [recentlyChangedOrders, setRecentlyChangedOrders] = useState<number[]>([]);
 
-  // Fetch custom orders on component mount
-  useEffect(() => {
-    const fetchOrders = async () => {
+  // Function to fetch custom orders
+  const fetchOrders = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-      try {
-        const response = await fetch('http://localhost:3002/custom-orders');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch orders: ${response.status}`);
-        }
+    }
 
-        const data = await response.json();
-        setOrders(data);
-        setFilteredOrders(data);
-      } catch (err) {
-        console.error('Error fetching custom orders:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching orders');
-      } finally {
-        setLoading(false);
+    try {
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`http://localhost:3002/custom-orders?t=${timestamp}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Check for payment status changes
+      if (previousOrders.length > 0) {
+        const paymentChanges = data.filter((newOrder: CustomOrder) => {
+          const oldOrder = previousOrders.find(o => o.order_id === newOrder.order_id);
+          return oldOrder && (
+            oldOrder.payment_status !== newOrder.payment_status ||
+            oldOrder.advance_amount !== newOrder.advance_amount ||
+            oldOrder.total_paid !== newOrder.total_paid
+          );
+        });
+
+        if (paymentChanges.length > 0) {
+          // Track recently changed orders for highlighting
+          const changedOrderIds = paymentChanges.map((order: CustomOrder) => order.order_id);
+          setRecentlyChangedOrders(changedOrderIds);
+
+          // Clear the highlight after 15 seconds
+          setTimeout(() => setRecentlyChangedOrders([]), 15000);
+
+          // Show notification for payment status changes
+          const changedOrder = paymentChanges[0]; // Just show the first one if multiple changed
+          const statusText =
+            (changedOrder.payment_status === 'Completed' || changedOrder.payment_status === 'Fully Paid') ? 'Completed' :
+            changedOrder.payment_status === 'Partially Paid' ? 'Partially Paid' : 'Not Paid';
+
+          setNotification({
+            message: `Payment status updated: ${changedOrder.order_reference} is now ${statusText}`,
+            type: (changedOrder.payment_status === 'Completed' || changedOrder.payment_status === 'Fully Paid') ? 'success' : 'info'
+          });
+
+          // Auto-dismiss notification after 5 seconds
+          setTimeout(() => setNotification(null), 5000);
+        }
+      }
+
+      // Save current orders for future comparison
+      setPreviousOrders(data);
+
+      // Update state
+      setOrders(data);
+      setFilteredOrders(data);
+      setLastRefreshed(new Date());
+      console.log('Orders refreshed at:', new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Error fetching custom orders:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching orders');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Fetch custom orders on component mount and set up auto-refresh
+  useEffect(() => {
+    // Initial fetch
+    fetchOrders();
+
+    // Set up auto-refresh every 10 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('Auto-refreshing orders...');
+      fetchOrders();
+    }, 10000); // 10 seconds
+
+    // Add visibility change listener to refresh when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, refreshing orders...');
+        fetchOrders();
       }
     };
 
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Clean up interval and event listeners on unmount
+    return () => {
+      clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // This effect will run whenever the component is mounted or remounted
+  useEffect(() => {
+    console.log('Custom orders component mounted, refreshing data...');
     fetchOrders();
   }, []);
 
@@ -105,6 +195,11 @@ const CustomOrdersPage = () => {
     // Apply status filter
     if (statusFilter !== 'all') {
       result = result.filter(order => order.order_status === statusFilter);
+    }
+
+    // Apply payment status filter
+    if (paymentStatusFilter !== 'all') {
+      result = result.filter(order => order.payment_status === paymentStatusFilter);
     }
 
     // Apply sorting
@@ -136,7 +231,7 @@ const CustomOrdersPage = () => {
     });
 
     setFilteredOrders(result);
-  }, [orders, searchTerm, statusFilter, sortField, sortDirection]);
+  }, [orders, searchTerm, statusFilter, paymentStatusFilter, sortField, sortDirection]);
 
   // Handle sort change
   const handleSort = (field: string) => {
@@ -225,7 +320,59 @@ const CustomOrdersPage = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Custom Orders</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Custom Orders</h1>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">
+            Last updated: {lastRefreshed.toLocaleTimeString()}
+          </span>
+          <button
+            onClick={() => fetchOrders(true)}
+            className="flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 text-sm"
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-md shadow-lg transition-all duration-300 transform translate-x-0 ${
+          notification.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
+          notification.type === 'info' ? 'bg-blue-100 border border-blue-400 text-blue-700' :
+          notification.type === 'warning' ? 'bg-yellow-100 border border-yellow-400 text-yellow-700' :
+          'bg-red-100 border border-red-400 text-red-700'
+        }`}>
+          <div className="flex items-center">
+            <div className="mr-2">
+              {notification.type === 'success' && <CheckCircle size={18} />}
+              {notification.type === 'info' && <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+              {notification.type === 'warning' && <AlertCircle size={18} />}
+              {notification.type === 'error' && <X size={18} />}
+            </div>
+            <span>{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-4 text-gray-500 hover:text-gray-700"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (
@@ -251,30 +398,68 @@ const CustomOrdersPage = () => {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-gray-400" />
-              <select
-                className="p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-5 w-5 text-gray-400" />
+                <select
+                  className="p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <select
+                  className="p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+                  value={paymentStatusFilter}
+                  onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Payment Statuses</option>
+                  <option value="Fully Paid">Fully Paid</option>
+                  <option value="Partially Paid">Partially Paid</option>
+                  <option value="Not Paid">Not Paid</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={handleCreateOrder}
-            className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-          >
-            <Plus size={18} className="mr-2" />
-            New Custom Order
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => fetchOrders(true)}
+              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={18} className="mr-2" />
+                  Refresh
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleCreateOrder}
+              className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+            >
+              <Plus size={18} className="mr-2" />
+              New Custom Order
+            </button>
+          </div>
         </div>
       </div>
 
@@ -360,7 +545,10 @@ const CustomOrdersPage = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.map((order) => (
-                  <tr key={order.order_id} className="hover:bg-gray-50">
+                  <tr
+                    key={order.order_id}
+                    className={`hover:bg-gray-50 transition-colors duration-300 ${recentlyChangedOrders.includes(order.order_id) ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''}`}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Calendar className="h-5 w-5 text-gray-400 mr-2" />
@@ -397,18 +585,49 @@ const CustomOrdersPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeColor(order.payment_status)}`}>
-                        {order.payment_status}
-                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <div className={`px-3 py-1 rounded-md ${order.payment_status === 'Fully Paid' ? 'bg-green-100' : order.payment_status === 'Partially Paid' ? 'bg-yellow-100' : 'bg-red-100'} ${recentlyChangedOrders.includes(order.order_id) ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}>
+                          <span className={`font-semibold ${order.payment_status === 'Fully Paid' ? 'text-green-800' : order.payment_status === 'Partially Paid' ? 'text-yellow-800' : 'text-red-800'}`}>
+                            {/* Display the payment status directly from the database */}
+                            {order.payment_status}
+                            {recentlyChangedOrders.includes(order.order_id) && (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </span>
+                          <div className="text-xs mt-1">
+                            <span className="flex items-center">
+                              <LKRIcon className="h-3 w-3 mr-1" />
+                              {formatCurrency(order.total_paid || order.advance_amount)} / {formatCurrency(order.estimated_amount)}
+                            </span>
+                            {order.payment_count > 0 && (
+                              <span className="text-xs text-gray-600 mt-0.5">{order.payment_count} {order.payment_count === 1 ? 'payment' : 'payments'}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleViewOrder(order.order_id)}
-                        className="text-yellow-600 hover:text-yellow-900 flex items-center"
-                      >
-                        <Eye size={16} className="mr-1" />
-                        View
-                      </button>
+                      <div className="flex flex-col space-y-2">
+                        <button
+                          onClick={() => handleViewOrder(order.order_id)}
+                          className="text-yellow-600 hover:text-yellow-900 flex items-center"
+                        >
+                          <Eye size={16} className="mr-1" />
+                          View
+                        </button>
+
+                        <button
+                          onClick={() => router.push(`/DashView/advance-payment?order=${order.order_id}`)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          Payments
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
