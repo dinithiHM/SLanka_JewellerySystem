@@ -23,6 +23,7 @@ import { cashierRouter } from "./Routes/cashierRoutes.js"; // ✅ Import Cashier
 import { advancePaymentRouter } from "./Routes/advancePaymentRoutes.js"; // ✅ Import Advance Payment Routes
 import { customOrderRouter } from "./Routes/customOrderRoutes.simple.js"; // ✅ Import Simplified Custom Order Routes
 import { categoryRouter } from "./Routes/categoryRoutes.js"; // ✅ Import Category Routes
+import fixPaymentStatusRouter from "./Routes/fixPaymentStatusRoute.js"; // ✅ Import Fix Payment Status Routes
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use("/cashiers", cashierRouter); // ✅ Add cashier routes
 app.use("/advance-payments", advancePaymentRouter); // ✅ Add advance payment routes
 app.use("/custom-orders", customOrderRouter); // ✅ Add custom order routes
 app.use("/categories", categoryRouter); // ✅ Add category routes
+app.use("/maintenance", fixPaymentStatusRouter); // ✅ Add maintenance routes
 
 // ✅ Start the server
 const PORT = 3002;

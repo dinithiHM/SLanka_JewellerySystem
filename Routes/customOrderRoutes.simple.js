@@ -177,11 +177,23 @@ router.post("/create", (req, res) => {
   });
 });
 
-// Get all custom orders
-router.get("/", (req, res) => {
+// Get all custom orders with payment information
+router.get("/", (_req, res) => {
   const sql = `
-    SELECT * FROM custom_order_details
-    ORDER BY order_date DESC
+    SELECT co.*,
+      (SELECT COUNT(*) FROM advance_payments WHERE order_id = co.order_id) as payment_count,
+      (SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id) as total_paid,
+      (SELECT MIN(balance_amount) FROM advance_payments WHERE order_id = co.order_id) as min_balance,
+      (SELECT payment_status FROM advance_payments WHERE order_id = co.order_id ORDER BY payment_id DESC LIMIT 1) as latest_payment_status,
+      CASE
+        WHEN (SELECT MIN(balance_amount) FROM advance_payments WHERE order_id = co.order_id) <= 0 THEN 'Fully Paid'
+        WHEN (SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id) >= co.estimated_amount THEN 'Fully Paid'
+        WHEN (SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id) > 0 THEN 'Partially Paid'
+        ELSE 'Not Paid'
+      END as current_payment_status,
+      (SELECT advance_amount FROM advance_payments WHERE order_id = co.order_id ORDER BY payment_id DESC LIMIT 1) as latest_advance_amount
+    FROM custom_order_details co
+    ORDER BY co.order_date DESC
   `;
 
   con.query(sql, (err, results) => {
@@ -190,7 +202,43 @@ router.get("/", (req, res) => {
       return res.status(500).json({ message: "Database error", error: err.message });
     }
 
-    res.json(results);
+    // Update the payment_status field with the current status from payments
+    const updatedResults = results.map(order => ({
+      ...order,
+      payment_status: order.current_payment_status || order.payment_status
+    }));
+
+    // Update the database with the current payment status if it's different
+    const updatePromises = results.map(order => {
+      return new Promise((resolve) => {
+        if (order.current_payment_status && order.current_payment_status !== order.payment_status) {
+          console.log(`Updating payment status for order ${order.order_id} from ${order.payment_status} to ${order.current_payment_status}`);
+
+          // Update both payment_status and advance_amount if needed
+          const updateSql = `UPDATE custom_orders SET payment_status = ?, advance_amount = ? WHERE order_id = ?`;
+          const advanceAmount = order.total_paid || order.latest_advance_amount || order.advance_amount || 0;
+
+          con.query(updateSql, [order.current_payment_status, advanceAmount, order.order_id], (updateErr) => {
+            if (updateErr) {
+              console.error(`Error updating payment status for order ${order.order_id}:`, updateErr);
+            } else {
+              console.log(`Successfully updated order ${order.order_id} payment status to ${order.current_payment_status} and advance amount to ${advanceAmount}`);
+            }
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    // Wait for all updates to complete
+    Promise.all(updatePromises).then(() => {
+      res.json(updatedResults);
+    }).catch(error => {
+      console.error('Error updating payment statuses:', error);
+      res.json(updatedResults);
+    });
   });
 });
 
