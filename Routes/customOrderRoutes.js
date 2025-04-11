@@ -93,8 +93,25 @@ router.get("/:id", (req, res) => {
   const orderId = req.params.id;
 
   const sql = `
-    SELECT * FROM custom_order_details
-    WHERE order_id = ?
+    SELECT
+      co.*,
+      (
+        COALESCE(SUM(ap.advance_amount), 0) +
+        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
+      ) as actual_advance_amount,
+      (
+        co.estimated_amount -
+        (COALESCE(SUM(ap.advance_amount), 0) +
+         COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0))
+      ) as actual_balance_amount
+    FROM
+      custom_order_details co
+    LEFT JOIN
+      advance_payments ap ON co.order_id = ap.order_id AND ap.is_custom_order = 1
+    WHERE
+      co.order_id = ?
+    GROUP BY
+      co.order_id
   `;
 
   con.query(sql, [orderId], (err, results) => {
@@ -156,10 +173,15 @@ router.get("/:id", (req, res) => {
           // Combine all data
           const orderData = {
             ...results[0],
+            // Use the actual advance amount from the query
+            advance_amount: results[0].actual_advance_amount,
+            balance_amount: results[0].actual_balance_amount,
             materials: materialsResults || [],
             payments: paymentsResults || [],
             imageDetails: processedImages || []
           };
+
+          console.log(`Order ${orderId} - Advance amount: ${orderData.advance_amount}, Balance: ${orderData.balance_amount}`);
 
           res.json(orderData);
         });

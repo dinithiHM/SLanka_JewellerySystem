@@ -239,17 +239,19 @@ router.post("/create", (req, res) => {
       if (is_custom_order && order_id) {
         console.log(`Updating custom order payment status for order_id: ${order_id}`);
         // We're using order_id as custom_order_id in the SQL
-        // Calculate total payments for this order
+        // Calculate total payments for this order by summing all advance payments
         const getTotalPaymentsSql = `
-          SELECT SUM(advance_amount) as total_paid,
-                 (SELECT estimated_amount FROM custom_orders WHERE order_id = ?) as total_amount
+          SELECT
+            SUM(advance_amount) as total_paid,
+            (SELECT estimated_amount FROM custom_orders WHERE order_id = ?) as total_amount,
+            (SELECT COUNT(*) FROM advance_payments WHERE order_id = ? AND is_custom_order = 1) as payment_count
           FROM advance_payments
           WHERE order_id = ? AND is_custom_order = 1
         `;
 
         console.log(`Executing SQL to get total payments for order_id: ${order_id}`);
 
-        con.query(getTotalPaymentsSql, [order_id, order_id], (paymentErr, paymentResults) => {
+        con.query(getTotalPaymentsSql, [order_id, order_id, order_id], (paymentErr, paymentResults) => {
           if (paymentErr) {
             console.error("Error calculating total payments:", paymentErr);
             // Continue with the original payment status
@@ -260,8 +262,13 @@ router.post("/create", (req, res) => {
           // Calculate the correct payment status based on all payments
           const totalPaid = paymentResults[0].total_paid || 0;
           const totalAmount = paymentResults[0].total_amount || 0;
+          const paymentCount = paymentResults[0].payment_count || 0;
 
-          console.log(`Total paid: ${totalPaid}, Total amount: ${totalAmount}`);
+          console.log(`Total paid: ${totalPaid}, Total amount: ${totalAmount}, Payment count: ${paymentCount}`);
+
+          // Calculate the remaining balance
+          const remainingBalance = totalAmount - totalPaid;
+          console.log(`Remaining balance: ${remainingBalance}`);
 
           // Map the payment status to the custom_orders enum values
           let updatedPaymentStatus;
@@ -283,7 +290,8 @@ router.post("/create", (req, res) => {
           console.log(`Updating order status to: ${status}, advance_amount: ${paidAmount} for order_id: ${order_id}`);
           const updateOrderSql = `
             UPDATE custom_orders
-            SET payment_status = ?, advance_amount = ?
+            SET payment_status = ?,
+                advance_amount = ?
             WHERE order_id = ?
           `;
 
@@ -392,13 +400,15 @@ router.put("/:id", (req, res) => {
           // The custom order exists, proceed with the update
           // Calculate total payments for this order
           const getTotalPaymentsSql = `
-            SELECT SUM(advance_amount) as total_paid,
-                   (SELECT estimated_amount FROM custom_orders WHERE order_id = ?) as total_amount
+            SELECT
+              SUM(advance_amount) as total_paid,
+              (SELECT estimated_amount FROM custom_orders WHERE order_id = ?) as total_amount,
+              (SELECT COUNT(*) FROM advance_payments WHERE order_id = ? AND is_custom_order = 1) as payment_count
             FROM advance_payments
             WHERE order_id = ? AND is_custom_order = 1
           `;
 
-          con.query(getTotalPaymentsSql, [payment.order_id, payment.order_id], (paymentErr, paymentResults) => {
+          con.query(getTotalPaymentsSql, [payment.order_id, payment.order_id, payment.order_id], (paymentErr, paymentResults) => {
             if (paymentErr) {
               console.error("Error calculating total payments:", paymentErr);
               // Continue with the original payment status
@@ -409,8 +419,13 @@ router.put("/:id", (req, res) => {
             // Calculate the correct payment status based on all payments
             const totalPaid = paymentResults[0].total_paid || 0;
             const totalAmount = paymentResults[0].total_amount || 0;
+            const paymentCount = paymentResults[0].payment_count || 0;
 
-            console.log(`Total paid: ${totalPaid}, Total amount: ${totalAmount}`);
+            console.log(`Total paid: ${totalPaid}, Total amount: ${totalAmount}, Payment count: ${paymentCount}`);
+
+            // Calculate the remaining balance
+            const remainingBalance = totalAmount - totalPaid;
+            console.log(`Remaining balance: ${remainingBalance}`);
 
             // Map the payment status to the custom_orders enum values
             let updatedPaymentStatus;
@@ -433,7 +448,8 @@ router.put("/:id", (req, res) => {
             console.log(`Updating custom order status to: ${status}, advance_amount: ${paidAmount} for order_id: ${payment.order_id}`);
             const updateOrderSql = `
               UPDATE custom_orders
-              SET payment_status = ?, advance_amount = ?
+              SET payment_status = ?,
+                  advance_amount = ?
               WHERE order_id = ?
             `;
 
@@ -497,7 +513,7 @@ router.get("/items/available", (_req, res) => {
 router.get("/orders/custom", (_req, res) => {
   console.log('GET /advance-payments/orders/custom - Fetching custom orders for advance payment');
 
-  // Use the custom_order_details view to get more comprehensive information
+  // Use a comprehensive query that calculates the actual advance amount from both payment tables
   const sql = `
     SELECT
       co.order_id,
@@ -506,7 +522,15 @@ router.get("/orders/custom", (_req, res) => {
       co.customer_phone,
       co.customer_email,
       co.estimated_amount,
-      co.advance_amount,
+      (
+        COALESCE(SUM(ap.advance_amount), 0) +
+        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
+      ) as advance_amount,
+      (
+        co.estimated_amount -
+        (COALESCE(SUM(ap.advance_amount), 0) +
+         COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0))
+      ) as balance_amount,
       co.description,
       co.special_requirements,
       co.order_status as status,
@@ -514,9 +538,20 @@ router.get("/orders/custom", (_req, res) => {
       co.estimated_completion_date
     FROM
       custom_orders co
+    LEFT JOIN
+      advance_payments ap ON co.order_id = ap.order_id AND ap.is_custom_order = 1
     WHERE
       co.order_status IN ('Pending', 'In Progress')
       AND (co.payment_status IS NULL OR co.payment_status != 'Fully Paid')
+    GROUP BY
+      co.order_id, co.order_reference, co.customer_name, co.customer_phone, co.customer_email,
+      co.estimated_amount, co.description, co.special_requirements, co.order_status,
+      co.payment_status, co.estimated_completion_date
+    HAVING
+      co.estimated_amount > (
+        COALESCE(SUM(ap.advance_amount), 0) +
+        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
+      )
     ORDER BY
       co.order_date DESC
   `;
@@ -529,6 +564,7 @@ router.get("/orders/custom", (_req, res) => {
       return res.status(500).json({ message: "Database error", error: err.message });
     }
 
+    console.log(`Found ${results.length} custom orders that need payment`);
     res.json(results || []);
   });
 });
