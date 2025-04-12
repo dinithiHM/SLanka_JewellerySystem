@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/LanguageContext";
+import TranslatedText from "./TranslatedText";
 import {
   RadialBarChart,
   RadialBar,
@@ -14,6 +16,8 @@ interface User {
 }
 
 const CountChart = () => {
+  // Use language context to trigger re-renders when language changes
+  useLanguage();
   const [data, setData] = useState([
     { name: "Total", count: 0, fill: "#F7CFD8" },
     { name: "Mahiyangana", count: 0, fill: "#AA60C8" },
@@ -64,7 +68,9 @@ const CountChart = () => {
     <div className="bg-[#FFF6BD] rounded-xl w-full h-full p-4">
       {/* TITLE */}
       <div className="flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Employees</h1>
+        <h1 className="text-lg font-semibold">
+          <TranslatedText textKey="dashboard.employees" fallback="Employees" />
+        </h1>
         <Image src="/moreDark.png" alt="" width={20} height={20} />
       </div>
       {/* CHART */}

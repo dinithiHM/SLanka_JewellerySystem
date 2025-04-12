@@ -1,8 +1,12 @@
+'use client';
+
 import React from "react";
 import Menu from "./Menu";
 import Link from "next/link";
 import CartIcon from "./CartIcon";
 import Image from "next/image";
+import LanguageSelector from "./LanguageSelector";
+import { t } from "@/contexts/LanguageContext";
 
 const Navbar = () => {
   const user = false;
@@ -16,7 +20,7 @@ const Navbar = () => {
       </div>
       {/* LOGO */}
       <div className="text-xl md:font-bold flex-1 md:text-center font-bona-nova-sc">
-        <Link href="/">S.LANKA JEWELLERY</Link>
+        <Link href="/">{t('app.name')}</Link>
       </div>
       {/* MOBILE MENU */}
       <div className="md:hidden">
@@ -28,13 +32,14 @@ const Navbar = () => {
           <Image src="/phone.png" alt="" width={20} height={20} />
           <span>123 456 78</span>
         </div>
+        <LanguageSelector />
         {!user ? (
           <Link href="/login">Login</Link>
         ) : (
           <Link href="/orders">Orders</Link>
         )
         }
-        
+
       </div>
     </div>
   );

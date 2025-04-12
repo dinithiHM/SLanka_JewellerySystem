@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { formatCurrency } from "@/utils/formatters";
+import { useLanguage } from "@/contexts/LanguageContext";
+import TranslatedText from "./TranslatedText";
 
 type ValuePiece = Date | null;
 
@@ -28,6 +30,8 @@ interface BranchSales {
 }
 
 const EventCalendar = () => {
+  // Use language context to trigger re-renders when language changes
+  useLanguage();
   const [value, onChange] = useState<Value>(new Date());
   const [salesData, setSalesData] = useState<BranchSales[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -151,7 +155,9 @@ const EventCalendar = () => {
     <div style={{ backgroundColor: "#FFF6BD" }} className="p-4 rounded-md"> {/* Set background color here */}
       <Calendar onChange={handleDateChange} value={value} />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold my-4">Recent Sales</h1>
+        <h1 className="text-xl font-semibold my-4">
+          <TranslatedText textKey="dashboard.recentSales" fallback="Recent Sales" />
+        </h1>
         <div className="text-sm text-gray-500">
           {value instanceof Date && (
             <span>{value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -169,7 +175,7 @@ const EventCalendar = () => {
         </div>
       ) : salesData.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No sales found for this date
+          <TranslatedText textKey="dashboard.noSalesFound" fallback="No sales found for this date" />
         </div>
       ) : (
         <div className="space-y-6">

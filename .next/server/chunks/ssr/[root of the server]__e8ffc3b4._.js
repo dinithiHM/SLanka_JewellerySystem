@@ -131,6 +131,7 @@ __turbopack_context__.s({
 });
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)"); // Importing useState and useEffect hooks from React
+// import { useSession } from "next-auth/react"; // Importing the session hook
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/client/app-dir/link.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$house$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Home$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/house.js [app-ssr] (ecmascript) <export default as Home>"); // Importing correct icons
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$users$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Users$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/users.js [app-ssr] (ecmascript) <export default as Users>");
@@ -147,7 +148,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$log$2d$out$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__LogOut$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/log-out.js [app-ssr] (ecmascript) <export default as LogOut>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$boxes$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Boxes$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/boxes.js [app-ssr] (ecmascript) <export default as Boxes>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$package$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Package$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/package.js [app-ssr] (ecmascript) <export default as Package>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/contexts/LanguageContext.tsx [app-ssr] (ecmascript)");
 'use client'; // This marks it as a client-side component
+;
 ;
 ;
 ;
@@ -365,6 +368,7 @@ const menuItems = [
     }
 ];
 const Menu = ()=>{
+    // Using the language context for translations
     const [role, setRole] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         const storedRole = localStorage.getItem("role"); // Get role from localStorage
@@ -380,7 +384,7 @@ const Menu = ()=>{
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/Menu.tsx",
-            lineNumber: 58,
+            lineNumber: 60,
             columnNumber: 12
         }, this); // Show loading while fetching role
     }
@@ -394,7 +398,7 @@ const Menu = ()=>{
                         children: section.title
                     }, void 0, false, {
                         fileName: "[project]/src/components/Menu.tsx",
-                        lineNumber: 65,
+                        lineNumber: 67,
                         columnNumber: 11
                     }, this),
                     section.items.map((item)=>{
@@ -409,21 +413,21 @@ const Menu = ()=>{
                                         className: "text-black"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 77,
+                                        lineNumber: 79,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         className: "hidden lg:block",
-                                        children: item.label
+                                        children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["t"])(`menu.${item.label.toLowerCase().replace(/\s+/g, '')}`) || item.label
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 78,
+                                        lineNumber: 80,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, item.label, true, {
                                 fileName: "[project]/src/components/Menu.tsx",
-                                lineNumber: 72,
+                                lineNumber: 74,
                                 columnNumber: 17
                             }, this);
                         }
@@ -432,12 +436,12 @@ const Menu = ()=>{
                 ]
             }, section.title, true, {
                 fileName: "[project]/src/components/Menu.tsx",
-                lineNumber: 64,
+                lineNumber: 66,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/src/components/Menu.tsx",
-        lineNumber: 62,
+        lineNumber: 64,
         columnNumber: 5
     }, this);
 };

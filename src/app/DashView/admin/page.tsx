@@ -1,11 +1,16 @@
+"use client";
+
 import Announcements from "@/components/Announcements";
 import AttendanceChart from "@/components/AttendanceChart";
 import CountChart from "@/components/CountChart";
 import EventCalendar from "@/components/EventCalendar";
 import FinanceChart from "@/components/FinanceChart";
 import UserCard from "@/components/UserCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const AdminPage = () => {
+  // Use language context to trigger re-renders when language changes
+  useLanguage();
   return (
     <div className="p-4 flex gap-4 flex-col md:flex-row">
       {/* LEFT */}

@@ -1,9 +1,18 @@
+import { useLanguage } from "@/contexts/LanguageContext";
+import TranslatedText from "./TranslatedText";
+
 const Announcements = () => {
+  // Use language context to trigger re-renders when language changes
+  useLanguage();
   return (
     <div style={{ backgroundColor: "#FFF6BD" }} className="p-4 rounded-md"> {/* Set background color here */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Announcements</h1>
-        <span className="text-xs text-gray-400">View All</span>
+        <h1 className="text-xl font-semibold">
+          <TranslatedText textKey="dashboard.announcements" fallback="Announcements" />
+        </h1>
+        <span className="text-xs text-gray-400">
+          <TranslatedText textKey="dashboard.viewAll" fallback="View All" />
+        </span>
       </div>
       <div className="flex flex-col gap-4 mt-4">
         <div className="bg-yellow rounded-md p-4">

@@ -2,8 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Users, ShoppingCart, Tag, Coins, CreditCard, Calculator } from 'lucide-react';
+import { useLanguage } from "@/contexts/LanguageContext";
+import TranslatedText from "@/components/TranslatedText";
 
 const CashierPage: React.FC = () => {
+    // Use language context to trigger re-renders when language changes
+    useLanguage();
     const [userName, setUserName] = useState<string>('');
     const [branchName, setBranchName] = useState<string>('');
 
@@ -34,7 +38,9 @@ const CashierPage: React.FC = () => {
         <div className={`bg-white p-6 rounded-lg shadow-md border-l-4 ${color}`}>
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+                    <h3 className="text-gray-500 text-sm font-medium">
+                        <TranslatedText textKey={`dashboard.${title.toLowerCase().replace(/[^a-zA-Z0-9]/g, '')}`} fallback={title} />
+                    </h3>
                     <p className="text-2xl font-bold mt-1">{value}</p>
                 </div>
                 <div className={`p-3 rounded-full ${color.replace('border-l-4 border', 'bg').replace('-500', '-100')}`}>

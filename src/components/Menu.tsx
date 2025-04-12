@@ -1,12 +1,13 @@
 'use client'; // This marks it as a client-side component
 
 import React, { useState, useEffect } from "react"; // Importing useState and useEffect hooks from React
-import { useSession } from "next-auth/react"; // Importing the session hook
+// import { useSession } from "next-auth/react"; // Importing the session hook
 import Link from "next/link";
 import {
   Home, Users, Tag, ClipboardList, Coins, ShoppingCart, BarChart, CalendarCheck, CreditCard,
   Bell, UserCircle, Settings, LogOut, Boxes, Package
 } from "lucide-react"; // Importing correct icons
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const menuItems = [
   {
@@ -42,7 +43,40 @@ const menuItems = [
 ];
 
 const Menu = () => {
+  // Using the language context for translations
+  const { language } = useLanguage(); // Use language context to trigger re-renders when language changes
   const [role, setRole] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  // Create a mapping of menu items to their translations
+  useEffect(() => {
+    const menuTranslations: Record<string, string> = {
+      'Home': language === 'ta' ? 'முகப்பு' : 'Home',
+      'Store Managers': language === 'ta' ? 'கடை மேலாளர்கள்' : 'Store Managers',
+      'Sales Associates': language === 'ta' ? 'விற்பனை சகாக்கள்' : 'Sales Associates',
+      'Cashiers': language === 'ta' ? 'காசாளர்கள்' : 'Cashiers',
+      'Suppliers': language === 'ta' ? 'விநியோகஸ்தர்கள்' : 'Suppliers',
+      'Supplier Details': language === 'ta' ? 'விநியோகஸ்தர் விவரங்கள்' : 'Supplier Details',
+      'Orders': language === 'ta' ? 'ஆர்டர்கள்' : 'Orders',
+      'Jewellery Stock': language === 'ta' ? 'நகை இருப்பு' : 'Jewellery Stock',
+      'Gold Stock': language === 'ta' ? 'தங்க இருப்பு' : 'Gold Stock',
+      'Categories': language === 'ta' ? 'வகைகள்' : 'Categories',
+      'Sales': language === 'ta' ? 'விற்பனைகள்' : 'Sales',
+      'Reports': language === 'ta' ? 'அறிக்கைகள்' : 'Reports',
+      'Sales Report': language === 'ta' ? 'விற்பனை அறிக்கை' : 'Sales Report',
+      'Events': language === 'ta' ? 'நிகழ்வுகள்' : 'Events',
+      'Advance Payment': language === 'ta' ? 'முன்பணம்' : 'Advance Payment',
+      'Custom Orders': language === 'ta' ? 'தனிப்பயன் ஆர்டர்கள்' : 'Custom Orders',
+      'Notifications': language === 'ta' ? 'அறிவிப்புகள்' : 'Notifications',
+      'Profile': language === 'ta' ? 'சுயவிவரம்' : 'Profile',
+      'Settings': language === 'ta' ? 'அமைப்புகள்' : 'Settings',
+      'Logout': language === 'ta' ? 'வெளியேறு' : 'Logout',
+      'MENU': language === 'ta' ? 'பட்டி' : 'MENU',
+      'OTHER': language === 'ta' ? 'மற்றவை' : 'OTHER'
+    };
+
+    setTranslations(menuTranslations);
+  }, [language]);
 
   useEffect(() => {
     const storedRole = localStorage.getItem("role"); // Get role from localStorage
@@ -63,7 +97,7 @@ const Menu = () => {
       {menuItems.map((section) => (
         <div className="flex flex-col gap-2" key={section.title}>
           <span className="hidden lg:block text-black font-semibold my-4">
-            {section.title}
+            {translations[section.title] || section.title}
           </span>
           {section.items.map((item) => {
             // Check if the user's role is listed in the 'visible' array for this item
@@ -75,7 +109,9 @@ const Menu = () => {
                   className="flex items-center justify-start gap-4 text-black py-2 px-4 rounded-md hover:bg-[#F0A500] hover:text-white transition duration-200"
                 >
                   <item.icon size={20} className="text-black" />
-                  <span className="hidden lg:block">{item.label}</span>
+                  <span className="hidden lg:block">
+                    {translations[item.label] || item.label}
+                  </span>
                 </Link>
               );
             }

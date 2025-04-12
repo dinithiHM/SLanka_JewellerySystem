@@ -15,11 +15,17 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$coins$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Coins$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/coins.js [app-ssr] (ecmascript) <export default as Coins>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$credit$2d$card$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__CreditCard$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/credit-card.js [app-ssr] (ecmascript) <export default as CreditCard>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calculator$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Calculator$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/calculator.js [app-ssr] (ecmascript) <export default as Calculator>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/contexts/LanguageContext.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TranslatedText$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/TranslatedText.tsx [app-ssr] (ecmascript)");
 "use client";
 ;
 ;
 ;
+;
+;
 const CashierPage = ()=>{
+    // Use language context to trigger re-renders when language changes
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useLanguage"])();
     const [userName, setUserName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [branchName, setBranchName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
@@ -51,10 +57,17 @@ const CashierPage = ()=>{
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
                                 className: "text-gray-500 text-sm font-medium",
-                                children: title
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TranslatedText$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
+                                    textKey: `dashboard.${title.toLowerCase().replace(/[^a-zA-Z0-9]/g, '')}`,
+                                    fallback: title
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/DashView/cashier/page.tsx",
+                                    lineNumber: 42,
+                                    columnNumber: 25
+                                }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 37,
+                                lineNumber: 41,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -62,13 +75,13 @@ const CashierPage = ()=>{
                                 children: value
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 38,
+                                lineNumber: 44,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 36,
+                        lineNumber: 40,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -78,23 +91,23 @@ const CashierPage = ()=>{
                             size: 24
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                            lineNumber: 41,
+                            lineNumber: 47,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 40,
+                        lineNumber: 46,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                lineNumber: 35,
+                lineNumber: 39,
                 columnNumber: 13
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-            lineNumber: 34,
+            lineNumber: 38,
             columnNumber: 9
         }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -108,7 +121,7 @@ const CashierPage = ()=>{
                         children: "Cashier Dashboard"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 50,
+                        lineNumber: 56,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -124,26 +137,26 @@ const CashierPage = ()=>{
                                         children: branchName
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 53,
+                                        lineNumber: 59,
                                         columnNumber: 63
                                     }, this),
                                     "."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 53,
+                                lineNumber: 59,
                                 columnNumber: 36
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 51,
+                        lineNumber: 57,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                lineNumber: 49,
+                lineNumber: 55,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -156,7 +169,7 @@ const CashierPage = ()=>{
                         color: "border-l-4 border-blue-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 58,
+                        lineNumber: 64,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
@@ -166,7 +179,7 @@ const CashierPage = ()=>{
                         color: "border-l-4 border-green-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 64,
+                        lineNumber: 70,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
@@ -176,7 +189,7 @@ const CashierPage = ()=>{
                         color: "border-l-4 border-purple-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 70,
+                        lineNumber: 76,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
@@ -186,13 +199,13 @@ const CashierPage = ()=>{
                         color: "border-l-4 border-yellow-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 76,
+                        lineNumber: 82,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                lineNumber: 57,
+                lineNumber: 63,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -206,7 +219,7 @@ const CashierPage = ()=>{
                                 children: "Recent Transactions"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 86,
+                                lineNumber: 92,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -214,13 +227,13 @@ const CashierPage = ()=>{
                                 children: "View All"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 87,
+                                lineNumber: 93,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 85,
+                        lineNumber: 91,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -236,7 +249,7 @@ const CashierPage = ()=>{
                                                 children: "Transaction ID"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 93,
+                                                lineNumber: 99,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -244,7 +257,7 @@ const CashierPage = ()=>{
                                                 children: "Customer"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 94,
+                                                lineNumber: 100,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -252,7 +265,7 @@ const CashierPage = ()=>{
                                                 children: "Amount"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 95,
+                                                lineNumber: 101,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -260,7 +273,7 @@ const CashierPage = ()=>{
                                                 children: "Payment Method"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 96,
+                                                lineNumber: 102,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -268,7 +281,7 @@ const CashierPage = ()=>{
                                                 children: "Time"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 97,
+                                                lineNumber: 103,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -276,18 +289,18 @@ const CashierPage = ()=>{
                                                 children: "Status"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 98,
+                                                lineNumber: 104,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 92,
+                                        lineNumber: 98,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                    lineNumber: 91,
+                                    lineNumber: 97,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -300,7 +313,7 @@ const CashierPage = ()=>{
                                                     children: "TRX-2023-001"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 103,
+                                                    lineNumber: 109,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -308,7 +321,7 @@ const CashierPage = ()=>{
                                                     children: "Amal Perera"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 104,
+                                                    lineNumber: 110,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -316,7 +329,7 @@ const CashierPage = ()=>{
                                                     children: "LKR 12,500"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 105,
+                                                    lineNumber: 111,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -324,7 +337,7 @@ const CashierPage = ()=>{
                                                     children: "Cash"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 106,
+                                                    lineNumber: 112,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -332,7 +345,7 @@ const CashierPage = ()=>{
                                                     children: "10:30 AM"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 107,
+                                                    lineNumber: 113,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -342,18 +355,18 @@ const CashierPage = ()=>{
                                                         children: "Completed"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 108,
+                                                        lineNumber: 114,
                                                         columnNumber: 77
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 108,
+                                                    lineNumber: 114,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                            lineNumber: 102,
+                                            lineNumber: 108,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
@@ -363,7 +376,7 @@ const CashierPage = ()=>{
                                                     children: "TRX-2023-002"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 111,
+                                                    lineNumber: 117,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -371,7 +384,7 @@ const CashierPage = ()=>{
                                                     children: "Nimal Silva"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 112,
+                                                    lineNumber: 118,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -379,7 +392,7 @@ const CashierPage = ()=>{
                                                     children: "LKR 8,750"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 113,
+                                                    lineNumber: 119,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -387,7 +400,7 @@ const CashierPage = ()=>{
                                                     children: "Credit Card"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 114,
+                                                    lineNumber: 120,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -395,7 +408,7 @@ const CashierPage = ()=>{
                                                     children: "11:45 AM"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 115,
+                                                    lineNumber: 121,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -405,18 +418,18 @@ const CashierPage = ()=>{
                                                         children: "Completed"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 116,
+                                                        lineNumber: 122,
                                                         columnNumber: 77
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 116,
+                                                    lineNumber: 122,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                            lineNumber: 110,
+                                            lineNumber: 116,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
@@ -426,7 +439,7 @@ const CashierPage = ()=>{
                                                     children: "TRX-2023-003"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 119,
+                                                    lineNumber: 125,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -434,7 +447,7 @@ const CashierPage = ()=>{
                                                     children: "Kamala Jayawardene"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 120,
+                                                    lineNumber: 126,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -442,7 +455,7 @@ const CashierPage = ()=>{
                                                     children: "LKR 3,250"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 121,
+                                                    lineNumber: 127,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -450,7 +463,7 @@ const CashierPage = ()=>{
                                                     children: "Debit Card"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 122,
+                                                    lineNumber: 128,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -458,7 +471,7 @@ const CashierPage = ()=>{
                                                     children: "1:15 PM"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 123,
+                                                    lineNumber: 129,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -468,41 +481,41 @@ const CashierPage = ()=>{
                                                         children: "Pending"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 124,
+                                                        lineNumber: 130,
                                                         columnNumber: 77
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                    lineNumber: 124,
+                                                    lineNumber: 130,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                            lineNumber: 118,
+                                            lineNumber: 124,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                    lineNumber: 101,
+                                    lineNumber: 107,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                            lineNumber: 90,
+                            lineNumber: 96,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 89,
+                        lineNumber: 95,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                lineNumber: 84,
+                lineNumber: 90,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -516,7 +529,7 @@ const CashierPage = ()=>{
                                 children: "Payment Methods Summary"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 133,
+                                lineNumber: 139,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -535,12 +548,12 @@ const CashierPage = ()=>{
                                                             size: 24
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                            lineNumber: 138,
+                                                            lineNumber: 144,
                                                             columnNumber: 37
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 137,
+                                                        lineNumber: 143,
                                                         columnNumber: 33
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -550,7 +563,7 @@ const CashierPage = ()=>{
                                                                 children: "Credit Card"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 141,
+                                                                lineNumber: 147,
                                                                 columnNumber: 37
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -558,19 +571,19 @@ const CashierPage = ()=>{
                                                                 children: "12 transactions"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 142,
+                                                                lineNumber: 148,
                                                                 columnNumber: 37
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 140,
+                                                        lineNumber: 146,
                                                         columnNumber: 33
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 136,
+                                                lineNumber: 142,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -578,13 +591,13 @@ const CashierPage = ()=>{
                                                 children: "LKR 45,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 145,
+                                                lineNumber: 151,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 135,
+                                        lineNumber: 141,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -600,12 +613,12 @@ const CashierPage = ()=>{
                                                             size: 24
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                            lineNumber: 150,
+                                                            lineNumber: 156,
                                                             columnNumber: 37
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 149,
+                                                        lineNumber: 155,
                                                         columnNumber: 33
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -615,7 +628,7 @@ const CashierPage = ()=>{
                                                                 children: "Cash"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 153,
+                                                                lineNumber: 159,
                                                                 columnNumber: 37
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -623,19 +636,19 @@ const CashierPage = ()=>{
                                                                 children: "15 transactions"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 154,
+                                                                lineNumber: 160,
                                                                 columnNumber: 37
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 152,
+                                                        lineNumber: 158,
                                                         columnNumber: 33
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 148,
+                                                lineNumber: 154,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -643,13 +656,13 @@ const CashierPage = ()=>{
                                                 children: "LKR 28,500"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 157,
+                                                lineNumber: 163,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 147,
+                                        lineNumber: 153,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -665,12 +678,12 @@ const CashierPage = ()=>{
                                                             size: 24
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                            lineNumber: 162,
+                                                            lineNumber: 168,
                                                             columnNumber: 37
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 161,
+                                                        lineNumber: 167,
                                                         columnNumber: 33
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -680,7 +693,7 @@ const CashierPage = ()=>{
                                                                 children: "Debit Card"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 165,
+                                                                lineNumber: 171,
                                                                 columnNumber: 37
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -688,19 +701,19 @@ const CashierPage = ()=>{
                                                                 children: "5 transactions"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                                lineNumber: 166,
+                                                                lineNumber: 172,
                                                                 columnNumber: 37
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                        lineNumber: 164,
+                                                        lineNumber: 170,
                                                         columnNumber: 33
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 160,
+                                                lineNumber: 166,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -708,25 +721,25 @@ const CashierPage = ()=>{
                                                 children: "LKR 5,000"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 169,
+                                                lineNumber: 175,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 159,
+                                        lineNumber: 165,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 134,
+                                lineNumber: 140,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 132,
+                        lineNumber: 138,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -737,7 +750,7 @@ const CashierPage = ()=>{
                                 children: "Quick Actions"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 175,
+                                lineNumber: 181,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -751,7 +764,7 @@ const CashierPage = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 178,
+                                                lineNumber: 184,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -759,13 +772,13 @@ const CashierPage = ()=>{
                                                 children: "New Sale"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 179,
+                                                lineNumber: 185,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 183,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -776,7 +789,7 @@ const CashierPage = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 182,
+                                                lineNumber: 188,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -784,13 +797,13 @@ const CashierPage = ()=>{
                                                 children: "Cash Register"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 183,
+                                                lineNumber: 189,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 181,
+                                        lineNumber: 187,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -801,7 +814,7 @@ const CashierPage = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 186,
+                                                lineNumber: 192,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -809,13 +822,13 @@ const CashierPage = ()=>{
                                                 children: "Payment"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 187,
+                                                lineNumber: 193,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 185,
+                                        lineNumber: 191,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -826,7 +839,7 @@ const CashierPage = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 190,
+                                                lineNumber: 196,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -834,37 +847,37 @@ const CashierPage = ()=>{
                                                 children: "Daily Report"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                                lineNumber: 191,
+                                                lineNumber: 197,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                        lineNumber: 189,
+                                        lineNumber: 195,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                                lineNumber: 176,
+                                lineNumber: 182,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                        lineNumber: 174,
+                        lineNumber: 180,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/cashier/page.tsx",
-                lineNumber: 131,
+                lineNumber: 137,
                 columnNumber: 13
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/cashier/page.tsx",
-        lineNumber: 48,
+        lineNumber: 54,
         columnNumber: 9
     }, this);
 };

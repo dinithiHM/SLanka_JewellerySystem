@@ -30,12 +30,15 @@ interface CustomOrder {
   total_amount: number;
   estimated_amount?: number;
   advance_amount?: number;
+  balance_amount?: number;
   status: string;
   payment_status?: string;
   customer_phone?: string;
   customer_email?: string;
   description?: string;
   special_requirements?: string;
+  actual_advance_amount?: number;
+  actual_balance_amount?: number;
 }
 
 // Payment type enum
@@ -229,39 +232,27 @@ const AdvancePaymentPage = () => {
   // Update selected order when order ID changes
   useEffect(() => {
     if (selectedOrderId) {
+      // First, find the order in the customOrders array
       const order = customOrders.find(order => order.order_id === selectedOrderId);
-      setSelectedOrder(order || null);
 
       if (order) {
-        // Set all available fields from the order
+        console.log('Selected order from dropdown:', order);
+
+        // Set customer name from the order
         setCustomerName(order.customer_name);
 
         // Set total amount from the estimated amount
         if (order.estimated_amount) {
-          setTotalAmount(typeof order.estimated_amount === 'string' ?
-            parseFloat(order.estimated_amount) : order.estimated_amount);
-        }
-
-        // If there's already an advance amount, calculate the remaining balance
-        if (order.advance_amount && order.advance_amount > 0) {
-          const advanceAmount = typeof order.advance_amount === 'string' ?
-            parseFloat(order.advance_amount) : order.advance_amount;
-
-          console.log(`This order already has an advance payment of ${advanceAmount}`);
-
-          // Calculate the remaining balance (total - advance)
           const totalAmt = typeof order.estimated_amount === 'string' ?
-            parseFloat(order.estimated_amount) : (order.estimated_amount || 0);
-
-          const remainingBalance = totalAmt - advanceAmount;
-          console.log(`Total amount: ${totalAmt}, Advance: ${advanceAmount}, Remaining: ${remainingBalance}`);
-
-          // Update the balance amount field
-          setBalanceAmount(remainingBalance);
+            parseFloat(order.estimated_amount) : order.estimated_amount;
+          setTotalAmount(totalAmt);
+          console.log(`Set total amount to ${totalAmt}`);
         }
 
-        // Fetch additional order details if needed
+        // Fetch the complete order details from the server to get accurate payment information
         fetchOrderDetails(selectedOrderId);
+      } else {
+        setSelectedOrder(null);
       }
     } else {
       setSelectedOrder(null);
@@ -274,19 +265,27 @@ const AdvancePaymentPage = () => {
       const response = await fetch(`http://localhost:3002/custom-orders/${orderId}`);
       if (response.ok) {
         const orderDetails = await response.json();
-        console.log('Fetched order details:', orderDetails);
+        console.log('Fetched order details from server:', orderDetails);
 
-        // Update form with additional details
-        if (orderDetails.customer_phone) {
-          // We don't have a phone field in the advance payment form,
-          // but we can log it for reference
-          console.log(`Customer phone: ${orderDetails.customer_phone}`);
-        }
+        // Update the selected order with the accurate data from the server
+        setSelectedOrder(orderDetails);
 
-        if (orderDetails.customer_email) {
-          // We don't have an email field in the advance payment form,
-          // but we can log it for reference
-          console.log(`Customer email: ${orderDetails.customer_email}`);
+        // If there's an advance amount, update the balance calculation
+        if (orderDetails.advance_amount && orderDetails.advance_amount > 0) {
+          const advanceAmount = typeof orderDetails.advance_amount === 'string' ?
+            parseFloat(orderDetails.advance_amount) : orderDetails.advance_amount;
+
+          console.log(`Server reports this order has an advance payment of ${advanceAmount}`);
+
+          // Calculate the remaining balance (total - advance)
+          const totalAmt = typeof orderDetails.estimated_amount === 'string' ?
+            parseFloat(orderDetails.estimated_amount) : (orderDetails.estimated_amount || 0);
+
+          const remainingBalance = totalAmt - advanceAmount;
+          console.log(`Server calculation: Total: ${totalAmt}, Advance: ${advanceAmount}, Remaining: ${remainingBalance}`);
+
+          // Update the balance amount field with the server's calculation
+          setBalanceAmount(remainingBalance);
         }
 
         // Add any notes about the order
@@ -310,12 +309,20 @@ const AdvancePaymentPage = () => {
   useEffect(() => {
     // If this is a custom order with existing advance payment, account for it
     if (selectedOrder && selectedOrder.advance_amount && selectedOrder.advance_amount > 0) {
+      // Get the existing advance amount from the server data
       const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
         parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
 
+      // Get the total amount
+      const totalAmt = typeof selectedOrder.estimated_amount === 'string' ?
+        parseFloat(selectedOrder.estimated_amount) : (selectedOrder.estimated_amount || 0);
+
       // The balance is: total - (existing advance + new advance)
-      setBalanceAmount(totalAmount - (existingAdvance + advanceAmount));
-      console.log(`Balance calculation: ${totalAmount} - (${existingAdvance} + ${advanceAmount}) = ${totalAmount - (existingAdvance + advanceAmount)}`);
+      // This correctly calculates the remaining balance after the new payment
+      const newBalance = totalAmt - (existingAdvance + advanceAmount);
+      setBalanceAmount(newBalance);
+
+      console.log(`Updated balance calculation: ${totalAmt} - (${existingAdvance} + ${advanceAmount}) = ${newBalance}`);
     } else {
       // Normal calculation for new payments
       setBalanceAmount(totalAmount - advanceAmount);
@@ -425,14 +432,22 @@ const AdvancePaymentPage = () => {
       const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
         parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
 
+      // Include the existing advance amount from the server
       paymentData.existing_advance_amount = existingAdvance;
-      console.log(`Including existing advance amount: ${existingAdvance}`);
+      console.log(`Including existing advance amount from server: ${existingAdvance}`);
 
-      // Also include the calculated balance amount
-      paymentData.balance_amount = totalAmount - (existingAdvance + advanceAmount);
+      // Get the total amount from the server data
+      const totalAmt = typeof selectedOrder.estimated_amount === 'string' ?
+        parseFloat(selectedOrder.estimated_amount) : (selectedOrder.estimated_amount || 0);
+
+      // Calculate the balance amount: total - (existing + new)
+      const calculatedBalance = totalAmt - (existingAdvance + advanceAmount);
+      paymentData.balance_amount = calculatedBalance;
+      console.log(`Calculated balance for submission: ${totalAmt} - (${existingAdvance} + ${advanceAmount}) = ${calculatedBalance}`);
     } else {
-      // Standard balance calculation
+      // Standard balance calculation for new payments
       paymentData.balance_amount = totalAmount - advanceAmount;
+      console.log(`Standard balance calculation for submission: ${totalAmount} - ${advanceAmount} = ${paymentData.balance_amount}`);
     }
 
     // Log the data being sent
@@ -714,7 +729,7 @@ const AdvancePaymentPage = () => {
                     <br />
                     <strong>Current advance payment:</strong> {formatCurrency(selectedOrder.advance_amount || 0)}
                     <br />
-                    <strong>Remaining balance:</strong> {formatCurrency((selectedOrder.estimated_amount || 0) - (selectedOrder.advance_amount || 0))}
+                    <strong>Remaining balance:</strong> {formatCurrency(selectedOrder.balance_amount || ((selectedOrder.estimated_amount || 0) - (selectedOrder.advance_amount || 0)))}
                     <br />
                     <span className="text-green-700">Any amount entered below will be an additional payment.</span>
                   </>
