@@ -96,22 +96,22 @@ router.get("/:id", (req, res) => {
     SELECT
       co.*,
       (
-        COALESCE(SUM(ap.advance_amount), 0) +
-        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
+        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0) +
+        COALESCE((SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1), 0)
       ) as actual_advance_amount,
       (
         co.estimated_amount -
-        (COALESCE(SUM(ap.advance_amount), 0) +
-         COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0))
-      ) as actual_balance_amount
+        (
+          COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0) +
+          COALESCE((SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1), 0)
+        )
+      ) as actual_balance_amount,
+      (SELECT COUNT(*) FROM custom_order_payments WHERE order_id = co.order_id) +
+      (SELECT COUNT(*) FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1) as payment_count
     FROM
       custom_order_details co
-    LEFT JOIN
-      advance_payments ap ON co.order_id = ap.order_id AND ap.is_custom_order = 1
     WHERE
       co.order_id = ?
-    GROUP BY
-      co.order_id
   `;
 
   con.query(sql, [orderId], (err, results) => {
@@ -180,6 +180,17 @@ router.get("/:id", (req, res) => {
             payments: paymentsResults || [],
             imageDetails: processedImages || []
           };
+
+          // Calculate the correct advance amount and balance
+          const totalAdvance = orderData.actual_advance_amount || 0;
+          const estimatedAmount = orderData.estimated_amount || 0;
+          const correctBalance = estimatedAmount - totalAdvance;
+
+          // Update the values
+          orderData.advance_amount = totalAdvance;
+          orderData.balance_amount = correctBalance;
+
+          console.log(`Calculated values: Total: ${estimatedAmount}, Advance: ${totalAdvance}, Balance: ${correctBalance}`);
 
           console.log(`Order ${orderId} - Advance amount: ${orderData.advance_amount}, Balance: ${orderData.balance_amount}`);
 
@@ -471,7 +482,7 @@ router.post("/:id/payments", (req, res) => {
       return res.status(500).json({ message: "Database error", error: transErr.message });
     }
 
-    // Insert payment
+    // Insert payment into custom_order_payments
     const paymentSql = `
       INSERT INTO custom_order_payments (
         order_id,
@@ -498,7 +509,7 @@ router.post("/:id/payments", (req, res) => {
 
       // Get current order details
       const orderSql = `
-        SELECT estimated_amount, advance_amount
+        SELECT order_id, customer_name, estimated_amount, advance_amount, created_by, branch_id
         FROM custom_orders
         WHERE order_id = ?
       `;
@@ -518,44 +529,131 @@ router.post("/:id/payments", (req, res) => {
         }
 
         const order = orderResults[0];
-        const newAdvanceAmount = parseFloat(order.advance_amount) + parseFloat(payment_amount);
 
-        // Determine new payment status
-        let newPaymentStatus = 'Partially Paid';
-        if (newAdvanceAmount >= parseFloat(order.estimated_amount)) {
-          newPaymentStatus = 'Fully Paid';
-        }
+        // Generate a reference number for the advance payment
+        const year = new Date().getFullYear();
+        const referencePrefix = `ADV-${year}-`;
 
-        // Update order with new advance amount and payment status
-        const updateSql = `
-          UPDATE custom_orders
-          SET advance_amount = ?,
-              payment_status = ?
-          WHERE order_id = ?
+        // Find the next sequence number
+        const sequenceQuery = `
+          SELECT MAX(CAST(SUBSTRING_INDEX(payment_reference, '-', -1) AS UNSIGNED)) as max_seq
+          FROM advance_payments
+          WHERE payment_reference LIKE ?
         `;
 
-        con.query(updateSql, [newAdvanceAmount, newPaymentStatus, orderId], (updateErr, updateResult) => {
-          if (updateErr) {
+        con.query(sequenceQuery, [`${referencePrefix}%`], (seqErr, seqResults) => {
+          if (seqErr) {
             return con.rollback(() => {
-              console.error("Error updating order:", updateErr);
-              res.status(500).json({ message: "Database error", error: updateErr.message });
+              console.error("Error generating payment reference:", seqErr);
+              res.status(500).json({ message: "Database error", error: seqErr.message });
             });
           }
 
-          // Commit transaction
-          con.commit((commitErr) => {
-            if (commitErr) {
+          let nextSeq = 1;
+          if (seqResults[0].max_seq) {
+            nextSeq = parseInt(seqResults[0].max_seq) + 1;
+          }
+
+          const payment_reference = `${referencePrefix}${nextSeq.toString().padStart(4, '0')}`;
+
+          // Calculate total payments for this order
+          const getTotalPaymentsSql = `
+            SELECT SUM(payment_amount) as total_payments
+            FROM custom_order_payments
+            WHERE order_id = ?
+          `;
+
+          con.query(getTotalPaymentsSql, [orderId], (totalErr, totalResults) => {
+            if (totalErr) {
               return con.rollback(() => {
-                console.error("Error committing transaction:", commitErr);
-                res.status(500).json({ message: "Database error", error: commitErr.message });
+                console.error("Error calculating total payments:", totalErr);
+                res.status(500).json({ message: "Database error", error: totalErr.message });
               });
             }
 
-            res.status(201).json({
-              message: "Payment added successfully",
-              payment_id: paymentResult.insertId,
-              new_advance_amount: newAdvanceAmount,
-              payment_status: newPaymentStatus
+            const totalPayments = totalResults[0].total_payments || 0;
+            const balance_amount = parseFloat(order.estimated_amount) - parseFloat(totalPayments);
+            const payment_status = balance_amount <= 0 ? 'Completed' : 'Partially Paid';
+
+            // Insert into advance_payments table
+            const advancePaymentSql = `
+              INSERT INTO advance_payments (
+                payment_reference,
+                customer_name,
+                payment_date,
+                total_amount,
+                advance_amount,
+                balance_amount,
+                payment_status,
+                payment_method,
+                notes,
+                created_by,
+                branch_id,
+                is_custom_order,
+                order_id
+              ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            con.query(advancePaymentSql, [
+              payment_reference,
+              order.customer_name,
+              parseFloat(order.estimated_amount),
+              parseFloat(payment_amount),
+              balance_amount,
+              payment_status,
+              payment_method || 'Cash',
+              notes || 'Additional payment for custom order',
+              order.created_by,
+              order.branch_id,
+              1, // is_custom_order = true
+              orderId
+            ], (advPayErr) => {
+              if (advPayErr) {
+                return con.rollback(() => {
+                  console.error("Error creating advance payment:", advPayErr);
+                  res.status(500).json({ message: "Database error", error: advPayErr.message });
+                });
+              }
+
+              // Determine new payment status for custom_orders table
+              let newPaymentStatus = 'Partially Paid';
+              if (balance_amount <= 0) {
+                newPaymentStatus = 'Fully Paid';
+              }
+
+              // Update the order with the new advance amount and payment status
+              const updateSql = `
+                UPDATE custom_orders
+                SET advance_amount = ?,
+                    payment_status = ?
+                WHERE order_id = ?
+              `;
+
+              con.query(updateSql, [totalPayments, newPaymentStatus, orderId], (updateErr, updateResult) => {
+                if (updateErr) {
+                  return con.rollback(() => {
+                    console.error("Error updating order:", updateErr);
+                    res.status(500).json({ message: "Database error", error: updateErr.message });
+                  });
+                }
+
+                // Commit transaction
+                con.commit((commitErr) => {
+                  if (commitErr) {
+                    return con.rollback(() => {
+                      console.error("Error committing transaction:", commitErr);
+                      res.status(500).json({ message: "Database error", error: commitErr.message });
+                    });
+                  }
+
+                  res.status(201).json({
+                    message: "Payment added successfully",
+                    payment_id: paymentResult.insertId,
+                    new_advance_amount: totalPayments,
+                    payment_status: newPaymentStatus
+                  });
+                });
+              });
             });
           });
         });
@@ -605,6 +703,60 @@ router.post("/:id/materials", (req, res) => {
     res.status(201).json({
       message: "Materials added successfully",
       materials_added: result.affectedRows
+    });
+  });
+});
+
+// Debug endpoint to see all payments for an order
+router.get("/debug/payments/:orderId", (req, res) => {
+  const orderId = req.params.orderId;
+
+  const sql = `
+    SELECT 'custom_order_payments' as source, payment_id, payment_amount as amount, payment_date, payment_method, notes
+    FROM custom_order_payments
+    WHERE order_id = ?
+
+    UNION ALL
+
+    SELECT 'advance_payments' as source, payment_id, advance_amount as amount, payment_date, payment_method, notes
+    FROM advance_payments
+    WHERE order_id = ? AND is_custom_order = 1
+
+    ORDER BY payment_date
+  `;
+
+  con.query(sql, [orderId, orderId], (err, results) => {
+    if (err) {
+      console.error("Error fetching payment details:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Calculate totals
+    let totalPaid = 0;
+    results.forEach(payment => {
+      totalPaid += parseFloat(payment.amount);
+    });
+
+    // Get order details
+    const orderSql = `SELECT order_id, order_reference, customer_name, estimated_amount FROM custom_orders WHERE order_id = ?`;
+    con.query(orderSql, [orderId], (orderErr, orderResults) => {
+      if (orderErr) {
+        console.error("Error fetching order details:", orderErr);
+        return res.status(500).json({ error: orderErr.message });
+      }
+
+      const order = orderResults[0] || {};
+      const estimatedAmount = order.estimated_amount || 0;
+      const remainingBalance = estimatedAmount - totalPaid;
+
+      res.json({
+        order: order,
+        payments: results,
+        totalPaid: totalPaid,
+        estimatedAmount: estimatedAmount,
+        remainingBalance: remainingBalance,
+        paymentCount: results.length
+      });
     });
   });
 });

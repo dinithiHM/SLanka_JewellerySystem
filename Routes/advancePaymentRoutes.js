@@ -513,7 +513,36 @@ router.get("/items/available", (_req, res) => {
 router.get("/orders/custom", (_req, res) => {
   console.log('GET /advance-payments/orders/custom - Fetching custom orders for advance payment');
 
-  // Use a comprehensive query that calculates the actual advance amount from both payment tables
+  // First, let's get all custom orders to see what's in the database
+  const debugSql = `SELECT * FROM custom_orders`;
+  con.query(debugSql, (debugErr, debugResults) => {
+    if (debugErr) {
+      console.error("Error in debug query:", debugErr);
+    } else {
+      console.log("DEBUG - All custom orders in database:");
+      debugResults.forEach(order => {
+        console.log(`Order ID: ${order.order_id}, Reference: ${order.order_reference}, ` +
+                   `Customer: ${order.customer_name}, Estimated: ${order.estimated_amount}, ` +
+                   `Advance: ${order.advance_amount}, Status: ${order.payment_status}`);
+      });
+    }
+  });
+
+  // Now let's check all advance payments
+  const debugPaymentsSql = `SELECT * FROM advance_payments WHERE is_custom_order = 1`;
+  con.query(debugPaymentsSql, (debugErr, debugResults) => {
+    if (debugErr) {
+      console.error("Error in debug payments query:", debugErr);
+    } else {
+      console.log("DEBUG - All advance payments for custom orders:");
+      debugResults.forEach(payment => {
+        console.log(`Payment ID: ${payment.payment_id}, Reference: ${payment.payment_reference}, ` +
+                   `Order ID: ${payment.order_id}, Amount: ${payment.advance_amount}`);
+      });
+    }
+  });
+
+  // Use a query that correctly calculates the advance amount without double-counting
   const sql = `
     SELECT
       co.order_id,
@@ -522,14 +551,17 @@ router.get("/orders/custom", (_req, res) => {
       co.customer_phone,
       co.customer_email,
       co.estimated_amount,
+      -- Use a subquery to calculate the total advance amount to avoid double-counting
       (
-        COALESCE(SUM(ap.advance_amount), 0) +
-        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
+        SELECT COALESCE(SUM(ap_inner.advance_amount), 0)
+        FROM advance_payments ap_inner
+        WHERE ap_inner.order_id = co.order_id AND ap_inner.is_custom_order = 1
       ) as advance_amount,
-      (
-        co.estimated_amount -
-        (COALESCE(SUM(ap.advance_amount), 0) +
-         COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0))
+      -- Calculate balance as estimated amount minus the correctly calculated advance amount
+      co.estimated_amount - (
+        SELECT COALESCE(SUM(ap_inner.advance_amount), 0)
+        FROM advance_payments ap_inner
+        WHERE ap_inner.order_id = co.order_id AND ap_inner.is_custom_order = 1
       ) as balance_amount,
       co.description,
       co.special_requirements,
@@ -538,20 +570,10 @@ router.get("/orders/custom", (_req, res) => {
       co.estimated_completion_date
     FROM
       custom_orders co
-    LEFT JOIN
-      advance_payments ap ON co.order_id = ap.order_id AND ap.is_custom_order = 1
     WHERE
       co.order_status IN ('Pending', 'In Progress')
+      -- Include all orders that are not marked as fully paid
       AND (co.payment_status IS NULL OR co.payment_status != 'Fully Paid')
-    GROUP BY
-      co.order_id, co.order_reference, co.customer_name, co.customer_phone, co.customer_email,
-      co.estimated_amount, co.description, co.special_requirements, co.order_status,
-      co.payment_status, co.estimated_completion_date
-    HAVING
-      co.estimated_amount > (
-        COALESCE(SUM(ap.advance_amount), 0) +
-        COALESCE((SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id), 0)
-      )
     ORDER BY
       co.order_date DESC
   `;
@@ -565,6 +587,14 @@ router.get("/orders/custom", (_req, res) => {
     }
 
     console.log(`Found ${results.length} custom orders that need payment`);
+
+    // Log detailed information about each order for debugging
+    results.forEach(order => {
+      console.log(`Order ID: ${order.order_id}, Reference: ${order.order_reference}`);
+      console.log(`  Estimated Amount: ${order.estimated_amount}, Advance Amount: ${order.advance_amount}`);
+      console.log(`  Balance Amount: ${order.balance_amount}, Payment Status: ${order.payment_status}`);
+    });
+
     res.json(results || []);
   });
 });

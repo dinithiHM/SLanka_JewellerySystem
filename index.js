@@ -24,6 +24,9 @@ import { advancePaymentRouter } from "./Routes/advancePaymentRoutes.js"; // ✅ 
 import { customOrderRouter } from "./Routes/customOrderRoutes.simple.js"; // ✅ Import Simplified Custom Order Routes
 import { categoryRouter } from "./Routes/categoryRoutes.js"; // ✅ Import Category Routes
 import fixPaymentStatusRouter from "./Routes/fixPaymentStatusRoute.js"; // ✅ Import Fix Payment Status Routes
+import { fixMissingAdvancePaymentsRouter } from "./Routes/fixMissingAdvancePaymentsRoute.js"; // ✅ Import Fix Missing Advance Payments Routes
+import { fixAllAdvancePaymentsRouter } from "./Routes/fixAllAdvancePaymentsRoute.js"; // ✅ Import Fix All Advance Payments Routes
+import { fixPaymentStatusDirectlyRouter } from "./Routes/fixPaymentStatusDirectly.js"; // ✅ Import Fix Payment Status Directly Routes
 
 const app = express();
 
@@ -89,6 +92,9 @@ app.use("/advance-payments", advancePaymentRouter); // ✅ Add advance payment r
 app.use("/custom-orders", customOrderRouter); // ✅ Add custom order routes
 app.use("/categories", categoryRouter); // ✅ Add category routes
 app.use("/maintenance", fixPaymentStatusRouter); // ✅ Add maintenance routes
+app.use("/maintenance", fixMissingAdvancePaymentsRouter); // ✅ Add fix missing advance payments routes
+app.use("/maintenance", fixAllAdvancePaymentsRouter); // ✅ Add fix all advance payments routes
+app.use("/maintenance", fixPaymentStatusDirectlyRouter); // ✅ Add fix payment status directly routes
 
 // ✅ Start the server
 const PORT = 3002;
