@@ -4,6 +4,28 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
+// Get all users
+router.get("/", (req, res) => {
+    console.log('GET /users - Fetching all users');
+
+    const sql = `
+        SELECT u.*, b.branch_name
+        FROM users u
+        LEFT JOIN branches b ON u.branch_id = b.branch_id
+        ORDER BY u.user_id
+    `;
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error("Error fetching users:", err);
+            return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        console.log(`Found ${results.length} users`);
+        res.json(results || []);
+    });
+});
+
 // User Login Route
 router.post("/userlogin", (req, res) => {
     const { email, password } = req.body;

@@ -9,16 +9,77 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Get all jewellery items
+// Get all jewellery items with branch filtering
 router.get("/", (req, res) => {
-  const sql = "SELECT * FROM jewellery_items ORDER BY product_added DESC";
+  console.log('GET /jewellery-items - Fetching jewellery items');
 
-  con.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching jewellery items:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  // Get branch_id from query parameters if provided
+  const branchId = req.query.branch_id;
+  const userRole = req.query.role;
+
+  console.log(`Request params - Branch ID: ${branchId}, User Role: ${userRole}`);
+
+  let sql, queryParams = [];
+
+  // Check if branch_id column exists in jewellery_items table
+  const checkColumnSql = `
+    SELECT COUNT(*) as column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+    AND table_name = 'jewellery_items'
+    AND column_name = 'branch_id'
+  `;
+
+  con.query(checkColumnSql, (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Error checking for branch_id column:", checkErr);
+      return res.status(500).json({ message: "Database error", error: checkErr.message });
     }
-    res.json(results || []);
+
+    const branchColumnExists = checkResults[0].column_exists > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
+
+    // If branch_id column exists and branch_id is provided and user is not admin, filter by branch
+    if (branchColumnExists && branchId && userRole !== 'admin') {
+      sql = `
+        SELECT j.*, b.branch_name, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN branches b ON j.branch_id = b.branch_id
+        LEFT JOIN categories c ON j.category = c.category_name
+        WHERE j.branch_id = ?
+        ORDER BY j.product_added DESC
+      `;
+      queryParams.push(branchId);
+      console.log(`Filtering jewellery items by branch_id: ${branchId}`);
+    } else if (branchColumnExists) {
+      // For admin users or when no branch_id is provided, but branch_id column exists
+      sql = `
+        SELECT j.*, b.branch_name, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN branches b ON j.branch_id = b.branch_id
+        LEFT JOIN categories c ON j.category = c.category_name
+        ORDER BY j.product_added DESC
+      `;
+      console.log('Fetching all jewellery items with branch info (admin view)');
+    } else {
+      // If branch_id column doesn't exist yet, use simpler query
+      sql = `
+        SELECT j.*, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN categories c ON j.category = c.category_name
+        ORDER BY j.product_added DESC
+      `;
+      console.log('Fetching all jewellery items without branch info (column not yet added)');
+    }
+
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching jewellery items:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+      console.log(`Found ${results.length} jewellery items`);
+      res.json(results || []);
+    });
   });
 });
 
@@ -46,8 +107,12 @@ router.post("/create", (req, res) => {
     category,
     in_stock,
     buying_price,
-    selling_price
+    selling_price,
+    branch_id
   } = req.body;
+
+  console.log('POST /jewellery-items/create - Creating new jewellery item');
+  console.log('Request body:', req.body);
 
   // Basic validation
   if (!product_title || !category || in_stock === undefined || !buying_price || !selling_price) {
@@ -61,8 +126,9 @@ router.post("/create", (req, res) => {
       in_stock,
       buying_price,
       selling_price,
+      branch_id,
       product_added
-    ) VALUES (?, ?, ?, ?, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, NOW())
   `;
 
   const values = [
@@ -70,7 +136,8 @@ router.post("/create", (req, res) => {
     category,
     in_stock,
     buying_price,
-    selling_price
+    selling_price,
+    branch_id || null // Default to null if branch_id is not provided
   ];
 
   con.query(sql, values, (err, result) => {
@@ -78,7 +145,7 @@ router.post("/create", (req, res) => {
       console.error("Error creating jewellery item:", err);
       return res.status(500).json({ message: "Database error", error: err.message });
     }
-    
+
     res.status(201).json({
       message: "Jewellery item created successfully",
       itemId: result.insertId
@@ -94,8 +161,12 @@ router.put("/update/:id", (req, res) => {
     category,
     in_stock,
     buying_price,
-    selling_price
+    selling_price,
+    branch_id
   } = req.body;
+
+  console.log('PUT /jewellery-items/update/:id - Updating jewellery item');
+  console.log('Request body:', req.body);
 
   // Basic validation
   if (!product_title || !category || in_stock === undefined || !buying_price || !selling_price) {
@@ -104,12 +175,13 @@ router.put("/update/:id", (req, res) => {
 
   const sql = `
     UPDATE jewellery_items
-    SET 
+    SET
       product_title = ?,
       category = ?,
       in_stock = ?,
       buying_price = ?,
       selling_price = ?,
+      branch_id = ?,
       updated_at = NOW()
     WHERE item_id = ?
   `;
@@ -120,6 +192,7 @@ router.put("/update/:id", (req, res) => {
     in_stock,
     buying_price,
     selling_price,
+    branch_id || null, // Default to null if branch_id is not provided
     itemId
   ];
 
@@ -157,17 +230,128 @@ router.delete("/delete/:id", (req, res) => {
   });
 });
 
-// Get items by category
+// Get items by category with branch filtering
 router.get("/category/:category", (req, res) => {
   const category = req.params.category;
-  const sql = "SELECT * FROM jewellery_items WHERE category = ? ORDER BY product_added DESC";
+  const branchId = req.query.branch_id;
+  const userRole = req.query.role;
 
-  con.query(sql, [category], (err, results) => {
-    if (err) {
-      console.error("Error fetching jewellery items by category:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  console.log(`GET /jewellery-items/category/${category} - Fetching jewellery items by category`);
+  console.log(`Request params - Branch ID: ${branchId}, User Role: ${userRole}`);
+
+  let sql, queryParams = [category];
+
+  // Check if branch_id column exists in jewellery_items table
+  const checkColumnSql = `
+    SELECT COUNT(*) as column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+    AND table_name = 'jewellery_items'
+    AND column_name = 'branch_id'
+  `;
+
+  con.query(checkColumnSql, (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Error checking for branch_id column:", checkErr);
+      return res.status(500).json({ message: "Database error", error: checkErr.message });
     }
-    res.json(results || []);
+
+    const branchColumnExists = checkResults[0].column_exists > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
+
+    // If branch_id column exists and branch_id is provided and user is not admin, filter by branch
+    if (branchColumnExists && branchId && userRole !== 'admin') {
+      sql = `
+        SELECT j.*, b.branch_name, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN branches b ON j.branch_id = b.branch_id
+        LEFT JOIN categories c ON j.category = c.category_name
+        WHERE j.category = ? AND j.branch_id = ?
+        ORDER BY j.product_added DESC
+      `;
+      queryParams.push(branchId);
+      console.log(`Filtering jewellery items by category: ${category} and branch_id: ${branchId}`);
+    } else if (branchColumnExists) {
+      // For admin users or when no branch_id is provided, but branch_id column exists
+      sql = `
+        SELECT j.*, b.branch_name, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN branches b ON j.branch_id = b.branch_id
+        LEFT JOIN categories c ON j.category = c.category_name
+        WHERE j.category = ?
+        ORDER BY j.product_added DESC
+      `;
+      console.log(`Fetching all jewellery items by category: ${category} with branch info (admin view)`);
+    } else {
+      // If branch_id column doesn't exist yet, use simpler query
+      sql = `
+        SELECT j.*, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN categories c ON j.category = c.category_name
+        WHERE j.category = ?
+        ORDER BY j.product_added DESC
+      `;
+      console.log(`Fetching all jewellery items by category: ${category} without branch info (column not yet added)`);
+    }
+
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching jewellery items by category:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+      console.log(`Found ${results.length} jewellery items in category ${category}`);
+      res.json(results || []);
+    });
+  });
+});
+
+// Get items by branch
+router.get("/branch/:branchId", (req, res) => {
+  const branchId = req.params.branchId;
+
+  console.log(`GET /jewellery-items/branch/${branchId} - Fetching jewellery items by branch`);
+
+  // Check if branch_id column exists in jewellery_items table
+  const checkColumnSql = `
+    SELECT COUNT(*) as column_exists
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+    AND table_name = 'jewellery_items'
+    AND column_name = 'branch_id'
+  `;
+
+  con.query(checkColumnSql, (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Error checking for branch_id column:", checkErr);
+      return res.status(500).json({ message: "Database error", error: checkErr.message });
+    }
+
+    const branchColumnExists = checkResults[0].column_exists > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
+
+    if (branchColumnExists) {
+      const sql = `
+        SELECT j.*, b.branch_name, c.category_name
+        FROM jewellery_items j
+        LEFT JOIN branches b ON j.branch_id = b.branch_id
+        LEFT JOIN categories c ON j.category = c.category_name
+        WHERE j.branch_id = ?
+        ORDER BY j.product_added DESC
+      `;
+
+      con.query(sql, [branchId], (err, results) => {
+        if (err) {
+          console.error("Error fetching jewellery items by branch:", err);
+          return res.status(500).json({ message: "Database error", error: err.message });
+        }
+        console.log(`Found ${results.length} jewellery items in branch ${branchId}`);
+        res.json(results || []);
+      });
+    } else {
+      // If branch_id column doesn't exist yet, return empty array
+      console.log('Branch column does not exist yet, returning empty array');
+      res.json([]);
+    }
   });
 });
 
