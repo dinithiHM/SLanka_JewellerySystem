@@ -2052,8 +2052,10 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/image.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/contexts/LanguageContext.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TranslatedText$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/TranslatedText.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
+;
 ;
 ;
 ;
@@ -2061,6 +2063,56 @@ const UserCard = ({ type })=>{
     _s();
     // Use language context to trigger re-renders when language changes
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useLanguage"])();
+    const [count, setCount] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "UserCard.useEffect": ()=>{
+            const fetchCount = {
+                "UserCard.useEffect.fetchCount": async ()=>{
+                    setLoading(true);
+                    setError(null);
+                    try {
+                        // Convert type to lowercase and remove spaces for API endpoint
+                        const typeKey = type.toLowerCase().replace(/\s+/g, '');
+                        // Fetch count from API
+                        const response = await fetch(`http://localhost:3002/dashboard-counts/users/${typeKey}`);
+                        // Special case for jewellery items
+                        if (typeKey === 'jewelleryitem') {
+                            const response = await fetch(`http://localhost:3002/dashboard-counts/jewellery-items`);
+                            if (!response.ok) {
+                                throw new Error(`Failed to fetch ${type} count`);
+                            }
+                            const data = await response.json();
+                            // Use total_stock for jewellery items
+                            setCount(data.total_stock || 0);
+                        } else {
+                            if (!response.ok) {
+                                throw new Error(`Failed to fetch ${type} count`);
+                            }
+                            const data = await response.json();
+                            setCount(data.count || 0);
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching ${type} count:`, err);
+                        setError(err instanceof Error ? err.message : 'An error occurred');
+                        setCount(0);
+                    } finally{
+                        setLoading(false);
+                    }
+                }
+            }["UserCard.useEffect.fetchCount"];
+            fetchCount();
+            // Set up interval to refresh data every 30 seconds
+            const intervalId = setInterval(fetchCount, 30000);
+            // Clean up interval on component unmount
+            return ({
+                "UserCard.useEffect": ()=>clearInterval(intervalId)
+            })["UserCard.useEffect"];
+        }
+    }["UserCard.useEffect"], [
+        type
+    ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "rounded-2xl p-4 flex-1 min-w-[130px]",
         style: {
@@ -2075,7 +2127,7 @@ const UserCard = ({ type })=>{
                         children: "2024/25"
                     }, void 0, false, {
                         fileName: "[project]/src/components/UserCard.tsx",
-                        lineNumber: 11,
+                        lineNumber: 65,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -2085,21 +2137,35 @@ const UserCard = ({ type })=>{
                         height: 20
                     }, void 0, false, {
                         fileName: "[project]/src/components/UserCard.tsx",
-                        lineNumber: 14,
+                        lineNumber: 68,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/UserCard.tsx",
-                lineNumber: 10,
+                lineNumber: 64,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
                 className: "text-2xl font-semibold my-4",
-                children: "1,234"
+                children: loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                    className: "text-gray-400",
+                    children: "..."
+                }, void 0, false, {
+                    fileName: "[project]/src/components/UserCard.tsx",
+                    lineNumber: 72,
+                    columnNumber: 11
+                }, this) : error ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                    className: "text-red-500 text-sm",
+                    children: "Error"
+                }, void 0, false, {
+                    fileName: "[project]/src/components/UserCard.tsx",
+                    lineNumber: 74,
+                    columnNumber: 11
+                }, this) : count.toLocaleString()
             }, void 0, false, {
                 fileName: "[project]/src/components/UserCard.tsx",
-                lineNumber: 16,
+                lineNumber: 70,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -2109,22 +2175,22 @@ const UserCard = ({ type })=>{
                     fallback: `${type}s`
                 }, void 0, false, {
                     fileName: "[project]/src/components/UserCard.tsx",
-                    lineNumber: 18,
+                    lineNumber: 80,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/UserCard.tsx",
-                lineNumber: 17,
+                lineNumber: 79,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/UserCard.tsx",
-        lineNumber: 9,
+        lineNumber: 63,
         columnNumber: 5
     }, this);
 };
-_s(UserCard, "DlB0VrZK86f5u4V+gaqgmmVL1+0=", false, function() {
+_s(UserCard, "q83HLL/+SSoesVNCKiQwLhFUn60=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useLanguage"]
     ];
@@ -2177,7 +2243,7 @@ const AdminPage = ()=>{
                         className: "flex gap-4 justify-between flex-wrap",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$UserCard$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                                type: "Sale"
+                                type: "Jewellery Item"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/admin/page.tsx",
                                 lineNumber: 20,

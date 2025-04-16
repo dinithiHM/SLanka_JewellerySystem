@@ -73,10 +73,10 @@ const JewelleryStockPage = ()=>{
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [searchTerm, setSearchTerm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
-    const [categoryFilter, setCategoryFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('all');
-    const [categories, setCategories] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([
-        'all'
-    ]);
+    const [categoryFilter, setCategoryFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('All Categories');
+    const [categories, setCategories] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [userBranchId, setUserBranchId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [userRole, setUserRole] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     // For the add/edit form
     const [showForm, setShowForm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [formMode, setFormMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('add');
@@ -87,81 +87,45 @@ const JewelleryStockPage = ()=>{
     const [inStock, setInStock] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
     const [buyingPrice, setBuyingPrice] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
     const [sellingPrice, setSellingPrice] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
-    // Fetch jewellery items
+    // Get user info from localStorage and fetch items immediately
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "JewelleryStockPage.useEffect": ()=>{
+            // Get individual items from localStorage
+            const role = localStorage.getItem('role');
+            const branchId = localStorage.getItem('branchId');
+            console.log('Retrieved from localStorage - Role:', role, 'Branch ID:', branchId);
+            // Set user role (convert to lowercase for consistency)
+            const normalizedRole = role === 'Admin' ? 'admin' : role?.toLowerCase() || '';
+            setUserRole(normalizedRole);
+            // Set branch ID
+            const numericBranchId = branchId ? Number(branchId) : null;
+            setUserBranchId(numericBranchId);
+            // Immediately fetch items with proper filtering
             const fetchJewelleryItems = {
                 "JewelleryStockPage.useEffect.fetchJewelleryItems": async ()=>{
                     try {
                         setLoading(true);
-                        const response = await fetch('http://localhost:3002/jewellery-items');
+                        // Construct URL with query parameters for branch filtering
+                        let url = 'http://localhost:3002/jewellery-items';
+                        const params = new URLSearchParams();
+                        if (numericBranchId && normalizedRole !== 'admin') {
+                            params.append('branch_id', numericBranchId.toString());
+                            params.append('role', normalizedRole);
+                        }
+                        if (params.toString()) {
+                            url += `?${params.toString()}`;
+                        }
+                        console.log('Initial fetch of jewellery items from:', url);
+                        const response = await fetch(url);
                         if (!response.ok) {
                             throw new Error(`Failed to fetch jewellery items: ${response.status}`);
                         }
                         const data = await response.json();
+                        console.log('Fetched jewellery items:', data.length);
                         setJewelleryItems(data);
-                        // Extract unique categories
-                        const uniqueCategories = new Set();
-                        uniqueCategories.add('all');
-                        data.forEach({
-                            "JewelleryStockPage.useEffect.fetchJewelleryItems": (item)=>{
-                                if (item.category) {
-                                    uniqueCategories.add(item.category);
-                                }
-                            }
-                        }["JewelleryStockPage.useEffect.fetchJewelleryItems"]);
-                        setCategories(Array.from(uniqueCategories));
                     } catch (err) {
                         console.error('Error fetching jewellery items:', err);
                         setError(err instanceof Error ? err.message : 'An unknown error occurred');
-                        // Use sample data for development
-                        setJewelleryItems([
-                            {
-                                item_id: 1,
-                                product_title: 'Cluster Earrings',
-                                category: 'Earrings',
-                                in_stock: 48,
-                                buying_price: 9000,
-                                selling_price: 11000,
-                                product_added: '2024-11-01 17:41:09'
-                            },
-                            {
-                                item_id: 2,
-                                product_title: 'Indian Type Necklace',
-                                category: 'Necklace',
-                                in_stock: 35,
-                                buying_price: 11000,
-                                selling_price: 12800,
-                                product_added: '2024-10-29 07:04:08'
-                            },
-                            {
-                                item_id: 3,
-                                product_title: 'Starakodi Chains',
-                                category: 'Chains',
-                                in_stock: 45,
-                                buying_price: 7400,
-                                selling_price: 9000,
-                                product_added: '2024-10-28 14:30:00'
-                            },
-                            {
-                                item_id: 4,
-                                product_title: 'Gents Ring',
-                                category: 'Rings',
-                                in_stock: 80,
-                                buying_price: 3000,
-                                selling_price: 4700,
-                                product_added: '2024-10-27 09:15:00'
-                            }
-                        ]);
-                        // Extract unique categories from sample data
-                        const uniqueCategories = new Set([
-                            'all',
-                            'Earrings',
-                            'Necklace',
-                            'Chains',
-                            'Rings'
-                        ]);
-                        setCategories(Array.from(uniqueCategories));
                     } finally{
                         setLoading(false);
                     }
@@ -170,15 +134,112 @@ const JewelleryStockPage = ()=>{
             fetchJewelleryItems();
         }
     }["JewelleryStockPage.useEffect"], []);
+    // Fetch categories
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "JewelleryStockPage.useEffect": ()=>{
+            const fetchCategories = {
+                "JewelleryStockPage.useEffect.fetchCategories": async ()=>{
+                    try {
+                        const response = await fetch('http://localhost:3002/categories');
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch categories: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        // Add 'all' category at the beginning
+                        setCategories([
+                            {
+                                category_id: 0,
+                                category_name: 'All Categories'
+                            },
+                            ...data
+                        ]);
+                    } catch (err) {
+                        console.error('Error fetching categories:', err);
+                        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+                        // Fallback categories
+                        setCategories([
+                            {
+                                category_id: 0,
+                                category_name: 'All Categories'
+                            },
+                            {
+                                category_id: 1,
+                                category_name: 'Rings'
+                            },
+                            {
+                                category_id: 2,
+                                category_name: 'Necklaces'
+                            },
+                            {
+                                category_id: 3,
+                                category_name: 'Earrings'
+                            },
+                            {
+                                category_id: 4,
+                                category_name: 'Bracelets'
+                            }
+                        ]);
+                    }
+                }
+            }["JewelleryStockPage.useEffect.fetchCategories"];
+            fetchCategories();
+        }
+    }["JewelleryStockPage.useEffect"], []);
+    // Fetch jewellery items when userRole or userBranchId changes after initial load
+    const [initialLoadComplete, setInitialLoadComplete] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "JewelleryStockPage.useEffect": ()=>{
+            // Skip the first render since we already fetched in the first useEffect
+            if (!initialLoadComplete) {
+                setInitialLoadComplete(true);
+                return;
+            }
+            const fetchJewelleryItems = {
+                "JewelleryStockPage.useEffect.fetchJewelleryItems": async ()=>{
+                    try {
+                        setLoading(true);
+                        // Construct URL with query parameters for branch filtering
+                        let url = 'http://localhost:3002/jewellery-items';
+                        const params = new URLSearchParams();
+                        if (userBranchId && userRole !== 'admin') {
+                            params.append('branch_id', userBranchId.toString());
+                            params.append('role', userRole);
+                        }
+                        if (params.toString()) {
+                            url += `?${params.toString()}`;
+                        }
+                        console.log('Fetching jewellery items after update from:', url);
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch jewellery items: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        console.log('Fetched jewellery items:', data.length);
+                        setJewelleryItems(data);
+                    } catch (err) {
+                        console.error('Error fetching jewellery items:', err);
+                        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+                    } finally{
+                        setLoading(false);
+                    }
+                }
+            }["JewelleryStockPage.useEffect.fetchJewelleryItems"];
+            fetchJewelleryItems();
+        }
+    }["JewelleryStockPage.useEffect"], [
+        userBranchId,
+        userRole,
+        initialLoadComplete
+    ]);
     // Filter jewellery items based on search term and category
     const filteredItems = jewelleryItems.filter((item)=>{
-        // Apply category filter
-        if (categoryFilter !== 'all' && item.category !== categoryFilter) {
+        // Apply category filter - only filter if not "All Categories"
+        if (categoryFilter !== 'All Categories' && categoryFilter !== '0' && item.category_name !== categoryFilter && item.category !== categoryFilter) {
             return false;
         }
         // Apply search term
         const searchLower = searchTerm.toLowerCase();
-        return item.product_title.toLowerCase().includes(searchLower) || item.category.toLowerCase().includes(searchLower);
+        return item.product_title.toLowerCase().includes(searchLower) || (item.category_name || item.category).toLowerCase().includes(searchLower) || (item.branch_name || '').toLowerCase().includes(searchLower);
     });
     // Format date
     const formatDate = (dateString)=>{
@@ -196,10 +257,13 @@ const JewelleryStockPage = ()=>{
     const handleEditItem = (item)=>{
         setCurrentItem(item);
         setProductTitle(item.product_title);
-        setCategory(item.category);
+        setCategory(item.category_name || item.category);
         setInStock(item.in_stock);
         setBuyingPrice(item.buying_price);
         setSellingPrice(item.selling_price);
+        if (item.branch_id) {
+            setUserBranchId(item.branch_id);
+        }
         setFormMode('edit');
         setShowForm(true);
     };
@@ -215,8 +279,25 @@ const JewelleryStockPage = ()=>{
             if (!response.ok) {
                 throw new Error('Failed to delete item');
             }
-            // Remove the deleted item from the state
-            setJewelleryItems(jewelleryItems.filter((item)=>item.item_id !== itemId));
+            // Refresh the list with branch filtering
+            let fetchUrl = 'http://localhost:3002/jewellery-items';
+            const params = new URLSearchParams();
+            if (userBranchId && userRole !== 'admin') {
+                params.append('branch_id', userBranchId.toString());
+                params.append('role', userRole);
+            }
+            if (params.toString()) {
+                fetchUrl += `?${params.toString()}`;
+            }
+            console.log('Refreshing jewellery items after delete from:', fetchUrl);
+            const refreshResponse = await fetch(fetchUrl);
+            if (refreshResponse.ok) {
+                const data = await refreshResponse.json();
+                setJewelleryItems(data);
+            } else {
+                // Fallback to client-side filtering if refresh fails
+                setJewelleryItems(jewelleryItems.filter((item)=>item.item_id !== itemId));
+            }
             alert('Item deleted successfully');
         } catch (err) {
             console.error('Error deleting item:', err);
@@ -247,8 +328,10 @@ const JewelleryStockPage = ()=>{
             category,
             in_stock: inStock,
             buying_price: buyingPrice,
-            selling_price: sellingPrice
+            selling_price: sellingPrice,
+            branch_id: userBranchId // Include branch_id from user info
         };
+        console.log('Submitting jewellery item data:', itemData);
         try {
             let response;
             if (formMode === 'add') {
@@ -273,8 +356,18 @@ const JewelleryStockPage = ()=>{
             if (!response.ok) {
                 throw new Error(`Failed to ${formMode} item`);
             }
-            // Refresh the list
-            const refreshResponse = await fetch('http://localhost:3002/jewellery-items');
+            // Refresh the list with branch filtering
+            let fetchUrl = 'http://localhost:3002/jewellery-items';
+            const params = new URLSearchParams();
+            if (userBranchId && userRole !== 'admin') {
+                params.append('branch_id', userBranchId.toString());
+                params.append('role', userRole);
+            }
+            if (params.toString()) {
+                fetchUrl += `?${params.toString()}`;
+            }
+            console.log('Refreshing jewellery items from:', fetchUrl);
+            const refreshResponse = await fetch(fetchUrl);
             if (refreshResponse.ok) {
                 const data = await refreshResponse.json();
                 setJewelleryItems(data);
@@ -297,12 +390,12 @@ const JewelleryStockPage = ()=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                lineNumber: 261,
+                lineNumber: 367,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-            lineNumber: 260,
+            lineNumber: 366,
             columnNumber: 7
         }, this);
     }
@@ -320,7 +413,7 @@ const JewelleryStockPage = ()=>{
                                 children: "Jewellery Item"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                lineNumber: 271,
+                                lineNumber: 378,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -332,20 +425,20 @@ const JewelleryStockPage = ()=>{
                                         className: "mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 276,
+                                        lineNumber: 383,
                                         columnNumber: 13
                                     }, this),
                                     "Add new Item"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                lineNumber: 272,
+                                lineNumber: 379,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                        lineNumber: 270,
+                        lineNumber: 377,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -362,7 +455,7 @@ const JewelleryStockPage = ()=>{
                                         onChange: (e)=>setSearchTerm(e.target.value)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 284,
+                                        lineNumber: 391,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$search$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Search$3e$__["Search"], {
@@ -370,13 +463,13 @@ const JewelleryStockPage = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 291,
+                                        lineNumber: 398,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                lineNumber: 283,
+                                lineNumber: 390,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -387,16 +480,16 @@ const JewelleryStockPage = ()=>{
                                         value: categoryFilter,
                                         onChange: (e)=>setCategoryFilter(e.target.value),
                                         children: categories.map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                value: cat,
-                                                children: cat === 'all' ? 'All Categories' : cat
-                                            }, cat, false, {
+                                                value: cat.category_id === 0 ? 'All Categories' : cat.category_name,
+                                                children: cat.category_name
+                                            }, cat.category_id, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 301,
+                                                lineNumber: 408,
                                                 columnNumber: 17
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 295,
+                                        lineNumber: 402,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -406,24 +499,24 @@ const JewelleryStockPage = ()=>{
                                             className: "text-gray-500"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 308,
+                                            lineNumber: 415,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 307,
+                                        lineNumber: 414,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                lineNumber: 294,
+                                lineNumber: 401,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                        lineNumber: 282,
+                        lineNumber: 389,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -440,7 +533,7 @@ const JewelleryStockPage = ()=>{
                                                 children: "Product Title"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 318,
+                                                lineNumber: 425,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -448,15 +541,23 @@ const JewelleryStockPage = ()=>{
                                                 children: "Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 321,
+                                                lineNumber: 428,
                                                 columnNumber: 17
+                                            }, this),
+                                            userRole === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                children: "Branch"
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                                lineNumber: 432,
+                                                columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                 className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
                                                 children: "In-Stock"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 324,
+                                                lineNumber: 436,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -464,7 +565,7 @@ const JewelleryStockPage = ()=>{
                                                 children: "Buying Price"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 327,
+                                                lineNumber: 439,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -472,7 +573,7 @@ const JewelleryStockPage = ()=>{
                                                 children: "Selling Price"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 330,
+                                                lineNumber: 442,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -480,7 +581,7 @@ const JewelleryStockPage = ()=>{
                                                 children: "Product Added"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 333,
+                                                lineNumber: 445,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -488,35 +589,35 @@ const JewelleryStockPage = ()=>{
                                                 children: "Actions"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                lineNumber: 336,
+                                                lineNumber: 448,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 317,
+                                        lineNumber: 424,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 316,
+                                    lineNumber: 423,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
                                     className: "bg-white divide-y divide-gray-200",
                                     children: filteredItems.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                            colSpan: 7,
+                                            colSpan: userRole === 'admin' ? 8 : 7,
                                             className: "px-6 py-4 text-center text-gray-500",
                                             children: "No jewellery items found"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 344,
+                                            lineNumber: 456,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                        lineNumber: 343,
+                                        lineNumber: 455,
                                         columnNumber: 17
                                     }, this) : filteredItems.map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                             className: "hover:bg-gray-50",
@@ -526,23 +627,31 @@ const JewelleryStockPage = ()=>{
                                                     children: item.product_title
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 351,
+                                                    lineNumber: 463,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
-                                                    children: item.category
+                                                    children: item.category_name || item.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 354,
+                                                    lineNumber: 466,
                                                     columnNumber: 21
+                                                }, this),
+                                                userRole === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    className: "px-6 py-4 whitespace-nowrap",
+                                                    children: item.branch_name || (item.branch_id === 1 ? 'Mahiyangana Branch' : item.branch_id === 2 ? 'Mahaoya Branch' : `Branch ${item.branch_id || 'Unknown'}`)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                                    lineNumber: 470,
+                                                    columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
                                                     children: item.in_stock
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 357,
+                                                    lineNumber: 477,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -550,7 +659,7 @@ const JewelleryStockPage = ()=>{
                                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatCurrency"])(item.buying_price)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 360,
+                                                    lineNumber: 480,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -558,7 +667,7 @@ const JewelleryStockPage = ()=>{
                                                     children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatCurrency"])(item.selling_price)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 363,
+                                                    lineNumber: 483,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -566,7 +675,7 @@ const JewelleryStockPage = ()=>{
                                                     children: formatDate(item.product_added)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 366,
+                                                    lineNumber: 486,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -582,12 +691,12 @@ const JewelleryStockPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                                    lineNumber: 376,
+                                                                    lineNumber: 496,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                                lineNumber: 371,
+                                                                lineNumber: 491,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -598,51 +707,51 @@ const JewelleryStockPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                                    lineNumber: 383,
+                                                                    lineNumber: 503,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                                lineNumber: 378,
+                                                                lineNumber: 498,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                        lineNumber: 370,
+                                                        lineNumber: 490,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 369,
+                                                    lineNumber: 489,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, item.item_id, true, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 350,
+                                            lineNumber: 462,
                                             columnNumber: 19
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 341,
+                                    lineNumber: 453,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                            lineNumber: 315,
+                            lineNumber: 422,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                        lineNumber: 314,
+                        lineNumber: 421,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                lineNumber: 269,
+                lineNumber: 376,
                 columnNumber: 7
             }, this),
             showForm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -655,7 +764,7 @@ const JewelleryStockPage = ()=>{
                             children: formMode === 'add' ? 'Add New Jewellery Item' : 'Edit Jewellery Item'
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                            lineNumber: 399,
+                            lineNumber: 519,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -669,7 +778,7 @@ const JewelleryStockPage = ()=>{
                                             children: "Product Title"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 405,
+                                            lineNumber: 525,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -680,13 +789,13 @@ const JewelleryStockPage = ()=>{
                                             required: true
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 406,
+                                            lineNumber: 526,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 404,
+                                    lineNumber: 524,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -697,7 +806,7 @@ const JewelleryStockPage = ()=>{
                                             children: "Category"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 416,
+                                            lineNumber: 536,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -709,27 +818,28 @@ const JewelleryStockPage = ()=>{
                                             list: "categories"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 417,
+                                            lineNumber: 537,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("datalist", {
                                             id: "categories",
-                                            children: categories.filter((cat)=>cat !== 'all').map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                    value: cat
-                                                }, cat, false, {
+                                            children: categories.filter((cat)=>cat.category_id !== 0) // Skip 'All Categories'
+                                            .map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: cat.category_name
+                                                }, cat.category_id, false, {
                                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                                    lineNumber: 429,
+                                                    lineNumber: 549,
                                                     columnNumber: 23
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 425,
+                                            lineNumber: 545,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 415,
+                                    lineNumber: 535,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -740,7 +850,7 @@ const JewelleryStockPage = ()=>{
                                             children: "In Stock"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 436,
+                                            lineNumber: 556,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -752,13 +862,13 @@ const JewelleryStockPage = ()=>{
                                             required: true
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 437,
+                                            lineNumber: 557,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 435,
+                                    lineNumber: 555,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -769,7 +879,7 @@ const JewelleryStockPage = ()=>{
                                             children: "Buying Price"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 448,
+                                            lineNumber: 568,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -782,13 +892,13 @@ const JewelleryStockPage = ()=>{
                                             required: true
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 449,
+                                            lineNumber: 569,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 447,
+                                    lineNumber: 567,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -799,7 +909,7 @@ const JewelleryStockPage = ()=>{
                                             children: "Selling Price"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 461,
+                                            lineNumber: 581,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -812,14 +922,67 @@ const JewelleryStockPage = ()=>{
                                             required: true
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 462,
+                                            lineNumber: 582,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 460,
+                                    lineNumber: 580,
                                     columnNumber: 15
+                                }, this),
+                                userRole === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "mb-4",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                            className: "block text-sm font-medium mb-1",
+                                            children: "Branch"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                            lineNumber: 595,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                            className: "w-full p-2 border border-gray-300 rounded-md",
+                                            value: userBranchId || '',
+                                            onChange: (e)=>setUserBranchId(Number(e.target.value) || null),
+                                            required: true,
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "",
+                                                    children: "Select Branch"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                                    lineNumber: 602,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "1",
+                                                    children: "Mahiyangana Branch"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                                    lineNumber: 603,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "2",
+                                                    children: "Mahaoya Branch"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                                    lineNumber: 604,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                            lineNumber: 596,
+                                            columnNumber: 19
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
+                                    lineNumber: 594,
+                                    columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex justify-end space-x-2 mt-6",
@@ -831,7 +994,7 @@ const JewelleryStockPage = ()=>{
                                             children: "Cancel"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 474,
+                                            lineNumber: 610,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -840,40 +1003,40 @@ const JewelleryStockPage = ()=>{
                                             children: formMode === 'add' ? 'Add Item' : 'Update Item'
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                            lineNumber: 481,
+                                            lineNumber: 617,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                                    lineNumber: 473,
+                                    lineNumber: 609,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                            lineNumber: 403,
+                            lineNumber: 523,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                    lineNumber: 398,
+                    lineNumber: 518,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-                lineNumber: 397,
+                lineNumber: 517,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/jewellery-stock/page.tsx",
-        lineNumber: 267,
+        lineNumber: 373,
         columnNumber: 5
     }, this);
 };
-_s(JewelleryStockPage, "05mM1V+ylPK924cS5v/Gzv87cM0=");
+_s(JewelleryStockPage, "8KYgZjuDPV1tpzS4N5TJVcnLW9Q=");
 _c = JewelleryStockPage;
 const __TURBOPACK__default__export__ = JewelleryStockPage;
 var _c;

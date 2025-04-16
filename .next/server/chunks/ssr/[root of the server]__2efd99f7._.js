@@ -110,6 +110,7 @@ const enTranslations = {
     'dashboard.viewAll': 'View All',
     'dashboard.noSalesFound': 'No sales found for this date',
     'dashboard.sale': 'Sales',
+    'dashboard.jewelleryitem': 'Jewellery Items',
     'dashboard.storemanager': 'Store Managers',
     'dashboard.cashier': 'Cashiers',
     'dashboard.salesassociate': 'Sales Associates',
@@ -187,6 +188,7 @@ const taTranslations = {
     'dashboard.viewAll': 'அனைத்தையும் காண்க',
     'dashboard.noSalesFound': 'இந்த தேதிக்கு விற்பனைகள் எதுவும் இல்லை',
     'dashboard.sale': 'விற்பனைகள்',
+    'dashboard.jewelleryitem': 'நகை பொருட்கள்',
     'dashboard.storemanager': 'கடை மேலாளர்கள்',
     'dashboard.cashier': 'காசாளர்கள்',
     'dashboard.salesassociate': 'விற்பனை சகாக்கள்',
@@ -240,7 +242,7 @@ const LanguageProvider = ({ children })=>{
         children: children
     }, void 0, false, {
         fileName: "[project]/src/contexts/LanguageContext.tsx",
-        lineNumber: 219,
+        lineNumber: 221,
         columnNumber: 5
     }, this);
 };
