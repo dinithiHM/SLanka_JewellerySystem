@@ -43,18 +43,222 @@ const saveBase64Image = (base64String, orderId) => {
   return `images/${fileName}`;
 };
 
-// Get all orders
+// Get all orders with branch filtering
 router.get("/", (req, res) => {
-  const sql = "SELECT * FROM orders";
+  console.log('GET /orders - Fetching orders');
 
-  con.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching orders:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  // Get branch_id and role from query parameters
+  const branchId = req.query.branch_id;
+  let userRole = req.query.role;
+
+  // Normalize the role to lowercase for consistent comparison
+  userRole = userRole ? userRole.toLowerCase() : '';
+
+  // Log the exact role for debugging
+  console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+
+  // Handle different role formats
+  if (userRole.includes('store') && userRole.includes('manager')) {
+    userRole = 'storemanager';
+  } else if (userRole.includes('sales') && userRole.includes('associate')) {
+    userRole = 'salesassociate';
+  } else if (userRole.includes('admin')) {
+    userRole = 'admin';
+  } else if (userRole.includes('cashier')) {
+    userRole = 'cashier';
+  }
+
+  console.log(`DEBUG: Normalized role: '${userRole}'`);
+
+  console.log(`Request params - Branch ID: ${branchId}, User Role: ${userRole}`);
+  console.log('Full query parameters:', req.query);
+
+  // EMERGENCY FIX: If the role is 'store manager' (with space), treat it as storemanager
+  const isStoreManager = userRole.includes('store') || userRole.includes('manager');
+  console.log(`DEBUG: isStoreManager = ${isStoreManager}`);
+
+  // Check if branch_id column exists in orders table
+  con.query("SHOW COLUMNS FROM orders LIKE 'branch_id'", (columnErr, columnResults) => {
+    if (columnErr) {
+      console.error("Error checking for branch_id column:", columnErr);
+      return res.status(500).json({ message: "Database error", error: columnErr.message });
     }
 
-    // Process image URLs for all orders
-    const processedResults = (results || []).map(order => {
+    const branchColumnExists = columnResults.length > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
+
+    let sql;
+    let queryParams = [];
+
+    if (branchColumnExists) {
+      // Different queries based on user role
+      if (userRole === 'admin' || userRole.includes('admin')) {
+        // Admin sees all orders with branch info
+        console.log('Fetching all orders with branch info (admin view)');
+        sql = `
+          SELECT o.*, b.branch_name
+          FROM orders o
+          LEFT JOIN branches b ON o.branch_id = b.branch_id
+        `;
+        console.log('SQL for admin:', sql);
+      } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
+        // Non-admin users (store manager, sales associate, cashier) only see orders from their branch
+        console.log(`Fetching orders for branch ${branchId} (${userRole} view)`);
+        sql = `
+          SELECT o.*, b.branch_name
+          FROM orders o
+          LEFT JOIN branches b ON o.branch_id = b.branch_id
+          WHERE o.branch_id = ?
+        `;
+        queryParams = [branchId || 0]; // Use 0 as fallback to prevent seeing all orders
+        console.log('SQL for non-admin:', sql);
+        console.log('Query params:', queryParams);
+      } else {
+        // Unknown role - return empty result
+        console.log(`Unknown role: ${userRole}, returning empty result`);
+        sql = `SELECT o.*, b.branch_name FROM orders o LEFT JOIN branches b ON o.branch_id = b.branch_id WHERE 1=0`;
+        console.log('SQL for unknown role:', sql);
+      }
+    } else {
+      // If branch_id column doesn't exist yet, still apply role-based filtering
+      if (userRole === 'admin' || userRole.includes('admin')) {
+        console.log('Branch column not found, showing all orders for admin');
+        sql = "SELECT * FROM orders";
+      } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
+        console.log('Branch column not found, but restricting non-admin users');
+        // Return empty result for non-admin users if branch filtering is not possible
+        sql = "SELECT * FROM orders WHERE 1=0";
+      } else {
+        console.log(`Unknown role: ${userRole}, returning empty result`);
+        sql = "SELECT * FROM orders WHERE 1=0";
+      }
+    }
+
+    console.log('Executing query with params:', queryParams);
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching orders:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      console.log(`Found ${results.length} orders`);
+      if (results.length > 0) {
+        console.log('Sample order:', results[0]);
+      }
+
+      // Process image URLs for all orders
+      const processedResults = (results || []).map(order => {
+        if (order.design_image) {
+          // Assuming your server is running on the same port as your API
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+          // Make sure we don't duplicate the /uploads/ part
+          const imagePath = order.design_image.startsWith('uploads/')
+            ? order.design_image
+            : `uploads/${order.design_image}`;
+
+          order.design_image_url = `${baseUrl}/${imagePath}`;
+        }
+        return order;
+      });
+
+      res.json(processedResults);
+    });
+  });
+});
+
+// Get order by ID with branch-based access control
+router.get("/:id", (req, res) => {
+  const orderId = req.params.id;
+  const branchId = req.query.branch_id;
+  let userRole = req.query.role;
+
+  // Normalize the role to lowercase for consistent comparison
+  userRole = userRole ? userRole.toLowerCase() : '';
+
+  // Log the exact role for debugging
+  console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+
+  // Handle different role formats
+  if (userRole.includes('store') && userRole.includes('manager')) {
+    userRole = 'storemanager';
+  } else if (userRole.includes('sales') && userRole.includes('associate')) {
+    userRole = 'salesassociate';
+  } else if (userRole.includes('admin')) {
+    userRole = 'admin';
+  } else if (userRole.includes('cashier')) {
+    userRole = 'cashier';
+  }
+
+  console.log(`DEBUG: Normalized role: '${userRole}'`);
+
+  // EMERGENCY FIX: If the role is 'store manager' (with space), treat it as storemanager
+  const isStoreManager = userRole.includes('store') || userRole.includes('manager');
+  console.log(`DEBUG: isStoreManager = ${isStoreManager}`);
+
+  console.log(`GET /orders/${orderId} - Fetching order by ID`);
+  console.log(`Request params - Branch ID: ${branchId}, User Role: ${userRole}`);
+
+  // Check if branch_id column exists in orders table
+  con.query("SHOW COLUMNS FROM orders LIKE 'branch_id'", (columnErr, columnResults) => {
+    if (columnErr) {
+      console.error("Error checking for branch_id column:", columnErr);
+      return res.status(500).json({ message: "Database error", error: columnErr.message });
+    }
+
+    const branchColumnExists = columnResults.length > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
+
+    let sql;
+    let queryParams = [orderId];
+
+    if (branchColumnExists) {
+      if (userRole === 'admin' || userRole.includes('admin')) {
+        // Admin can see any order with branch info
+        sql = `
+          SELECT o.*, b.branch_name
+          FROM orders o
+          LEFT JOIN branches b ON o.branch_id = b.branch_id
+          WHERE o.order_id = ?
+        `;
+      } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
+        // Non-admin users can only see orders from their branch
+        sql = `
+          SELECT o.*, b.branch_name
+          FROM orders o
+          LEFT JOIN branches b ON o.branch_id = b.branch_id
+          WHERE o.order_id = ? AND o.branch_id = ?
+        `;
+        queryParams.push(branchId || 0);
+      } else {
+        // Unknown role - return empty result
+        return res.status(403).json({ message: "Access denied: Unknown user role" });
+      }
+    } else {
+      // If branch_id column doesn't exist, use original query for admin only
+      if (userRole === 'admin' || userRole.includes('admin')) {
+        sql = "SELECT * FROM orders WHERE order_id = ?";
+      } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
+        // For non-admin, we can't verify branch access, so deny access
+        return res.status(403).json({ message: "Access denied: Branch-based filtering not available" });
+      } else {
+        // Unknown role
+        return res.status(403).json({ message: "Access denied: Unknown user role" });
+      }
+    }
+
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching order:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+      if (results.length === 0) {
+        return res.status(404).json({ message: "Order not found or access denied" });
+      }
+
+      const order = results[0];
+
+      // If there's an image path, convert it to a full URL
       if (order.design_image) {
         // Assuming your server is running on the same port as your API
         const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -65,45 +269,11 @@ router.get("/", (req, res) => {
           : `uploads/${order.design_image}`;
 
         order.design_image_url = `${baseUrl}/${imagePath}`;
+        console.log(`Image URL: ${order.design_image_url}`);
       }
-      return order;
+
+      res.json(order);
     });
-
-    res.json(processedResults);
-  });
-});
-
-// Get order by ID
-router.get("/:id", (req, res) => {
-  const orderId = req.params.id;
-  const sql = "SELECT * FROM orders WHERE order_id = ?";
-
-  con.query(sql, [orderId], (err, results) => {
-    if (err) {
-      console.error("Error fetching order:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    const order = results[0];
-
-    // If there's an image path, convert it to a full URL
-    if (order.design_image) {
-      // Assuming your server is running on the same port as your API
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-      // Make sure we don't duplicate the /uploads/ part
-      const imagePath = order.design_image.startsWith('uploads/')
-        ? order.design_image
-        : `uploads/${order.design_image}`;
-
-      order.design_image_url = `${baseUrl}/${imagePath}`;
-      console.log(`Image URL: ${order.design_image_url}`);
-    }
-
-    res.json(order);
   });
 });
 
@@ -116,8 +286,12 @@ router.post("/create", (req, res) => {
     offerGold,
     selectedKarats,
     karatValues,
-    image
+    image,
+    branch_id // Add branch_id to the request body
   } = req.body;
+
+  console.log('POST /orders/create - Creating new order');
+  console.log(`Order details - Category: ${category}, Supplier: ${supplier}, Branch ID: ${branch_id}`);
 
   // Basic validation
   if (!category || !supplier || !quantity) {
@@ -128,82 +302,128 @@ router.post("/create", (req, res) => {
   const karatsJson = JSON.stringify(selectedKarats || []);
   const karatValuesJson = JSON.stringify(karatValues || {});
 
-  // First insert the order without the image
-  const sql = `
-    INSERT INTO orders (
-      category,
-      supplier_id,
-      quantity,
-      offer_gold,
-      selected_karats,
-      karat_values,
-      design_image,
-      status,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-  `;
-
-  const values = [
-    category,
-    supplier,
-    quantity,
-    offerGold === 'yes' ? 1 : 0,
-    karatsJson,
-    karatValuesJson,
-    null, // Initially set image to null
-    'pending' // Default status
-  ];
-
-  con.query(sql, values, (err, result) => {
-    if (err) {
-      console.error("Error creating order:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  // Check if branch_id column exists in orders table
+  con.query("SHOW COLUMNS FROM orders LIKE 'branch_id'", (columnErr, columnResults) => {
+    if (columnErr) {
+      console.error("Error checking for branch_id column:", columnErr);
+      return res.status(500).json({ message: "Database error", error: columnErr.message });
     }
 
-    const orderId = result.insertId;
+    const branchColumnExists = columnResults.length > 0;
+    console.log(`Branch column exists: ${branchColumnExists}`);
 
-    // If there's an image, save it and update the order
-    if (image) {
-      try {
-        const imagePath = saveBase64Image(image, orderId);
+    // First insert the order without the image
+    let sql;
+    let values;
 
-        if (imagePath) {
-          // Update the order with the image path
-          const updateSql = "UPDATE orders SET design_image = ? WHERE order_id = ?";
-          con.query(updateSql, [imagePath, orderId], (updateErr) => {
-            if (updateErr) {
-              console.error("Error updating order with image:", updateErr);
-              // Still return success, just log the error
-            }
+    if (branchColumnExists && branch_id) {
+      // Include branch_id in the query if the column exists and branch_id is provided
+      sql = `
+        INSERT INTO orders (
+          category,
+          supplier_id,
+          quantity,
+          offer_gold,
+          selected_karats,
+          karat_values,
+          design_image,
+          status,
+          branch_id,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
 
-            res.status(201).json({
-              message: "Order created successfully with image",
-              orderId: orderId,
-              imagePath: imagePath
+      values = [
+        category,
+        supplier,
+        quantity,
+        offerGold === 'yes' ? 1 : 0,
+        karatsJson,
+        karatValuesJson,
+        null, // Initially set image to null
+        'pending', // Default status
+        branch_id
+      ];
+    } else {
+      // Use the original query if branch_id column doesn't exist or branch_id is not provided
+      sql = `
+        INSERT INTO orders (
+          category,
+          supplier_id,
+          quantity,
+          offer_gold,
+          selected_karats,
+          karat_values,
+          design_image,
+          status,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
+
+      values = [
+        category,
+        supplier,
+        quantity,
+        offerGold === 'yes' ? 1 : 0,
+        karatsJson,
+        karatValuesJson,
+        null, // Initially set image to null
+        'pending' // Default status
+      ];
+    }
+
+    con.query(sql, values, (err, result) => {
+      if (err) {
+        console.error("Error creating order:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      const orderId = result.insertId;
+      console.log(`Order created with ID: ${orderId}`);
+
+      // If there's an image, save it and update the order
+      if (image) {
+        try {
+          const imagePath = saveBase64Image(image, orderId);
+
+          if (imagePath) {
+            // Update the order with the image path
+            const updateSql = "UPDATE orders SET design_image = ? WHERE order_id = ?";
+            con.query(updateSql, [imagePath, orderId], (updateErr) => {
+              if (updateErr) {
+                console.error("Error updating order with image:", updateErr);
+                // Still return success, just log the error
+              }
+
+              res.status(201).json({
+                message: "Order created successfully with image",
+                orderId: orderId,
+                imagePath: imagePath
+              });
             });
-          });
-        } else {
-          // Return success even if image saving failed
+          } else {
+            // Return success even if image saving failed
+            res.status(201).json({
+              message: "Order created successfully, but image could not be saved",
+              orderId: orderId
+            });
+          }
+        } catch (imageErr) {
+          console.error("Error saving image:", imageErr);
           res.status(201).json({
             message: "Order created successfully, but image could not be saved",
-            orderId: orderId
+            orderId: orderId,
+            imageError: imageErr.message
           });
         }
-      } catch (imageErr) {
-        console.error("Error saving image:", imageErr);
+      } else {
+        // No image to save
         res.status(201).json({
-          message: "Order created successfully, but image could not be saved",
-          orderId: orderId,
-          imageError: imageErr.message
+          message: "Order created successfully",
+          orderId: orderId
         });
       }
-    } else {
-      // No image to save
-      res.status(201).json({
-        message: "Order created successfully",
-        orderId: orderId
-      });
-    }
+    });
   });
 });
 
@@ -249,6 +469,91 @@ router.delete("/delete/:id", (req, res) => {
     }
 
     res.json({ message: "Order deleted successfully" });
+  });
+});
+
+// Debug endpoint to check user role and branch ID
+router.get("/debug/user-info", (req, res) => {
+  const branchId = req.query.branch_id;
+  let userRole = req.query.role;
+
+  // Normalize the role to lowercase for consistent comparison
+  userRole = userRole ? userRole.toLowerCase() : '';
+
+  // Log the exact role for debugging
+  console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+
+  // Handle different role formats
+  if (userRole.includes('store') && userRole.includes('manager')) {
+    userRole = 'storemanager';
+  } else if (userRole.includes('sales') && userRole.includes('associate')) {
+    userRole = 'salesassociate';
+  } else if (userRole.includes('admin')) {
+    userRole = 'admin';
+  } else if (userRole.includes('cashier')) {
+    userRole = 'cashier';
+  }
+
+  console.log(`DEBUG: Normalized role: '${userRole}'`);
+
+  // EMERGENCY FIX: If the role is 'store manager' (with space), treat it as storemanager
+  const isStoreManager = userRole.includes('store') || userRole.includes('manager');
+  console.log(`DEBUG: isStoreManager = ${isStoreManager}`);
+
+  res.json({
+    originalRole: req.query.role,
+    normalizedRole: userRole,
+    branchId: branchId,
+    isAdmin: userRole === 'admin' || userRole.includes('admin'),
+    isStoreManager: userRole === 'storemanager' || isStoreManager,
+    isSalesAssociate: userRole === 'salesassociate' || (userRole.includes('sales') && userRole.includes('associate')),
+    isCashier: userRole === 'cashier' || userRole.includes('cashier'),
+    roleIncludes: {
+      store: userRole.includes('store'),
+      manager: userRole.includes('manager'),
+      sales: userRole.includes('sales'),
+      associate: userRole.includes('associate'),
+      admin: userRole.includes('admin'),
+      cashier: userRole.includes('cashier')
+    }
+  });
+});
+
+// Debug endpoint to check if there are any orders in the database
+router.get("/debug/check-orders", (req, res) => {
+  console.log('DEBUG: Checking if there are any orders in the database');
+
+  // Simple query to count orders
+  const sql = "SELECT COUNT(*) as count FROM orders";
+
+  con.query(sql, (err, results) => {
+    if (err) {
+      console.error("Error counting orders:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    const count = results[0].count;
+    console.log(`DEBUG: Found ${count} orders in the database`);
+
+    // If there are orders, get some sample data
+    if (count > 0) {
+      const sampleSql = "SELECT * FROM orders LIMIT 3";
+      con.query(sampleSql, (sampleErr, sampleResults) => {
+        if (sampleErr) {
+          console.error("Error fetching sample orders:", sampleErr);
+          return res.json({ count, hasSamples: false });
+        }
+
+        console.log('DEBUG: Sample orders:', sampleResults);
+        res.json({
+          count,
+          hasSamples: true,
+          samples: sampleResults
+        });
+      });
+    } else {
+      res.json({ count, hasSamples: false });
+    }
   });
 });
 
