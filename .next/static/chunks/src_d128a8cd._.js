@@ -99,7 +99,9 @@ const menuItems = [
                 href: "/DashView/orders",
                 visible: [
                     "Admin",
-                    "Store Manager"
+                    "Store Manager",
+                    "Sales Associate",
+                    "Cashier"
                 ]
             },
             {

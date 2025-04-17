@@ -551,46 +551,33 @@ const CountChart = ()=>{
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "relative w-full h-[75%]",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$ResponsiveContainer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ResponsiveContainer"], {
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$chart$2f$RadialBarChart$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["RadialBarChart"], {
-                            cx: "50%",
-                            cy: "50%",
-                            innerRadius: "40%",
-                            outerRadius: "100%",
-                            barSize: 32,
-                            data: data,
-                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$polar$2f$RadialBar$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["RadialBar"], {
-                                background: true,
-                                dataKey: "count"
-                            }, void 0, false, {
-                                fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 87,
-                                columnNumber: 13
-                            }, this)
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$ResponsiveContainer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ResponsiveContainer"], {
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$chart$2f$RadialBarChart$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["RadialBarChart"], {
+                        cx: "50%",
+                        cy: "50%",
+                        innerRadius: "40%",
+                        outerRadius: "100%",
+                        barSize: 32,
+                        data: data,
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$polar$2f$RadialBar$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["RadialBar"], {
+                            background: true,
+                            dataKey: "count"
                         }, void 0, false, {
                             fileName: "[project]/src/components/CountChart.tsx",
-                            lineNumber: 79,
-                            columnNumber: 11
+                            lineNumber: 87,
+                            columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/components/CountChart.tsx",
-                        lineNumber: 78,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
-                        src: "/maleFemale.png",
-                        alt: "chart icon",
-                        width: 50,
-                        height: 50,
-                        className: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/CountChart.tsx",
-                        lineNumber: 90,
-                        columnNumber: 9
+                        lineNumber: 79,
+                        columnNumber: 11
                     }, this)
-                ]
-            }, void 0, true, {
+                }, void 0, false, {
+                    fileName: "[project]/src/components/CountChart.tsx",
+                    lineNumber: 78,
+                    columnNumber: 9
+                }, this)
+            }, void 0, false, {
                 fileName: "[project]/src/components/CountChart.tsx",
                 lineNumber: 77,
                 columnNumber: 7
@@ -605,7 +592,7 @@ const CountChart = ()=>{
                                 className: "w-5 h-5 bg-[#BE5985] rounded-full"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 101,
+                                lineNumber: 95,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -613,7 +600,7 @@ const CountChart = ()=>{
                                 children: data[1]?.count
                             }, void 0, false, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 102,
+                                lineNumber: 96,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -625,13 +612,13 @@ const CountChart = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 103,
+                                lineNumber: 97,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/CountChart.tsx",
-                        lineNumber: 100,
+                        lineNumber: 94,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -641,7 +628,7 @@ const CountChart = ()=>{
                                 className: "w-5 h-5 bg-[#AA60C8] rounded-full"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 106,
+                                lineNumber: 100,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -649,7 +636,7 @@ const CountChart = ()=>{
                                 children: data[2]?.count
                             }, void 0, false, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 107,
+                                lineNumber: 101,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -661,19 +648,19 @@ const CountChart = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/CountChart.tsx",
-                                lineNumber: 108,
+                                lineNumber: 102,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/CountChart.tsx",
-                        lineNumber: 105,
+                        lineNumber: 99,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/CountChart.tsx",
-                lineNumber: 99,
+                lineNumber: 93,
                 columnNumber: 7
             }, this)
         ]

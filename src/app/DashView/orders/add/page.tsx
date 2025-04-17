@@ -28,8 +28,29 @@ const AddOrderPage = () => {
   const [imagePreview, setImagePreview] = useState<string | 'loading' | null>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
+  // User info state
+  const [userRole, setUserRole] = useState<string>('');
+  const [userBranchId, setUserBranchId] = useState<number | null>(null);
+
   // State for categories
   const [categories, setCategories] = useState<{category_id: number, category_name: string}[]>([]);
+
+  // Get user info from localStorage
+  useEffect(() => {
+    // Get user info from localStorage
+    const role = localStorage.getItem('role');
+    const branchId = localStorage.getItem('branchId');
+
+    console.log('Retrieved from localStorage - Role:', role, 'Branch ID:', branchId);
+
+    // Set user role (convert to lowercase for consistency)
+    const normalizedRole = role === 'Admin' ? 'admin' : (role?.toLowerCase() || '');
+    setUserRole(normalizedRole);
+
+    // Set branch ID
+    const numericBranchId = branchId ? Number(branchId) : null;
+    setUserBranchId(numericBranchId);
+  }, []);
 
   // Fetch categories from the database
   useEffect(() => {
@@ -171,8 +192,11 @@ const AddOrderPage = () => {
         karatValues: Object.fromEntries(
           Object.entries(karatValues).filter(([k]) => selectedKarats[k as keyof typeof selectedKarats])
         ),
-        image: imagePreview
+        image: imagePreview,
+        branch_id: userBranchId // Include branch_id from user info
       };
+
+      console.log('Including branch_id:', userBranchId);
 
       console.log('Order data:', orderData);
 

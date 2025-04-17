@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Search, Filter, ArrowUpDown, ShoppingCart } from 'lucide-react';
-import OrderImageThumbnail from '@/components/OrderImageThumbnail';
+import OrderImageThumbnail from '@/app/components/OrderImageThumbnail';
+import OrderDetailsModal from '@/app/components/OrderDetailsModal';
 
 interface Order {
   order_id: number;
@@ -18,6 +19,10 @@ interface Order {
   design_image_url?: string;
   status: string;
   created_at: string;
+  branch_id?: number;
+  branch_name?: string;
+  created_by?: number;
+  store_manager_name?: string;
 }
 
 const ViewOrdersPage = () => {
@@ -27,13 +32,96 @@ const ViewOrdersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [supplierNames, setSupplierNames] = useState<{[key: string]: string}>({});
+  const [supplierPhones, setSupplierPhones] = useState<{[key: string]: string}>({});
+  const [orderCreators, setOrderCreators] = useState<{[key: number]: string}>({});
+  const [userRole, setUserRole] = useState<string>('');
+  const [userBranchId, setUserBranchId] = useState<number | null>(null);
+
+  // Advanced filter states
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [branches, setBranches] = useState<{branch_id: number, branch_name: string}[]>([]);
+
+  // Order details modal state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+
+  // Get user role and branch ID from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('role');
+      const branchId = localStorage.getItem('branchId');
+
+      if (role) {
+        // Normalize role to match what the backend expects
+        let normalizedRole = role;
+        const roleLower = normalizedRole.toLowerCase();
+
+        if (roleLower.includes('store') && roleLower.includes('manager')) {
+          normalizedRole = 'storemanager';
+        } else if (roleLower.includes('sales') && roleLower.includes('associate')) {
+          normalizedRole = 'salesassociate';
+        } else if (roleLower.includes('admin')) {
+          normalizedRole = 'admin';
+        } else if (roleLower.includes('cashier')) {
+          normalizedRole = 'cashier';
+        }
+
+        // Make sure we have a valid branch ID for non-admin users
+        let parsedBranchId = branchId ? Number(branchId) : null;
+
+        // If the role is not admin and we don't have a branch ID, use a default
+        if (normalizedRole !== 'admin' && !parsedBranchId) {
+          parsedBranchId = 1; // Default to branch ID 1 (Mahiyangana)
+        }
+
+        setUserRole(normalizedRole);
+        setUserBranchId(parsedBranchId);
+      } else {
+        // Set default values if no role
+        setUserRole('unknown');
+        setUserBranchId(0);
+      }
+    }
+  }, []);
 
   // Fetch orders from the backend
   useEffect(() => {
+    // Only skip if we're still waiting for user data to load
+    if (!userRole && userBranchId === null) {
+      return;
+    }
+
+    // If we have a role but it's not admin and no branch ID, use a default
+    if (userRole && !userRole.includes('admin') && userBranchId === null) {
+      setUserBranchId(1); // Use branch ID 1 (Mahiyangana) as default
+      return; // Will trigger another useEffect run with the updated branchId
+    }
+
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:3002/orders');
+
+        // Construct URL with query parameters for branch filtering
+        let url = 'http://localhost:3002/orders';
+        const params = new URLSearchParams();
+
+        // Always send the role parameter
+        params.append('role', userRole || '');
+
+        // For non-admin users, branch filtering is mandatory
+        if (!userRole.includes('admin')) {
+          // If branchId is not available, use a fallback to prevent seeing all orders
+          const branchIdParam = userBranchId?.toString() || '1';
+          params.append('branch_id', branchIdParam);
+        }
+
+        // Add the parameters to the URL
+        url += `?${params.toString()}`;
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch orders: ${response.status}`);
@@ -58,8 +146,11 @@ const ViewOrdersPage = () => {
         setOrders(processedData);
 
         // Fetch supplier names for all unique supplier IDs
-        const uniqueSupplierIds = [...new Set(data.map((order: Order) => order.supplier_id))];
+        const uniqueSupplierIds = [...new Set(data.map((order: Order) => order.supplier_id))] as string[];
         fetchSupplierNames(uniqueSupplierIds);
+
+        // Fetch order creators
+        fetchOrderCreators();
 
       } catch (err) {
         console.error('Error fetching orders:', err);
@@ -121,26 +212,79 @@ const ViewOrdersPage = () => {
     };
 
     fetchOrders();
-  }, []);
+  }, [userRole, userBranchId]);
 
-  // Fetch supplier names
+  // Fetch branches for filtering
+  useEffect(() => {
+    // Only fetch branches for admin users
+    if (userRole === 'admin') {
+      const fetchBranches = async () => {
+        try {
+          const response = await fetch('http://localhost:3002/branches');
+          if (response.ok) {
+            const data = await response.json();
+            setBranches(data);
+          }
+        } catch (err) {
+          console.error('Error fetching branches:', err);
+          // Set default branches if fetch fails
+          setBranches([
+            { branch_id: 1, branch_name: 'Mahiyangana Branch' },
+            { branch_id: 2, branch_name: 'Mahaoya Branch' }
+          ]);
+        }
+      };
+
+      fetchBranches();
+    }
+  }, [userRole]);
+
+  // Fetch supplier information
   const fetchSupplierNames = async (supplierIds: string[]) => {
     try {
       const response = await fetch('http://localhost:3002/suppliers');
       if (response.ok) {
         const suppliers = await response.json();
         const namesMap: {[key: string]: string} = {};
+        const phonesMap: {[key: string]: string} = {};
 
         suppliers.forEach((supplier: any) => {
           if (supplierIds.includes(supplier.supplier_id)) {
-            namesMap[supplier.supplier_id] = supplier.name;
+            namesMap[supplier.supplier_id] = supplier.name || 'Unknown';
+            phonesMap[supplier.supplier_id] = supplier.phone || 'Not available';
           }
         });
 
         setSupplierNames(namesMap);
+        setSupplierPhones(phonesMap);
       }
     } catch (err) {
-      console.error('Error fetching supplier names:', err);
+      console.error('Error fetching supplier information:', err);
+    }
+  };
+
+  // Fetch order creators
+  const fetchOrderCreators = async () => {
+    try {
+      const response = await fetch('http://localhost:3002/users');
+      if (response.ok) {
+        const users = await response.json();
+        const creatorsMap: {[key: number]: string} = {};
+
+        // Map orders to their creators
+        orders.forEach(order => {
+          if (order.created_by) {
+            const creator = users.find((user: any) => user.user_id === order.created_by);
+            if (creator) {
+              creatorsMap[order.order_id] = `${creator.first_name} ${creator.last_name}`;
+            }
+          }
+        });
+
+        setOrderCreators(creatorsMap);
+      }
+    } catch (err) {
+      console.error('Error fetching order creators:', err);
     }
   };
 
@@ -168,31 +312,19 @@ const ViewOrdersPage = () => {
     }
   };
 
-  // Handle status update
-  const handleStatusUpdate = async (orderId: number, newStatus: string) => {
-    try {
-      const response = await fetch(`http://localhost:3002/orders/update-status/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to update order status');
-      }
 
-      // Update the order status in the state
-      setOrders(orders.map(order =>
-        order.order_id === orderId ? { ...order, status: newStatus } : order
-      ));
+  // Apply filters function
+  const applyFilters = () => {
+    // Reset any existing filters
+    setShowAdvancedFilters(false);
+  };
 
-      alert(`Order status updated to ${newStatus}`);
-    } catch (err) {
-      console.error('Error updating order status:', err);
-      alert('Failed to update order status');
-    }
+  // Reset filters function
+  const resetFilters = () => {
+    setBranchFilter('all');
+    setStartDate('');
+    setEndDate('');
   };
 
   // Filter and search orders
@@ -200,6 +332,42 @@ const ViewOrdersPage = () => {
     // Apply status filter
     if (statusFilter !== 'all' && order.status !== statusFilter) {
       return false;
+    }
+
+    // Apply branch filter (for admin only)
+    if (userRole === 'admin' && branchFilter !== 'all') {
+      const orderBranchId = order.branch_id?.toString() || '';
+      if (orderBranchId !== branchFilter) {
+        return false;
+      }
+    }
+
+    // Apply date range filter
+    if (startDate && endDate) {
+      const orderDate = new Date(order.created_at);
+      const filterStartDate = new Date(startDate);
+      const filterEndDate = new Date(endDate);
+
+      // Set end date to end of day
+      filterEndDate.setHours(23, 59, 59, 999);
+
+      if (orderDate < filterStartDate || orderDate > filterEndDate) {
+        return false;
+      }
+    } else if (startDate) {
+      const orderDate = new Date(order.created_at);
+      const filterStartDate = new Date(startDate);
+      if (orderDate < filterStartDate) {
+        return false;
+      }
+    } else if (endDate) {
+      const orderDate = new Date(order.created_at);
+      const filterEndDate = new Date(endDate);
+      // Set end date to end of day
+      filterEndDate.setHours(23, 59, 59, 999);
+      if (orderDate > filterEndDate) {
+        return false;
+      }
     }
 
     // Apply search term
@@ -212,11 +380,25 @@ const ViewOrdersPage = () => {
     );
   });
 
+  // Handle view order details
+  const handleViewOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
+
+  // Close order details modal
+  const handleCloseOrderDetails = () => {
+    setShowOrderDetails(false);
+    setSelectedOrder(null);
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
+
+
 
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
@@ -254,7 +436,9 @@ const ViewOrdersPage = () => {
   return (
     <div className="p-6">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold mb-6">View Orders</h2>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">View Orders</h2>
+        </div>
 
         {/* Search and Filter */}
         <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
@@ -282,11 +466,80 @@ const ViewOrdersPage = () => {
               <option value="cancelled">Cancelled</option>
             </select>
 
-            <button className="p-2 border border-gray-300 rounded-md">
+            <button
+              className="p-2 border border-gray-300 rounded-md"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              title="Advanced Filters"
+            >
               <Filter size={20} className="text-gray-500" />
             </button>
           </div>
         </div>
+
+        {/* Advanced Filters - Only visible for admin users */}
+        {showAdvancedFilters && userRole === 'admin' && (
+          <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Advanced Filters</h3>
+              <button
+                onClick={resetFilters}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Branch Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                >
+                  <option value="all">All Branches</option>
+                  {branches.map(branch => (
+                    <option key={branch.branch_id} value={branch.branch_id.toString()}>
+                      {branch.branch_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start Date Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              {/* End Date Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={applyFilters}
+                className="px-4 py-2 bg-yellow-400 text-black rounded-md hover:bg-yellow-500"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Orders Table */}
         <div className="overflow-x-auto">
@@ -306,6 +559,9 @@ const ViewOrdersPage = () => {
                   Supplier
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Branch
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quantity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -322,7 +578,7 @@ const ViewOrdersPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                     No orders found
                   </td>
                 </tr>
@@ -345,6 +601,12 @@ const ViewOrdersPage = () => {
                       {supplierNames[order.supplier_id] || order.supplier_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {order.branch_name ||
+                       (order.branch_id === 1 ? 'Mahiyangana Branch' :
+                        order.branch_id === 2 ? 'Mahaoya Branch' :
+                        'Not assigned')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {order.quantity}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -360,7 +622,7 @@ const ViewOrdersPage = () => {
                         <button
                           className="text-blue-600 hover:text-blue-900"
                           title="View Details"
-                          onClick={() => alert(`View details for order #${order.order_id}`)}
+                          onClick={() => handleViewOrderDetails(order)}
                         >
                           <Eye size={18} />
                         </button>
@@ -405,6 +667,17 @@ const ViewOrdersPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {showOrderDetails && selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          supplierName={supplierNames[selectedOrder.supplier_id] || selectedOrder.supplier_id}
+          supplierPhone={supplierPhones[selectedOrder.supplier_id] || 'Not available'}
+          createdByName={orderCreators[selectedOrder.order_id] || 'Not available'}
+          onClose={handleCloseOrderDetails}
+        />
+      )}
     </div>
   );
 };
