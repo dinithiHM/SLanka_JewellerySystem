@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Eye, Edit, Trash2, Search, Filter, ArrowUpDown, ShoppingCart } from 'lucide-react';
-import OrderImageThumbnail from '@/app/components/OrderImageThumbnail';
-import OrderDetailsModal from '@/app/components/OrderDetailsModal';
+import { Eye, Edit, Trash2, Search, Filter } from 'lucide-react';
+import OrderImageThumbnail from '../../../../components/OrderImageThumbnail';
+import OrderDetailsModal from '../../../../components/OrderDetailsModal';
 
 interface Order {
   order_id: number;
@@ -148,7 +146,7 @@ const ViewOrdersPage = () => {
         // Fetch supplier names for all unique supplier IDs
         const uniqueSupplierIds = [...new Set(data.map((order: Order) => order.supplier_id))] as string[];
         fetchSupplierNames(uniqueSupplierIds);
-
+        
         // Fetch order creators
         fetchOrderCreators();
 
@@ -206,6 +204,14 @@ const ViewOrdersPage = () => {
           '003': 'Vaseem Akram',
           '004': 'Mohamad Sami'
         });
+        
+        // Set dummy supplier phone numbers
+        setSupplierPhones({
+          '001': '+94 77 123 4567',
+          '002': '+94 76 234 5678',
+          '003': '+94 75 345 6789',
+          '004': '+94 74 456 7890'
+        });
       } finally {
         setLoading(false);
       }
@@ -234,7 +240,7 @@ const ViewOrdersPage = () => {
           ]);
         }
       };
-
+      
       fetchBranches();
     }
   }, [userRole]);
@@ -262,29 +268,48 @@ const ViewOrdersPage = () => {
       console.error('Error fetching supplier information:', err);
     }
   };
-
+  
   // Fetch order creators
   const fetchOrderCreators = async () => {
     try {
-      const response = await fetch('http://localhost:3002/users');
-      if (response.ok) {
-        const users = await response.json();
-        const creatorsMap: {[key: number]: string} = {};
-
-        // Map orders to their creators
-        orders.forEach(order => {
-          if (order.created_by) {
+      // Set default values for testing
+      const creatorsMap: {[key: number]: string} = {};
+      
+      // For each order, set a default creator name based on branch
+      orders.forEach(order => {
+        if (order.branch_id === 1) {
+          creatorsMap[order.order_id] = 'Mahiyangana Manager';
+        } else if (order.branch_id === 2) {
+          creatorsMap[order.order_id] = 'Mahaoya Manager';
+        } else {
+          creatorsMap[order.order_id] = 'System Admin';
+        }
+      });
+      
+      // Try to fetch real data if available
+      try {
+        const response = await fetch('http://localhost:3002/users');
+        if (response.ok) {
+          const users = await response.json();
+          
+          // Update with real data where possible
+          orders.forEach(order => {
+            // Skip if no created_by field
+            if (!order.created_by) return;
+            
             const creator = users.find((user: any) => user.user_id === order.created_by);
-            if (creator) {
+            if (creator && creator.first_name && creator.last_name) {
               creatorsMap[order.order_id] = `${creator.first_name} ${creator.last_name}`;
             }
-          }
-        });
-
-        setOrderCreators(creatorsMap);
+          });
+        }
+      } catch (innerErr) {
+        console.log('Could not fetch real user data, using defaults');
       }
+      
+      setOrderCreators(creatorsMap);
     } catch (err) {
-      console.error('Error fetching order creators:', err);
+      console.error('Error in fetchOrderCreators:', err);
     }
   };
 
@@ -311,8 +336,6 @@ const ViewOrdersPage = () => {
       alert('Failed to delete order');
     }
   };
-
-
 
   // Apply filters function
   const applyFilters = () => {
@@ -347,10 +370,10 @@ const ViewOrdersPage = () => {
       const orderDate = new Date(order.created_at);
       const filterStartDate = new Date(startDate);
       const filterEndDate = new Date(endDate);
-
+      
       // Set end date to end of day
       filterEndDate.setHours(23, 59, 59, 999);
-
+      
       if (orderDate < filterStartDate || orderDate > filterEndDate) {
         return false;
       }
@@ -397,8 +420,6 @@ const ViewOrdersPage = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
-
-
 
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
@@ -488,7 +509,7 @@ const ViewOrdersPage = () => {
                 Reset
               </button>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Branch Filter */}
               <div>
@@ -506,7 +527,7 @@ const ViewOrdersPage = () => {
                   ))}
                 </select>
               </div>
-
+              
               {/* Start Date Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -517,7 +538,7 @@ const ViewOrdersPage = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-
+              
               {/* End Date Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
@@ -529,7 +550,7 @@ const ViewOrdersPage = () => {
                 />
               </div>
             </div>
-
+            
             <div className="mt-4 flex justify-end">
               <button
                 onClick={applyFilters}

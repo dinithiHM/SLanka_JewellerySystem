@@ -137,6 +137,17 @@ const Login = () => {
           <p className="text-center text-white mt-2 text-xs sm:text-sm cursor-pointer hover:underline">
             Forgot Password?
           </p>
+          <div className="mt-4 pt-4 border-t border-gray-600">
+            <p className="text-center text-white text-xs sm:text-sm mb-2">
+              Are you a supplier?
+            </p>
+            <a
+              href="/supplier/login"
+              className="block w-full text-center bg-yellow-600 text-white font-semibold py-2 sm:py-3 rounded-lg hover:bg-yellow-700 transition duration-300"
+            >
+              Supplier Login
+            </a>
+          </div>
         </form>
       </div>
     </div>

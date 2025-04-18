@@ -4,23 +4,28 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 
-// Zod schema for form validation
-const schema = z.object({
-  name: z.string().min(1, { message: "Supplier name is required!" }),
-  address: z.string().min(1, { message: "Address is required!" }),
-  contact_no: z.string().min(1, { message: "Contact number is required!" }),
-  manufacturing_items: z.string().min(1, { message: "Manufacturing items are required!" }),
-  category: z.string().min(1, { message: "Category is required!" }),
-});
-
-type Inputs = z.infer<typeof schema>;
-
 const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any }) => {
+  // Zod schema for form validation
+  const schema = z.object({
+    name: z.string().min(1, { message: "Supplier name is required!" }),
+    address: z.string().min(1, { message: "Address is required!" }),
+    contact_no: z.string().min(1, { message: "Contact number is required!" }),
+    manufacturing_items: z.string().min(1, { message: "Manufacturing items are required!" }),
+    category: z.string().min(1, { message: "Category is required!" }),
+    username: z.string().min(4, { message: "Username must be at least 4 characters!" }).optional(),
+    password: type === "create" ?
+      z.string().min(6, { message: "Password must be at least 6 characters!" }).optional() :
+      z.string().optional(),
+  });
+
+  type Inputs = z.infer<typeof schema>;
   const [name, setName] = useState(data?.name || "");
   const [address, setAddress] = useState(data?.address || "");
   const [contactNo, setContactNo] = useState(data?.contact_no || "");
   const [manufacturingItems, setManufacturingItems] = useState(data?.manufacturing_items || "");
   const [category, setCategory] = useState(data?.category || "");
+  const [username, setUsername] = useState(data?.username || "");
+  const [password, setPassword] = useState("");
   const [categories, setCategories] = useState<{category_id: number, category_name: string}[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +72,8 @@ const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any })
 
   const onSubmit = handleSubmit(async () => {
     try {
-      const supplierData = {
+      // Create a base supplier data object with required fields
+      const supplierData: any = {
         name,
         address,
         contact_no: contactNo,
@@ -75,7 +81,25 @@ const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any })
         category,
       };
 
-      const response = await fetch("http://localhost:3002/suppliers/create", {
+      // Only add username if it's provided and not empty
+      if (username && username.trim() !== '') {
+        supplierData.username = username;
+
+        // Only add password if username is provided and password is not empty
+        if (password && password.trim() !== '') {
+          supplierData.password = password;
+        }
+      }
+
+      // Determine the correct endpoint URL based on the form type
+      const url = type === "create"
+        ? "http://localhost:3002/suppliers/create"
+        : `http://localhost:3002/suppliers/update/${data?.supplier_id}`;
+
+      console.log('Submitting supplier data to:', url);
+      console.log('Supplier data:', supplierData);
+
+      const response = await fetch(url, {
         method: type === "create" ? "POST" : "PUT", // POST for create, PUT for update
         headers: {
           "Content-Type": "application/json",
@@ -163,6 +187,31 @@ const SupplierForm = ({ type, data }: { type: "create" | "update"; data?: any })
             ))}
           </select>
           {errors.category && <p className="text-xs text-red-400">{errors.category.message}</p>}
+        </div>
+      </div>
+
+      <div className="flex justify-between flex-wrap gap-4">
+        <div className="flex flex-col w-full md:w-1/4">
+          <label className="text-xs text-gray-500">Username (for supplier portal, optional)</label>
+          <input
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            {...register("username")}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          {errors.username && <p className="text-xs text-red-400">{errors.username.message}</p>}
+        </div>
+
+        <div className="flex flex-col w-full md:w-1/4">
+          <label className="text-xs text-gray-500">{type === "create" ? "Password (optional)" : "New Password (leave empty to keep current)"}</label>
+          <input
+            type="password"
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            {...register("password")}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
         </div>
       </div>
 

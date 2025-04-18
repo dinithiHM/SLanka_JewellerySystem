@@ -20,31 +20,39 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-// Zod schema for form validation
-const schema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].object({
-    name: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
-        message: "Supplier name is required!"
-    }),
-    address: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
-        message: "Address is required!"
-    }),
-    contact_no: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
-        message: "Contact number is required!"
-    }),
-    manufacturing_items: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
-        message: "Manufacturing items are required!"
-    }),
-    category: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
-        message: "Category is required!"
-    })
-});
 const SupplierForm = ({ type, data })=>{
     _s();
+    // Zod schema for form validation
+    const schema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].object({
+        name: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
+            message: "Supplier name is required!"
+        }),
+        address: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
+            message: "Address is required!"
+        }),
+        contact_no: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
+            message: "Contact number is required!"
+        }),
+        manufacturing_items: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
+            message: "Manufacturing items are required!"
+        }),
+        category: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(1, {
+            message: "Category is required!"
+        }),
+        username: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(4, {
+            message: "Username must be at least 4 characters!"
+        }).optional(),
+        password: type === "create" ? __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().min(6, {
+            message: "Password must be at least 6 characters!"
+        }).optional() : __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$lib$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["z"].string().optional()
+    });
     const [name, setName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.name || "");
     const [address, setAddress] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.address || "");
     const [contactNo, setContactNo] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.contact_no || "");
     const [manufacturingItems, setManufacturingItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.manufacturing_items || "");
     const [category, setCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.category || "");
+    const [username, setUsername] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(data?.username || "");
+    const [password, setPassword] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
     const [categories, setCategories] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     const { handleSubmit, register, formState: { errors } } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$hook$2d$form$2f$dist$2f$index$2e$esm$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useForm"])({
@@ -121,6 +129,7 @@ const SupplierForm = ({ type, data })=>{
     }["SupplierForm.useEffect"], []);
     const onSubmit = handleSubmit(async ()=>{
         try {
+            // Create a base supplier data object with required fields
             const supplierData = {
                 name,
                 address,
@@ -128,7 +137,19 @@ const SupplierForm = ({ type, data })=>{
                 manufacturing_items: manufacturingItems,
                 category
             };
-            const response = await fetch("http://localhost:3002/suppliers/create", {
+            // Only add username if it's provided and not empty
+            if (username && username.trim() !== '') {
+                supplierData.username = username;
+                // Only add password if username is provided and password is not empty
+                if (password && password.trim() !== '') {
+                    supplierData.password = password;
+                }
+            }
+            // Determine the correct endpoint URL based on the form type
+            const url = type === "create" ? "http://localhost:3002/suppliers/create" : `http://localhost:3002/suppliers/update/${data?.supplier_id}`;
+            console.log('Submitting supplier data to:', url);
+            console.log('Supplier data:', supplierData);
+            const response = await fetch(url, {
                 method: type === "create" ? "POST" : "PUT",
                 headers: {
                     "Content-Type": "application/json"
@@ -155,7 +176,7 @@ const SupplierForm = ({ type, data })=>{
                 children: type === "create" ? "Create a New Supplier" : "Update Supplier Details"
             }, void 0, false, {
                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                lineNumber: 101,
+                lineNumber: 125,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -169,7 +190,7 @@ const SupplierForm = ({ type, data })=>{
                                 children: "Supplier Name"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 105,
+                                lineNumber: 129,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -179,7 +200,7 @@ const SupplierForm = ({ type, data })=>{
                                 onChange: (e)=>setName(e.target.value)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 106,
+                                lineNumber: 130,
                                 columnNumber: 11
                             }, this),
                             errors.name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -187,13 +208,13 @@ const SupplierForm = ({ type, data })=>{
                                 children: errors.name.message
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 112,
+                                lineNumber: 136,
                                 columnNumber: 27
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                        lineNumber: 104,
+                        lineNumber: 128,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -204,7 +225,7 @@ const SupplierForm = ({ type, data })=>{
                                 children: "Address"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 116,
+                                lineNumber: 140,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -214,7 +235,7 @@ const SupplierForm = ({ type, data })=>{
                                 onChange: (e)=>setAddress(e.target.value)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 117,
+                                lineNumber: 141,
                                 columnNumber: 11
                             }, this),
                             errors.address && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -222,13 +243,13 @@ const SupplierForm = ({ type, data })=>{
                                 children: errors.address.message
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 123,
+                                lineNumber: 147,
                                 columnNumber: 30
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                        lineNumber: 115,
+                        lineNumber: 139,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -239,7 +260,7 @@ const SupplierForm = ({ type, data })=>{
                                 children: "Contact Number"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 127,
+                                lineNumber: 151,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -249,7 +270,7 @@ const SupplierForm = ({ type, data })=>{
                                 onChange: (e)=>setContactNo(e.target.value)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 128,
+                                lineNumber: 152,
                                 columnNumber: 11
                             }, this),
                             errors.contact_no && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -257,19 +278,19 @@ const SupplierForm = ({ type, data })=>{
                                 children: errors.contact_no.message
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 134,
+                                lineNumber: 158,
                                 columnNumber: 33
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                        lineNumber: 126,
+                        lineNumber: 150,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                lineNumber: 103,
+                lineNumber: 127,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -283,7 +304,7 @@ const SupplierForm = ({ type, data })=>{
                                 children: "Manufacturing Items"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 140,
+                                lineNumber: 164,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -293,7 +314,7 @@ const SupplierForm = ({ type, data })=>{
                                 onChange: (e)=>setManufacturingItems(e.target.value)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 141,
+                                lineNumber: 165,
                                 columnNumber: 11
                             }, this),
                             errors.manufacturing_items && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -301,13 +322,13 @@ const SupplierForm = ({ type, data })=>{
                                 children: errors.manufacturing_items.message
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 147,
+                                lineNumber: 171,
                                 columnNumber: 42
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                        lineNumber: 139,
+                        lineNumber: 163,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -318,7 +339,7 @@ const SupplierForm = ({ type, data })=>{
                                 children: "Category"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 151,
+                                lineNumber: 175,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -332,7 +353,7 @@ const SupplierForm = ({ type, data })=>{
                                         children: "Select Category"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                        lineNumber: 158,
+                                        lineNumber: 182,
                                         columnNumber: 13
                                     }, this),
                                     categories.map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -340,13 +361,13 @@ const SupplierForm = ({ type, data })=>{
                                             children: cat.category_name
                                         }, cat.category_id, false, {
                                             fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                            lineNumber: 160,
+                                            lineNumber: 184,
                                             columnNumber: 15
                                         }, this))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 152,
+                                lineNumber: 176,
                                 columnNumber: 11
                             }, this),
                             errors.category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -354,19 +375,99 @@ const SupplierForm = ({ type, data })=>{
                                 children: errors.category.message
                             }, void 0, false, {
                                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                                lineNumber: 165,
+                                lineNumber: 189,
                                 columnNumber: 31
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                        lineNumber: 150,
+                        lineNumber: 174,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                lineNumber: 138,
+                lineNumber: 162,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex justify-between flex-wrap gap-4",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex flex-col w-full md:w-1/4",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                className: "text-xs text-gray-500",
+                                children: "Username (for supplier portal, optional)"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 195,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                className: "ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full",
+                                ...register("username"),
+                                value: username,
+                                onChange: (e)=>setUsername(e.target.value)
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 196,
+                                columnNumber: 11
+                            }, this),
+                            errors.username && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "text-xs text-red-400",
+                                children: errors.username.message
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 202,
+                                columnNumber: 31
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                        lineNumber: 194,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex flex-col w-full md:w-1/4",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                className: "text-xs text-gray-500",
+                                children: type === "create" ? "Password (optional)" : "New Password (leave empty to keep current)"
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 206,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                type: "password",
+                                className: "ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full",
+                                ...register("password"),
+                                value: password,
+                                onChange: (e)=>setPassword(e.target.value)
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 207,
+                                columnNumber: 11
+                            }, this),
+                            errors.password && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "text-xs text-red-400",
+                                children: errors.password.message
+                            }, void 0, false, {
+                                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                                lineNumber: 214,
+                                columnNumber: 31
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                        lineNumber: 205,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/components/forms/SupplierForm.tsx",
+                lineNumber: 193,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -380,22 +481,22 @@ const SupplierForm = ({ type, data })=>{
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                    lineNumber: 170,
+                    lineNumber: 219,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/forms/SupplierForm.tsx",
-                lineNumber: 169,
+                lineNumber: 218,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/forms/SupplierForm.tsx",
-        lineNumber: 100,
+        lineNumber: 124,
         columnNumber: 5
     }, this);
 };
-_s(SupplierForm, "4A4YngKRoD5dfuKtcQm3DFmf/pM=", false, function() {
+_s(SupplierForm, "tIqP0AN7awWN2mxZ/vj+Aci/30g=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$hook$2d$form$2f$dist$2f$index$2e$esm$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useForm"]
     ];
