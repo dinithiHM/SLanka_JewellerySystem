@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -16,9 +16,9 @@ import {
   AlertCircle,
   Truck,
   X,
-  RefreshCw
+  Building
 } from 'lucide-react';
-import Image from 'next/image';
+// import Image from 'next/image'; // Not needed after removing the modal
 import { formatCurrency } from '@/utils/formatters';
 import LKRIcon from '@/components/LKRIcon';
 
@@ -39,6 +39,7 @@ interface CustomOrder {
   category_name: string | null;
   description: string | null;
   special_requirements: string | null;
+  branch_id: number;
   branch_name: string;
   created_by_first_name: string;
   created_by_last_name: string;
@@ -57,6 +58,14 @@ const CustomOrdersPage = () => {
   const [orders, setOrders] = useState<CustomOrder[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<CustomOrder[]>([]);
 
+  // State for user role and branch
+  const [userRole, setUserRole] = useState<string>('');
+  const [userBranchId, setUserBranchId] = useState<number | null>(null);
+  const [branches, setBranches] = useState<{branch_id: number, branch_name: string}[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [filterByBranch, setFilterByBranch] = useState<boolean>(true); // Default to filtering by branch for admin
+  const [showAllBranches, setShowAllBranches] = useState<boolean>(false); // Default to showing only user's branch for non-admin
+
   // State for UI
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,15 +75,16 @@ const CustomOrdersPage = () => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('order_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedOrder, setSelectedOrder] = useState<CustomOrder | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  // These states are kept for future use if we add a quick view feature
+  // const [selectedOrder, setSelectedOrder] = useState<CustomOrder | null>(null);
+  // const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'info' | 'warning' | 'error'} | null>(null);
   const [previousOrders, setPreviousOrders] = useState<CustomOrder[]>([]);
   const [recentlyChangedOrders, setRecentlyChangedOrders] = useState<number[]>([]);
 
   // Function to fetch custom orders
-  const fetchOrders = async (isManualRefresh = false) => {
+  const fetchOrders = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setRefreshing(true);
     } else {
@@ -84,7 +94,36 @@ const CustomOrdersPage = () => {
     try {
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime();
-      const response = await fetch(`http://localhost:3002/custom-orders?t=${timestamp}`);
+
+      // Construct URL with query parameters for branch filtering
+      let url = 'http://localhost:3002/custom-orders';
+      const params = new URLSearchParams();
+
+      // Always send the role parameter
+      params.append('role', userRole || '');
+
+      // Add branch_id parameter if we have one
+      if (userRole === 'admin' && selectedBranchId && filterByBranch) {
+        // Admin with selected branch and filtering enabled
+        params.append('branch_id', selectedBranchId.toString());
+        params.append('filter_branch', 'true');
+      } else if (userRole !== 'admin' && userBranchId && !showAllBranches) {
+        // Non-admin showing only their branch
+        params.append('branch_id', userBranchId.toString());
+        params.append('filter_branch', 'true');
+      } else {
+        // No branch filtering
+        params.append('filter_branch', 'false');
+      }
+
+      // Add timestamp to prevent caching
+      params.append('t', timestamp.toString());
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching custom orders from:', url);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch orders: ${response.status}`);
       }
@@ -141,10 +180,60 @@ const CustomOrdersPage = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [userRole, userBranchId, selectedBranchId, filterByBranch, showAllBranches]);
+
+  // Fetch branches for admin filtering
+  const fetchBranches = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:3002/branches');
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+      // Set default branches if fetch fails
+      setBranches([
+        { branch_id: 1, branch_name: 'Mahiyangana Branch' },
+        { branch_id: 2, branch_name: 'Mahaoya Branch' }
+      ]);
+    }
+  }, []);
+
+  // Get user role and branch ID from localStorage
+  useEffect(() => {
+    // Get user info from localStorage
+    const role = localStorage.getItem('role');
+    const branchId = localStorage.getItem('branchId');
+    console.log('Retrieved from localStorage - Role:', role, 'Branch ID:', branchId);
+
+    // Set user role (convert to lowercase for consistency)
+    const normalizedRole = role === 'Admin' ? 'admin' : role?.toLowerCase() || '';
+    setUserRole(normalizedRole);
+
+    // Set branch ID
+    const numericBranchId = branchId ? Number(branchId) : null;
+    setUserBranchId(numericBranchId);
+    setSelectedBranchId(numericBranchId);
+
+    // Fetch branches if admin
+    if (normalizedRole === 'admin') {
+      fetchBranches();
+    }
+
+    // We'll let the other useEffect handle the initial fetch
+    // after these state values are set
+  }, [fetchBranches]);
 
   // Fetch custom orders on component mount and set up auto-refresh
   useEffect(() => {
+    // Only proceed if userRole and userBranchId are set
+    if (!userRole || userBranchId === null) {
+      return;
+    }
+
+    console.log('Setting up auto-refresh with filters - showAllBranches:', showAllBranches);
+
     // Initial fetch
     fetchOrders();
 
@@ -169,13 +258,18 @@ const CustomOrdersPage = () => {
       clearInterval(refreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [filterByBranch, showAllBranches, userBranchId, selectedBranchId, userRole, fetchOrders]);
 
   // This effect will run whenever the component is mounted or remounted
   useEffect(() => {
-    console.log('Custom orders component mounted, refreshing data...');
+    // Only proceed if userRole and userBranchId are set
+    if (!userRole || userBranchId === null) {
+      return;
+    }
+
+    console.log('Custom orders component mounted, refreshing data with showAllBranches:', showAllBranches);
     fetchOrders();
-  }, []);
+  }, [filterByBranch, showAllBranches, userBranchId, selectedBranchId, userRole, fetchOrders]);
 
   // Apply filters and search
   useEffect(() => {
@@ -276,6 +370,7 @@ const CustomOrdersPage = () => {
   const getPaymentStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'Fully Paid':
+      case 'Completed':
         return 'bg-green-100 text-green-800';
       case 'Partially Paid':
         return 'bg-yellow-100 text-yellow-800';
@@ -302,11 +397,12 @@ const CustomOrdersPage = () => {
     }
   };
 
-  // Handle view details
-  const handleViewDetails = (order: CustomOrder) => {
-    setSelectedOrder(order);
-    setShowDetailsModal(true);
-  };
+  // This function is used in the modal when clicking on an order
+  // It's kept for future use if we add a quick view feature
+  // const handleViewDetails = (order: CustomOrder) => {
+  //   setSelectedOrder(order);
+  //   setShowDetailsModal(true);
+  // };
 
   // Handle create new order
   const handleCreateOrder = () => {
@@ -321,7 +417,29 @@ const CustomOrdersPage = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Custom Orders</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Custom Orders</h1>
+          {userRole !== 'admin' && userBranchId && (
+            <div className="flex items-center mt-1">
+              <Building className="h-4 w-4 text-gray-500 mr-1" />
+              <span className="text-sm text-gray-600">
+                {branches.find(b => b.branch_id === userBranchId)?.branch_name ||
+                 (userBranchId === 1 ? 'Mahiyangana Branch' :
+                  userBranchId === 2 ? 'Mahaoya Branch' : `Branch ${userBranchId}`)}
+              </span>
+            </div>
+          )}
+          {userRole === 'admin' && selectedBranchId && (
+            <div className="flex items-center mt-1">
+              <Building className="h-4 w-4 text-gray-500 mr-1" />
+              <span className="text-sm text-gray-600">
+                Viewing: {branches.find(b => b.branch_id === selectedBranchId)?.branch_name ||
+                         (selectedBranchId === 1 ? 'Mahiyangana Branch' :
+                          selectedBranchId === 2 ? 'Mahaoya Branch' : `Branch ${selectedBranchId}`)}
+              </span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">
             Last updated: {lastRefreshed.toLocaleTimeString()}
@@ -430,28 +548,73 @@ const CustomOrdersPage = () => {
                   <option value="Not Paid">Not Paid</option>
                 </select>
               </div>
+
+              {/* Branch filter for all users */}
+              <div className="flex items-center space-x-2">
+                <Building className="h-5 w-5 text-gray-400" />
+                {userRole === 'admin' ? (
+                  <div className="flex items-center space-x-2">
+                    <select
+                      className="p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+                      value={selectedBranchId || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedBranchId(value ? Number(value) : null);
+                        fetchOrders(true); // Refresh with new branch filter
+                      }}
+                    >
+                      <option value="">All Branches</option>
+                      {branches.map(branch => (
+                        <option key={branch.branch_id} value={branch.branch_id}>
+                          {branch.branch_name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center ml-4">
+                      <input
+                        type="checkbox"
+                        id="adminFilterByBranch"
+                        className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-300 rounded"
+                        checked={filterByBranch}
+                        onChange={(e) => {
+                          setFilterByBranch(e.target.checked);
+                          fetchOrders(true); // Refresh with new filter setting
+                        }}
+                      />
+                      <label htmlFor="adminFilterByBranch" className="ml-2 block text-sm text-gray-700">
+                        Filter by branch
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-700">
+                      {branches.find(b => b.branch_id === userBranchId)?.branch_name ||
+                      (userBranchId === 1 ? 'Mahiyangana Branch' :
+                      userBranchId === 2 ? 'Mahaoya Branch' : `Branch ${userBranchId}`)}
+                    </span>
+                    <div className="flex items-center ml-4">
+                      <input
+                        type="checkbox"
+                        id="showAllBranches"
+                        className="h-4 w-4 text-yellow-500 focus:ring-yellow-400 border-gray-300 rounded"
+                        checked={showAllBranches}
+                        onChange={(e) => {
+                          setShowAllBranches(e.target.checked);
+                          fetchOrders(true); // Refresh with new filter setting
+                        }}
+                      />
+                      <label htmlFor="showAllBranches" className="ml-2 block text-sm text-gray-700">
+                        Show all branches
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex space-x-2">
-            <button
-              onClick={() => fetchOrders(true)}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              disabled={refreshing}
-            >
-              {refreshing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Refreshing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={18} className="mr-2" />
-                  Refresh
-                </>
-              )}
-            </button>
-
             <button
               onClick={handleCreateOrder}
               className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
@@ -532,6 +695,11 @@ const CustomOrdersPage = () => {
                       )}
                     </div>
                   </th>
+                  {(userRole === 'admin' && !filterByBranch) || (userRole !== 'admin' && showAllBranches) ? (
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Branch
+                    </th>
+                  ) : null}
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
@@ -576,6 +744,21 @@ const CustomOrdersPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {formatDate(order.estimated_completion_date)}
                     </td>
+                    {(userRole === 'admin' && !filterByBranch) || (userRole !== 'admin' && showAllBranches) ? (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Building className="h-4 w-4 text-gray-400 mr-1" />
+                          <span className="text-sm text-gray-900">
+                            {order.branch_name || (order.branch_id === 1 ? 'Mahiyangana' : order.branch_id === 2 ? 'Mahaoya' : `Branch ${order.branch_id}`)}
+                          </span>
+                          {userBranchId && order.branch_id !== userBranchId && (
+                            <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                              Other
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    ) : null}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.order_status)}`}>
                         <div className="flex items-center">
@@ -586,8 +769,8 @@ const CustomOrdersPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
-                        <div className={`px-3 py-1 rounded-md ${order.payment_status === 'Fully Paid' ? 'bg-green-100' : order.payment_status === 'Partially Paid' ? 'bg-yellow-100' : 'bg-red-100'} ${recentlyChangedOrders.includes(order.order_id) ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}>
-                          <span className={`font-semibold ${order.payment_status === 'Fully Paid' ? 'text-green-800' : order.payment_status === 'Partially Paid' ? 'text-yellow-800' : 'text-red-800'}`}>
+                        <div className={`px-3 py-1 rounded-md ${getPaymentStatusBadgeColor(order.payment_status).split(' ')[0]} ${recentlyChangedOrders.includes(order.order_id) ? 'ring-2 ring-yellow-400 animate-pulse' : ''}`}>
+                          <span className={`font-semibold ${getPaymentStatusBadgeColor(order.payment_status).split(' ')[1]}`}>
                             {/* Display the payment status directly from the database */}
                             {order.payment_status}
                             {recentlyChangedOrders.includes(order.order_id) && (
@@ -637,125 +820,7 @@ const CustomOrdersPage = () => {
         )}
       </div>
 
-      {/* Order Details Modal */}
-      {showDetailsModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Order Details</h2>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Reference</h3>
-                <p className="mt-1 text-sm text-gray-900">{selectedOrder.order_reference}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Date</h3>
-                <p className="mt-1 text-sm text-gray-900">{formatDate(selectedOrder.order_date)}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Customer</h3>
-                <p className="mt-1 text-sm text-gray-900">{selectedOrder.customer_name}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                <p className="mt-1 text-sm text-gray-900">{selectedOrder.branch_name}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Created By</h3>
-                <p className="mt-1 text-sm text-gray-900">{`${selectedOrder.created_by_first_name} ${selectedOrder.created_by_last_name}`}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
-                <p className="mt-1 text-sm text-gray-900">{formatDate(selectedOrder.estimated_completion_date)}</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Description</h3>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                {selectedOrder.description || 'No description provided'}
-              </p>
-            </div>
-
-            {selectedOrder.special_requirements && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Special Requirements</h3>
-                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                  {selectedOrder.special_requirements}
-                </p>
-              </div>
-            )}
-
-            {selectedOrder.images && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Reference Images</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {selectedOrder.images.split(',').map((imagePath, index) => (
-                    <div key={index} className="relative h-24 rounded-md overflow-hidden">
-                      <Image
-                        src={`http://localhost:3002/${imagePath}`}
-                        alt={`Reference ${index + 1}`}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-gray-50 p-4 rounded-md mb-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Total Amount</h3>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedOrder.estimated_amount)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Paid Amount</h3>
-                  <p className="mt-1 text-lg font-semibold text-green-600">{formatCurrency(selectedOrder.advance_amount)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Balance</h3>
-                  <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(selectedOrder.balance_amount)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between">
-              <div className="flex space-x-2">
-                <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.order_status)}`}>
-                  <div className="flex items-center">
-                    {getStatusIcon(selectedOrder.order_status)}
-                    {selectedOrder.order_status}
-                  </div>
-                </span>
-
-                <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getPaymentStatusBadgeColor(selectedOrder.payment_status)}`}>
-                  {selectedOrder.payment_status}
-                </span>
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowDetailsModal(false);
-                  handleViewOrder(selectedOrder.order_id);
-                }}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-              >
-                View Full Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Order Details Modal - Removed as we're using the dedicated detail page instead */}
     </div>
   );
 };

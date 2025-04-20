@@ -336,72 +336,76 @@ const AddOrderPage = () => {
 
           {/* Gold Karat Options - Only show if offerGold is 'yes' */}
           {offerGold === 'yes' && (
-            <div className="mb-4 grid grid-cols-2 gap-4">
-              <div>
-                {Object.keys(selectedKarats).map((karat) => (
-                  <div key={karat} className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      id={karat}
-                      checked={selectedKarats[karat as keyof typeof selectedKarats]}
-                      onChange={() => handleKaratChange(karat)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={karat} className="mr-4 w-12">{karat}</label>
-                    <input
-                      type="number"
-                      value={karatValues[karat as keyof typeof karatValues]}
-                      onChange={(e) => handleKaratValueChange(karat, Number(e.target.value))}
-                      className="w-16 p-1 border border-gray-300 rounded-md"
-                      disabled={!selectedKarats[karat as keyof typeof selectedKarats]}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Image Upload */}
-              <div className="flex flex-col items-center">
-                <label className="block text-sm font-medium mb-2 text-center">
-                  Add a image of Design
-                </label>
-                <div className="border border-gray-300 rounded-md p-2 w-full h-32 flex items-center justify-center">
-                  {imagePreview === 'loading' ? (
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-2"></div>
-                      <span className="text-sm text-gray-500">Compressing image...</span>
-                    </div>
-                  ) : imagePreview ? (
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={imagePreview}
-                        alt="Design Preview"
-                        fill
-                        style={{ objectFit: 'contain' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setImagePreview(null)}
-                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                        title="Remove image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="cursor-pointer text-center">
-                      <span className="text-blue-500">Click to upload</span>
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  {Object.keys(selectedKarats).map((karat) => (
+                    <div key={karat} className="flex items-center mb-2">
                       <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
+                        type="checkbox"
+                        id={karat}
+                        checked={selectedKarats[karat as keyof typeof selectedKarats]}
+                        onChange={() => handleKaratChange(karat)}
+                        className="mr-2"
                       />
-                    </label>
-                  )}
+                      <label htmlFor={karat} className="mr-4 w-12">{karat}</label>
+                      <input
+                        type="number"
+                        value={karatValues[karat as keyof typeof karatValues]}
+                        onChange={(e) => handleKaratValueChange(karat, Number(e.target.value))}
+                        className="w-16 p-1 border border-gray-300 rounded-md"
+                        disabled={!selectedKarats[karat as keyof typeof selectedKarats]}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
+
+          {/* Image Upload - Always visible regardless of gold material option */}
+          <div className="mb-4">
+            <div className="flex flex-col items-center">
+              <label className="block text-sm font-medium mb-2 text-center">
+                Add a image of Design
+              </label>
+              <div className="border border-gray-300 rounded-md p-2 w-full h-32 flex items-center justify-center">
+                {imagePreview === 'loading' ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-2"></div>
+                    <span className="text-sm text-gray-500">Compressing image...</span>
+                  </div>
+                ) : imagePreview ? (
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={imagePreview}
+                      alt="Design Preview"
+                      fill
+                      style={{ objectFit: 'contain' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImagePreview(null)}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer text-center">
+                    <span className="text-blue-500">Click to upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Add More Button */}
           <div className="flex justify-center mb-4">

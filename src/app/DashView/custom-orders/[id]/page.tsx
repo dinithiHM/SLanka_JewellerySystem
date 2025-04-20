@@ -14,7 +14,6 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Truck,
   X,
   Printer,
   RefreshCw
@@ -55,6 +54,7 @@ interface CustomOrderDetail {
     image_type: string;
     upload_date: string;
   }[];
+  isFromOtherBranch?: boolean; // Added for branch visibility feature
 }
 
 const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
@@ -69,6 +69,10 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
+  // State for user role and branch
+  const [userRole, setUserRole] = useState<string>('');
+  const [userBranchId, setUserBranchId] = useState<number | null>(null);
+
   // Function to fetch order details
   const fetchOrderDetails = async (isManualRefresh = false) => {
     if (isManualRefresh) {
@@ -76,11 +80,36 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
     } else {
       setLoading(true);
     }
-    
+
     try {
       // Add a timestamp to prevent caching
       const timestamp = new Date().getTime();
-      const response = await fetch(`http://localhost:3002/custom-orders/${orderId}?t=${timestamp}`);
+
+      // Construct URL with query parameters
+      let url = `http://localhost:3002/custom-orders/${orderId}`;
+      const params = new URLSearchParams();
+
+      // Always send the role parameter
+      params.append('role', userRole || '');
+
+      // Always send branch_id if available (for checking if order is from another branch)
+      if (userBranchId) {
+        params.append('branch_id', userBranchId.toString());
+      }
+
+      // Add timestamp to prevent caching
+      params.append('t', timestamp.toString());
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching custom order details from:', url);
+      const response = await fetch(url);
+
+      if (response.status === 403) {
+        throw new Error('You do not have permission to view this order');
+      }
+
       if (!response.ok) {
         throw new Error(`Failed to fetch order details: ${response.status}`);
       }
@@ -97,7 +126,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
       if (data.images && (!data.imageDetails || data.imageDetails.length === 0)) {
         const imagesList = data.images.split(',').filter((img: string) => img.trim());
         console.log('Creating imageDetails from images string:', imagesList);
-        
+
         if (imagesList.length > 0) {
           // Create imageDetails array from images string
           data.imageDetails = imagesList.map((imagePath: string, index: number) => ({
@@ -110,7 +139,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
           console.log('Created imageDetails:', data.imageDetails);
         }
       }
-      
+
       setOrder(data);
 
       // Set the first image as selected if available
@@ -133,21 +162,37 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
     }
   };
 
+  // Get user role and branch ID from localStorage
+  useEffect(() => {
+    // Get user info from localStorage
+    const role = localStorage.getItem('role');
+    const branchId = localStorage.getItem('branchId');
+    console.log('Retrieved from localStorage - Role:', role, 'Branch ID:', branchId);
+
+    // Set user role (convert to lowercase for consistency)
+    const normalizedRole = role === 'Admin' ? 'admin' : role?.toLowerCase() || '';
+    setUserRole(normalizedRole);
+
+    // Set branch ID
+    const numericBranchId = branchId ? Number(branchId) : null;
+    setUserBranchId(numericBranchId);
+  }, []);
+
   // Set up auto-refresh and initial fetch
   useEffect(() => {
-    if (orderId) {
+    if (orderId && userRole) {
       fetchOrderDetails();
-      
+
       // Set up auto-refresh every 30 seconds
       const refreshInterval = setInterval(() => {
         console.log('Auto-refreshing order details...');
         fetchOrderDetails();
       }, 30000); // 30 seconds
-      
+
       // Clean up interval on unmount
       return () => clearInterval(refreshInterval);
     }
-  }, [orderId]);
+  }, [orderId, userRole, userBranchId]);
 
   // Format date
   const formatDate = (dateString: string | null) => {
@@ -161,19 +206,19 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
     });
   };
 
-  // Format date with time
-  const formatDateTime = (dateString: string | null) => {
-    if (!dateString) return 'Not set';
-
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Format date with time - Kept for future use
+  // const formatDateTime = (dateString: string | null) => {
+  //   if (!dateString) return 'Not set';
+  //
+  //   const date = new Date(dateString);
+  //   return date.toLocaleDateString('en-US', {
+  //     year: 'numeric',
+  //     month: 'short',
+  //     day: 'numeric',
+  //     hour: '2-digit',
+  //     minute: '2-digit'
+  //   });
+  // };
 
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
@@ -191,19 +236,19 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
     }
   };
 
-  // Get payment status badge color
-  const getPaymentStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'Fully Paid':
-        return 'bg-green-100 text-green-800';
-      case 'Partially Paid':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Unpaid':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Get payment status badge color - Kept for future use
+  // const getPaymentStatusBadgeColor = (status: string) => {
+  //   switch (status) {
+  //     case 'Fully Paid':
+  //       return 'bg-green-100 text-green-800';
+  //     case 'Partially Paid':
+  //       return 'bg-yellow-100 text-yellow-800';
+  //     case 'Unpaid':
+  //       return 'bg-red-100 text-red-800';
+  //     default:
+  //       return 'bg-gray-100 text-gray-800';
+  //   }
+  // };
 
   // Get status icon
   const getStatusIcon = (status: string) => {
@@ -298,6 +343,12 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
             <p className="text-sm text-gray-500">
               Reference: <span className="font-medium">{order.order_reference}</span>
             </p>
+            {order.isFromOtherBranch && (
+              <div className="mt-1 flex items-center text-blue-600">
+                <Building className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">This order is from {order.branch_name}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex space-x-2">
@@ -425,7 +476,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Payment Information</h2>
-              <button 
+              <button
                 onClick={() => fetchOrderDetails(true)}
                 className="flex items-center text-sm px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
                 disabled={refreshing}
@@ -470,7 +521,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
                   <p className="text-sm font-semibold text-red-600">{formatCurrency(order.balance_amount)}</p>
                 </div>
               </div>
-              
+
               {/* Payment Status */}
               <div className="flex items-start">
                 <div className="h-5 w-5 text-gray-400 mr-2 mt-0.5 flex items-center justify-center">
@@ -482,16 +533,16 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
                   <p className="text-sm font-medium text-gray-500">Payment Status</p>
                   <div className="mt-1">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      order.balance_amount <= 0 
-                        ? 'bg-green-100 text-green-800' 
-                        : order.advance_amount > 0 
-                          ? 'bg-yellow-100 text-yellow-800' 
+                      order.balance_amount <= 0
+                        ? 'bg-green-100 text-green-800'
+                        : order.advance_amount > 0
+                          ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-red-100 text-red-800'
                     }`}>
-                      {order.balance_amount <= 0 
-                        ? 'Fully Paid' 
-                        : order.advance_amount > 0 
-                          ? 'Partially Paid' 
+                      {order.balance_amount <= 0
+                        ? 'Fully Paid'
+                        : order.advance_amount > 0
+                          ? 'Partially Paid'
                           : 'Unpaid'}
                     </span>
                   </div>
@@ -547,7 +598,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
           {/* Order Details */}
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-lg font-semibold mb-4">Order Details</h2>
-            
+
             {order.description && (
               <div className="mb-4">
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
@@ -556,7 +607,7 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
                 </p>
               </div>
             )}
-            
+
             {order.special_requirements && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Special Requirements</h3>
