@@ -13,13 +13,13 @@ const __dirname = path.dirname(__filename);
 import { adminRouter } from "./Routes/AdminRoute.js";
 import { supplierRouter } from "./Routes/supplierRoutes.js";
 import { userRouter } from "./Routes/userRouter.js"; // ✅ Import User Routes
-import { salesAssociateRouter } from "./Routes/SalesAssociate.js";
-import { storeManagerRouter } from "./Routes/StoreManagerRoute.js"; // ✅ Import Store Manager Routes
+import salesAssociateRouter from "./Routes/SalesAssociate.new.js";
+import storeManagerRouter from "./Routes/StoreManagerRoute.new.js"; // ✅ Import Store Manager Routes
 import { orderRouter } from "./Routes/orderRoutes.js"; // ✅ Import Order Routes
 import { jewelleryItemsRouter } from "./Routes/jewelleryItemsRoutes.js"; // ✅ Import Jewellery Items Routes
 import { salesRouter } from "./Routes/salesRoutes.js"; // ✅ Import Sales Routes
 import { saleItemsRouter } from "./Routes/saleItemsRoutes.js"; // ✅ Import Sale Items Routes
-import { cashierRouter } from "./Routes/cashierRoutes.js"; // ✅ Import Cashier Routes
+import cashierRouter from "./Routes/cashierRoutes.new.js"; // ✅ Import Cashier Routes
 import { advancePaymentRouter } from "./Routes/advancePaymentRoutes.js"; // ✅ Import Advance Payment Routes
 import { customOrderRouter } from "./Routes/customOrderRoutes.simple.js"; // ✅ Import Simplified Custom Order Routes
 import { categoryRouter } from "./Routes/categoryRoutes.js"; // ✅ Import Category Routes

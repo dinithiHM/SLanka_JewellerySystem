@@ -251,9 +251,35 @@ router.post("/create", (req, res) => {
   });
 });
 
-// Get all custom orders with payment information
-router.get("/", (_req, res) => {
-  const sql = `
+// Get all custom orders with payment information and branch-based filtering
+router.get("/", (req, res) => {
+  console.log('GET /custom-orders - Fetching custom orders');
+
+  // Get branch_id and role from query parameters
+  const branchId = req.query.branch_id;
+  let userRole = req.query.role;
+
+  // Normalize the role to lowercase for consistent comparison
+  userRole = userRole ? userRole.toLowerCase() : '';
+
+  // Log the exact role for debugging
+  console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+
+  // Handle different role formats
+  if (userRole.includes('store') && userRole.includes('manager')) {
+    userRole = 'storemanager';
+  } else if (userRole.includes('sales') && userRole.includes('associate')) {
+    userRole = 'salesassociate';
+  } else if (userRole.includes('admin')) {
+    userRole = 'admin';
+  } else if (userRole.includes('cashier')) {
+    userRole = 'cashier';
+  }
+
+  console.log(`Normalized role: '${userRole}', Branch ID: ${branchId || 'not provided'}`);
+
+  // Base SQL query
+  let sql = `
     SELECT co.*,
       (SELECT COUNT(*) FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1) as payment_count,
       (SELECT SUM(advance_amount) FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1) as total_paid,
@@ -267,12 +293,42 @@ router.get("/", (_req, res) => {
         WHEN (SELECT SUM(payment_amount) FROM custom_order_payments WHERE order_id = co.order_id) > 0 THEN 'Partially Paid'
         ELSE 'Not Paid'
       END as current_payment_status,
-      (SELECT advance_amount FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1 ORDER BY payment_id DESC LIMIT 1) as latest_advance_amount
+      (SELECT advance_amount FROM advance_payments WHERE order_id = co.order_id AND is_custom_order = 1 ORDER BY payment_id DESC LIMIT 1) as latest_advance_amount,
+      b.branch_name
     FROM custom_order_details co
-    ORDER BY co.order_date DESC
+    LEFT JOIN branches b ON co.branch_id = b.branch_id
   `;
 
-  con.query(sql, (err, results) => {
+  // Add WHERE clause for branch filtering based on filter parameter
+  const queryParams = [];
+  const filterByBranch = req.query.filter_branch === 'true';
+
+  if (userRole === 'admin' || userRole === '') {
+    // Admin sees all orders, but can filter by branch if requested
+    console.log('Admin role detected - showing all branches');
+    if (filterByBranch && branchId) {
+      sql += ` WHERE co.branch_id = ?`;
+      queryParams.push(branchId);
+      console.log(`Admin filtering by branch_id: ${branchId}`);
+    }
+  } else {
+    // Non-admin users can see all orders, but default filter is their branch
+    if (filterByBranch && branchId) {
+      sql += ` WHERE co.branch_id = ?`;
+      queryParams.push(branchId);
+      console.log(`Non-admin role filtering by branch_id: ${branchId}`);
+    } else {
+      console.log('Non-admin role showing all branches');
+    }
+  }
+
+  // Add ORDER BY clause
+  sql += ` ORDER BY co.order_date DESC`;
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
     if (err) {
       console.error("Error fetching custom orders:", err);
       return res.status(500).json({ message: "Database error", error: err.message });
@@ -318,17 +374,43 @@ router.get("/", (_req, res) => {
   });
 });
 
-// Get custom order by ID
+// Get custom order by ID with branch-based access control
 router.get("/:id", (req, res) => {
   const orderId = req.params.id;
+  const branchId = req.query.branch_id;
+  let userRole = req.query.role;
 
-  // Get order details
+  // Normalize the role to lowercase for consistent comparison
+  userRole = userRole ? userRole.toLowerCase() : '';
+
+  // Log the exact role for debugging
+  console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+
+  // Handle different role formats
+  if (userRole.includes('store') && userRole.includes('manager')) {
+    userRole = 'storemanager';
+  } else if (userRole.includes('sales') && userRole.includes('associate')) {
+    userRole = 'salesassociate';
+  } else if (userRole.includes('admin')) {
+    userRole = 'admin';
+  } else if (userRole.includes('cashier')) {
+    userRole = 'cashier';
+  }
+
+  console.log(`Fetching custom order ${orderId} for role: ${userRole}, branch: ${branchId || 'not provided'}`);
+
+  // Prepare SQL query - all users can see any order details
   const orderSql = `
     SELECT * FROM custom_order_details
     WHERE order_id = ?
   `;
+  const queryParams = [orderId];
 
-  con.query(orderSql, [orderId], (err, results) => {
+  console.log(`Fetching order details for order ID: ${orderId}`);
+
+  // We'll check if the order is from the user's branch after fetching it
+
+  con.query(orderSql, queryParams, (err, results) => {
     if (err) {
       console.error("Error fetching custom order:", err);
       return res.status(500).json({ message: "Database error", error: err.message });
@@ -414,12 +496,21 @@ router.get("/:id", (req, res) => {
           console.log('Processed images string:', results[0].images);
         }
 
+        // Check if order is from a different branch than the user's branch
+        const orderBranchId = results[0].branch_id;
+        const isFromOtherBranch = userRole !== 'admin' && branchId && orderBranchId !== parseInt(branchId);
+
+        if (isFromOtherBranch) {
+          console.log(`Order ${orderId} is from branch ${orderBranchId}, user is from branch ${branchId}`);
+        }
+
         // Combine all data
         const orderData = {
           ...results[0],
           materials: materialsResults || [],
           payments: paymentsResults || [],
-          imageDetails: processedImages || []
+          imageDetails: processedImages || [],
+          isFromOtherBranch: isFromOtherBranch
         };
 
         res.json(orderData);

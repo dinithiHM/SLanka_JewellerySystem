@@ -160,42 +160,158 @@ router.get("/:id", (req, res) => {
 
 // ✅ CREATE Supplier
 router.post("/create", (req, res) => {
-  const { name, address, contact_no, manufacturing_items, category } = req.body;
+  const { name, address, contact_no, manufacturing_items, category, username, password } = req.body;
+  console.log('Creating supplier with data:', { name, address, contact_no, manufacturing_items, category, username });
 
-  const sql = `
-    INSERT INTO suppliers (name, address, contact_no, manufacturing_items, category)
-    VALUES (?, ?, ?, ?, ?)
-  `;
+  // Check if username already exists (if provided)
+  if (username) {
+    con.query("SELECT * FROM suppliers WHERE username = ?", [username], (checkErr, checkResults) => {
+      if (checkErr) {
+        console.error('Error checking username:', checkErr);
+        return res.status(500).json({ message: "Database error", error: checkErr });
+      }
 
-  const values = [name, address, contact_no, manufacturing_items, category];
+      if (checkResults.length > 0) {
+        return res.status(400).json({ message: "Username already exists. Please choose another username." });
+      }
 
-  con.query(sql, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Database error", error: err });
+      // If username is unique, proceed with creating the supplier
+      createSupplier();
+    });
+  } else {
+    // If no username provided, just create the supplier
+    createSupplier();
+  }
+
+  function createSupplier() {
+    let sql, values;
+
+    // If both username and password are provided
+    if (username && password) {
+      // In a real application, you would use bcrypt to hash the password
+      // For simplicity, we're using a placeholder hash here
+      const hashedPassword = `hashed_${password}`; // Replace with actual bcrypt hashing
+
+      sql = `
+        INSERT INTO suppliers (name, address, contact_no, manufacturing_items, category, username, password)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category, username, hashedPassword];
     }
-    res.status(201).json({ message: "Supplier created successfully", supplierId: result.insertId });
-  });
+    // If only username is provided (no password)
+    else if (username) {
+      sql = `
+        INSERT INTO suppliers (name, address, contact_no, manufacturing_items, category, username)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category, username];
+    }
+    // If neither username nor password is provided
+    else {
+      sql = `
+        INSERT INTO suppliers (name, address, contact_no, manufacturing_items, category)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category];
+    }
+
+    console.log('Executing SQL:', sql);
+    console.log('With values:', values);
+
+    con.query(sql, values, (err, result) => {
+      if (err) {
+        console.error('Error creating supplier:', err);
+        return res.status(500).json({ message: "Database error", error: err });
+      }
+      console.log('Supplier created successfully with ID:', result.insertId);
+      res.status(201).json({ message: "Supplier created successfully", supplierId: result.insertId });
+    });
+  }
 });
 
 // ✅ UPDATE Supplier
 router.put("/update/:id", (req, res) => {
   const supplierId = req.params.id;
-  const { name, address, contact_no, manufacturing_items, category } = req.body;
+  const { name, address, contact_no, manufacturing_items, category, username, password } = req.body;
+  console.log('Updating supplier with data:', { supplierId, name, address, contact_no, manufacturing_items, category, username });
 
-  const sql = `
-    UPDATE suppliers
-    SET name=?, address=?, contact_no=?, manufacturing_items=?, category=?
-    WHERE supplier_id=?
-  `;
+  // Check if username already exists and doesn't belong to this supplier
+  if (username) {
+    con.query(
+      "SELECT * FROM suppliers WHERE username = ? AND supplier_id != ?",
+      [username, supplierId],
+      (checkErr, checkResults) => {
+        if (checkErr) {
+          console.error('Error checking username:', checkErr);
+          return res.status(500).json({ message: "Database error", error: checkErr });
+        }
 
-  const values = [name, address, contact_no, manufacturing_items, category, supplierId];
+        if (checkResults.length > 0) {
+          return res.status(400).json({ message: "Username already exists. Please choose another username." });
+        }
 
-  con.query(sql, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Database error", error: err });
+        // If username is unique or belongs to this supplier, proceed with update
+        updateSupplier();
+      }
+    );
+  } else {
+    // If no username provided, just update the supplier
+    updateSupplier();
+  }
+
+  function updateSupplier() {
+    let sql, values;
+
+    // If password is provided, update it too
+    if (username && password) {
+      // In a real application, you would use bcrypt to hash the password
+      // For simplicity, we're using a placeholder hash here
+      const hashedPassword = `hashed_${password}`; // Replace with actual bcrypt hashing
+
+      sql = `
+        UPDATE suppliers
+        SET name=?, address=?, contact_no=?, manufacturing_items=?, category=?, username=?, password=?
+        WHERE supplier_id=?
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category, username, hashedPassword, supplierId];
     }
-    res.json({ message: "Supplier updated successfully" });
-  });
+    // If only username is provided (no password)
+    else if (username) {
+      sql = `
+        UPDATE suppliers
+        SET name=?, address=?, contact_no=?, manufacturing_items=?, category=?, username=?
+        WHERE supplier_id=?
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category, username, supplierId];
+    }
+    // If neither username nor password is provided
+    else {
+      sql = `
+        UPDATE suppliers
+        SET name=?, address=?, contact_no=?, manufacturing_items=?, category=?
+        WHERE supplier_id=?
+      `;
+
+      values = [name, address, contact_no, manufacturing_items, category, supplierId];
+    }
+
+    console.log('Executing SQL:', sql);
+    console.log('With values:', values);
+
+    con.query(sql, values, (err, result) => {
+      if (err) {
+        console.error('Error updating supplier:', err);
+        return res.status(500).json({ message: "Database error", error: err });
+      }
+      console.log('Supplier updated successfully');
+      res.json({ message: "Supplier updated successfully" });
+    });
+  }
 });
 
 // ✅ DELETE Supplier - Simplified version
@@ -300,6 +416,113 @@ router.get("/order-stats/:category", (req, res) => {
       console.log(`Returning ${result.length} order stats records with hardcoded counts`);
       return res.json(result);
     });
+  });
+});
+
+// Supplier Login Route
+router.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required" });
+  }
+
+  // Find the supplier with the given username
+  con.query("SELECT * FROM suppliers WHERE username = ?", [username], (err, results) => {
+    if (err) {
+      console.error("Database error during supplier login:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    const supplier = results[0];
+
+    // In a real application, you would use bcrypt.compare to check the password
+    // For simplicity, we're using a placeholder check here
+    const hashedPassword = `hashed_${password}`;
+
+    if (supplier.password !== hashedPassword) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    // If login is successful, return supplier info (excluding password)
+    const { password: _, ...supplierInfo } = supplier;
+
+    res.json({
+      message: "Login successful",
+      supplier: supplierInfo
+    });
+  });
+});
+
+// Get supplier orders
+router.get("/my-orders/:supplierId", (req, res) => {
+  const supplierId = req.params.supplierId;
+
+  if (!supplierId) {
+    return res.status(400).json({ message: "Supplier ID is required" });
+  }
+
+  // Get all orders for this supplier
+  con.query(
+    "SELECT * FROM orders WHERE supplier_id = ? ORDER BY created_at DESC",
+    [supplierId],
+    (err, results) => {
+      if (err) {
+        console.error("Database error fetching supplier orders:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      // Process image URLs
+      const processedOrders = results.map(order => {
+        if (order.design_image) {
+          // Construct the full URL for the image
+          const imagePath = order.design_image.startsWith('uploads/')
+            ? order.design_image
+            : `uploads/${order.design_image}`;
+
+          order.design_image_url = `http://localhost:3002/${imagePath}`;
+        }
+        return order;
+      });
+
+      res.json(processedOrders);
+    }
+  );
+});
+
+// Update order status
+router.put("/update-order-status/:orderId", (req, res) => {
+  const orderId = req.params.orderId;
+  const { status, supplier_notes } = req.body;
+
+  if (!orderId || !status) {
+    return res.status(400).json({ message: "Order ID and status are required" });
+  }
+
+  // Update the order status
+  const sql = supplier_notes
+    ? "UPDATE orders SET status = ?, supplier_notes = ?, updated_at = NOW() WHERE order_id = ?"
+    : "UPDATE orders SET status = ?, updated_at = NOW() WHERE order_id = ?";
+
+  const values = supplier_notes
+    ? [status, supplier_notes, orderId]
+    : [status, orderId];
+
+  con.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("Database error updating order status:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json({ message: "Order status updated successfully" });
   });
 });
 

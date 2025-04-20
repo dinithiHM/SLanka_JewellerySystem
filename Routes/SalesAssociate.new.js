@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import con from "../utils/db.js"; // Database connection
+import bcrypt from "bcrypt";
 
 const router = express.Router();
 
@@ -51,15 +52,26 @@ router.post("/create", (req, res) => {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, sex, role, branch_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId];
-
-  con.query(sql, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Database error", error: err });
+  // Hash the password before inserting
+  bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    if (hashErr) {
+      console.error("Error hashing password:", hashErr);
+      return res.status(500).json({
+        message: "Error hashing password",
+        error: hashErr.message
+      });
     }
-    res.status(201).json({ message: "Sales Associate created successfully", userId: result.insertId });
+
+    const sql = `INSERT INTO users (username, email, password, first_name, last_name, nic, phone, address, sex, role, branch_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const values = [username, email, hashedPassword, firstName, lastName, nic, phone, address, sex, role, parsedBranchId];
+
+    con.query(sql, values, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Database error", error: err });
+      }
+      res.status(201).json({ message: "Sales Associate created successfully", userId: result.insertId });
+    });
   });
 });
 
@@ -73,17 +85,43 @@ router.put("/update/:id", (req, res) => {
     return res.status(400).json({ message: "Invalid branch ID. It must be a number." });
   }
 
-  const sql = `UPDATE users
-               SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, sex=?, role=?, branch_id=?
-               WHERE id=? AND role = 'Sales Associate'`;
-  const values = [username, email, password, firstName, lastName, nic, phone, address, sex, role, parsedBranchId, userId];
+  // If password is provided, hash it before updating
+  if (password && password.trim() !== '') {
+    bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+      if (hashErr) {
+        console.error("Error hashing password:", hashErr);
+        return res.status(500).json({
+          message: "Error hashing password",
+          error: hashErr.message
+        });
+      }
 
-  con.query(sql, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Database error", error: err });
-    }
-    res.json({ message: "Sales Associate updated successfully" });
-  });
+      const sql = `UPDATE users
+                 SET username=?, email=?, password=?, first_name=?, last_name=?, nic=?, phone=?, address=?, sex=?, role=?, branch_id=?
+                 WHERE user_id=? AND role = 'Sales Associate'`;
+      const values = [username, email, hashedPassword, firstName, lastName, nic, phone, address, sex, role, parsedBranchId, userId];
+
+      con.query(sql, values, (err, result) => {
+        if (err) {
+          return res.status(500).json({ message: "Database error", error: err });
+        }
+        res.json({ message: "Sales Associate updated successfully" });
+      });
+    });
+  } else {
+    // No password update, exclude password field from update
+    const sql = `UPDATE users
+               SET username=?, email=?, first_name=?, last_name=?, nic=?, phone=?, address=?, sex=?, role=?, branch_id=?
+               WHERE user_id=? AND role = 'Sales Associate'`;
+    const values = [username, email, firstName, lastName, nic, phone, address, sex, role, parsedBranchId, userId];
+
+    con.query(sql, values, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: "Database error", error: err });
+      }
+      res.json({ message: "Sales Associate updated successfully" });
+    });
+  }
 });
 
 // ✅ DELETE Sales Associate
@@ -165,4 +203,5 @@ router.get("/check-table-structure", (req, res) => {
   });
 });
 
-export { router as salesAssociateRouter };
+// Export the router using default export
+export default router;
