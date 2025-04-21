@@ -183,6 +183,67 @@ router.get("/history/customer/:customerName", (req, res) => {
   });
 });
 
+// Get payment history for an inventory item
+router.get("/history/item/:itemId", (req, res) => {
+  const itemId = req.params.itemId;
+  const customerName = req.query.customer;
+
+  console.log(`GET /advance-payments/history/item/${itemId} - Fetching payment history for item`);
+  console.log(`Customer filter: ${customerName || 'none'}`);
+
+  let sql = `
+    SELECT apd.*
+    FROM advance_payment_details apd
+    JOIN advance_payments ap ON apd.payment_id = ap.payment_id
+    WHERE ap.item_id = ? AND ap.is_custom_order = 0
+  `;
+
+  const params = [itemId];
+
+  // Add customer filter if provided
+  if (customerName) {
+    sql += ` AND ap.customer_name = ?`;
+    params.push(customerName);
+  }
+
+  // Add ordering
+  sql += ` ORDER BY apd.payment_date ASC`;
+
+  con.query(sql, params, (err, results) => {
+    if (err) {
+      console.error("Error fetching item payment history:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log(`Found ${results.length} payments for item ${itemId}`);
+
+    // Calculate total paid and total amount
+    let totalPaid = 0;
+    let totalAmount = 0;
+
+    if (results.length > 0) {
+      // All payments should have the same total_amount
+      totalAmount = parseFloat(results[0].total_amount);
+
+      // Sum all advance payments
+      totalPaid = results.reduce((sum, payment) => sum + parseFloat(payment.advance_amount), 0);
+    }
+
+    // Calculate remaining balance
+    const remainingBalance = totalAmount - totalPaid;
+
+    res.json({
+      item_id: itemId,
+      customer_name: customerName,
+      payments: results || [],
+      total_payments: results.length,
+      total_paid: totalPaid,
+      total_amount: totalAmount,
+      remaining_balance: remainingBalance
+    });
+  });
+});
+
 // Create a new advance payment
 router.post("/create", (req, res) => {
   console.log('POST /advance-payments/create - Creating new advance payment');
@@ -200,7 +261,8 @@ router.post("/create", (req, res) => {
     item_id: rawItemId,
     item_quantity,
     existing_advance_amount, // New field for existing advance payments
-    balance_amount: clientBalanceAmount // Balance amount calculated by client
+    balance_amount: clientBalanceAmount, // Balance amount calculated by client
+    previous_payment_id // New field for linking to previous inventory item payments
   } = req.body;
 
   console.log('Request body:', req.body);
@@ -219,16 +281,23 @@ router.post("/create", (req, res) => {
   // Calculate balance, accounting for existing advance payments
   let balance_amount;
 
-  if (existing_advance_amount && parseFloat(existing_advance_amount) > 0) {
-    // If there's an existing advance payment, use it in the calculation
+  if (previous_payment_id && existing_advance_amount && parseFloat(existing_advance_amount) > 0) {
+    // If this is an additional payment for an inventory item with an existing payment
     const existingAdvance = parseFloat(existing_advance_amount);
     console.log(`Using existing advance amount: ${existingAdvance}`);
 
-    // Calculate: total - (existing advance + new advance)
-    balance_amount = parseFloat(total_amount) - (existingAdvance + parseFloat(advance_amount));
-    console.log(`Balance calculation: ${total_amount} - (${existingAdvance} + ${advance_amount}) = ${balance_amount}`);
+    // For inventory items with existing payments, use the client-calculated balance
+    // This is because the client has the current remaining balance from the URL
+    if (clientBalanceAmount !== undefined) {
+      balance_amount = parseFloat(clientBalanceAmount);
+      console.log(`Using client-calculated balance for inventory item: ${balance_amount}`);
+    } else {
+      // Fallback calculation if client balance is not provided
+      balance_amount = parseFloat(total_amount) - (existingAdvance + parseFloat(advance_amount));
+      console.log(`Fallback balance calculation: ${total_amount} - (${existingAdvance} + ${advance_amount}) = ${balance_amount}`);
+    }
   } else {
-    // Standard calculation
+    // Standard calculation for new payments
     balance_amount = parseFloat(total_amount) - parseFloat(advance_amount);
     console.log(`Standard balance calculation: ${total_amount} - ${advance_amount} = ${balance_amount}`);
   }
@@ -298,7 +367,9 @@ router.post("/create", (req, res) => {
       item_id,
       customer_name,
       total_amount,
-      advance_amount
+      advance_amount,
+      previous_payment_id: previous_payment_id || 'none',
+      existing_advance_amount: existing_advance_amount || 0
     });
 
     const insertParams = [
