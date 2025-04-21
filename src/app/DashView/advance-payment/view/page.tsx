@@ -2,20 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Search, 
-  Filter, 
-  ChevronDown, 
-  ChevronUp, 
-  DollarSign, 
-  Calendar, 
+import {
+  Search,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
+  Calendar,
   User,
   Package,
   ShoppingBag,
   CreditCard,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Building
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -31,22 +32,45 @@ interface AdvancePayment {
   payment_status: 'Pending' | 'Partially Paid' | 'Completed';
   payment_method: string;
   is_custom_order: boolean;
+  order_id: number | null;
   order_reference: string | null;
+  item_id: number | null;
   item_name: string | null;
   item_category: string | null;
   item_quantity: number | null;
   branch_name: string;
+  branch_id: number;
   created_by_first_name: string;
   created_by_last_name: string;
 }
 
+// Response type for payment history API
+interface PaymentHistoryResponse {
+  order_id: number;
+  payments: AdvancePayment[];
+  total_payments: number;
+  total_paid: number;
+}
+
+interface Branch {
+  branch_id: number;
+  branch_name: string;
+}
+
 const ViewAdvancePaymentsPage = () => {
   const router = useRouter();
-  
+
   // State for data
   const [payments, setPayments] = useState<AdvancePayment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<AdvancePayment[]>([]);
-  
+
+  // State for user role and branch
+  const [userRole, setUserRole] = useState<string>('');
+  const [userBranchId, setUserBranchId] = useState<number | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [filterByBranch, setFilterByBranch] = useState<boolean>(true); // Default to filtering by branch for admin
+
   // State for UI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,51 +81,125 @@ const ViewAdvancePaymentsPage = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedPayment, setSelectedPayment] = useState<AdvancePayment | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  
-  // Fetch advance payments on component mount
+  const [paymentHistory, setPaymentHistory] = useState<AdvancePayment[]>([]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Get user role and branch ID from localStorage
   useEffect(() => {
-    const fetchPayments = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('http://localhost:3002/advance-payments');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch payments: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setPayments(data);
-        setFilteredPayments(data);
-      } catch (err) {
-        console.error('Error fetching advance payments:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching payments');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchPayments();
+    // Get user info from localStorage
+    const role = localStorage.getItem('role');
+    const branchId = localStorage.getItem('branchId');
+    console.log('Retrieved from localStorage - Role:', role, 'Branch ID:', branchId);
+
+    // Set user role (convert to lowercase for consistency)
+    const normalizedRole = role === 'Admin' ? 'admin' : role?.toLowerCase() || '';
+    setUserRole(normalizedRole);
+
+    // Set branch ID
+    const numericBranchId = branchId ? Number(branchId) : null;
+    setUserBranchId(numericBranchId);
+
+    // Fetch branches
+    fetchBranches();
   }, []);
-  
+
+  // Fetch branches from the backend
+  const fetchBranches = async () => {
+    try {
+      const response = await fetch('http://localhost:3002/branches');
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+    }
+  };
+
+  // Fetch advance payments when user role or branch ID changes
+  useEffect(() => {
+    // Skip if we're still waiting for user data to load
+    if (!userRole && userBranchId === null) {
+      return;
+    }
+
+    console.log('Effect triggered - Role:', userRole, 'Branch ID:', userBranchId, 'Filter By Branch:', filterByBranch, 'Selected Branch:', selectedBranchId);
+    fetchPayments();
+  }, [userRole, userBranchId, filterByBranch, selectedBranchId]);
+
+  // Fetch advance payments from the backend
+  const fetchPayments = async () => {
+    setLoading(true);
+    try {
+      // Construct URL with query parameters for branch filtering
+      let url = 'http://localhost:3002/advance-payments';
+      const params = new URLSearchParams();
+
+      // Always send the role parameter
+      params.append('role', userRole || '');
+
+      // Use grouped endpoint to get latest payment for each order/customer
+      params.append('grouped', 'true');
+
+      // Add branch_id parameter if we have one
+      if (userRole === 'admin' && selectedBranchId && filterByBranch) {
+        // Admin with selected branch and filtering enabled
+        params.append('branch_id', selectedBranchId.toString());
+        params.append('filter_branch', 'true');
+        console.log('Admin filtering by branch:', selectedBranchId);
+      } else if (userRole !== 'admin' && userBranchId) {
+        // Non-admin users always filter by their branch
+        params.append('branch_id', userBranchId.toString());
+        params.append('filter_branch', 'true');
+        console.log('Non-admin filtering by branch:', userBranchId);
+      } else {
+        // No branch filtering (admin with no branch selected or filter disabled)
+        params.append('filter_branch', 'false');
+        console.log('No branch filtering applied');
+      }
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching advance payments from:', url);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch payments: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setPayments(data);
+      setFilteredPayments(data);
+    } catch (err) {
+      console.error('Error fetching advance payments:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching payments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Apply filters and search
   useEffect(() => {
     let result = [...payments];
-    
+
     // Apply search
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      result = result.filter(payment => 
+      result = result.filter(payment =>
         payment.payment_reference.toLowerCase().includes(term) ||
         payment.customer_name.toLowerCase().includes(term) ||
         (payment.order_reference && payment.order_reference.toLowerCase().includes(term)) ||
         (payment.item_name && payment.item_name.toLowerCase().includes(term))
       );
     }
-    
+
     // Apply status filter
     if (statusFilter !== 'all') {
       result = result.filter(payment => payment.payment_status === statusFilter);
     }
-    
+
     // Apply type filter
     if (typeFilter !== 'all') {
       if (typeFilter === 'custom') {
@@ -110,11 +208,11 @@ const ViewAdvancePaymentsPage = () => {
         result = result.filter(payment => !payment.is_custom_order);
       }
     }
-    
+
     // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
-      
+
       if (sortField === 'payment_date') {
         comparison = new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime();
       } else if (sortField === 'total_amount') {
@@ -124,13 +222,13 @@ const ViewAdvancePaymentsPage = () => {
       } else if (sortField === 'customer_name') {
         comparison = a.customer_name.localeCompare(b.customer_name);
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-    
+
     setFilteredPayments(result);
   }, [payments, searchTerm, statusFilter, typeFilter, sortField, sortDirection]);
-  
+
   // Handle sort change
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -140,7 +238,7 @@ const ViewAdvancePaymentsPage = () => {
       setSortDirection('asc');
     }
   };
-  
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -150,7 +248,7 @@ const ViewAdvancePaymentsPage = () => {
       day: 'numeric'
     });
   };
-  
+
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -164,7 +262,7 @@ const ViewAdvancePaymentsPage = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
-  
+
   // Get status icon
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -178,35 +276,92 @@ const ViewAdvancePaymentsPage = () => {
         return null;
     }
   };
-  
+
+  // Fetch payment history for an order
+  const fetchPaymentHistory = async (orderId: number) => {
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(`http://localhost:3002/advance-payments/history/order/${orderId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch payment history: ${response.status}`);
+      }
+
+      const data = await response.json() as PaymentHistoryResponse;
+      setPaymentHistory(data.payments);
+      setShowHistoryModal(true);
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching payment history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   // Handle view details
   const handleViewDetails = (payment: AdvancePayment) => {
     setSelectedPayment(payment);
     setShowDetailsModal(true);
   };
-  
+
+  // Handle view payment history
+  const handleViewHistory = (payment: AdvancePayment) => {
+    if (payment.is_custom_order && payment.order_id) {
+      fetchPaymentHistory(payment.order_id);
+    } else {
+      // For inventory items, just show the single payment
+      setPaymentHistory([payment]);
+      setShowHistoryModal(true);
+    }
+  };
+
   // Handle make additional payment
   const handleMakeAdditionalPayment = (payment: AdvancePayment) => {
-    // Implement additional payment functionality
-    // This could navigate to a new page or open a modal
-    console.log('Make additional payment for:', payment);
+    // Navigate to the advance payment page with query parameters
+    if (payment.is_custom_order && payment.order_id) {
+      // For custom orders
+      router.push(`/DashView/advance-payment?type=custom&order_id=${payment.order_id}`);
+    } else if (!payment.is_custom_order && payment.item_name) {
+      // For inventory items
+      const queryParams = new URLSearchParams({
+        type: 'inventory',
+        item_id: payment.item_id?.toString() || '',
+        customer_name: payment.customer_name,
+        total_amount: payment.total_amount.toString(),
+        balance: payment.balance_amount.toString(),
+        advance: payment.advance_amount.toString(),
+        payment_id: payment.payment_id.toString(),
+        quantity: payment.item_quantity?.toString() || '1'
+      }).toString();
+
+      router.push(`/DashView/advance-payment?${queryParams}`);
+    }
   };
-  
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Advance Payments</h1>
-      
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Advance Payments</h1>
+        <button
+          onClick={() => router.push('/DashView/advance-payment')}
+          className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 flex items-center"
+        >
+          <CreditCard className="mr-2 h-5 w-5" />
+          New Advance Payment
+        </button>
+      </div>
+
       {/* Error message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
           <span className="block sm:inline">{error}</span>
         </div>
       )}
-      
+
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -219,7 +374,7 @@ const ViewAdvancePaymentsPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Filter className="h-5 w-5 text-gray-400" />
               <select
@@ -233,7 +388,7 @@ const ViewAdvancePaymentsPage = () => {
                 <option value="Pending">Pending</option>
               </select>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Filter className="h-5 w-5 text-gray-400" />
               <select
@@ -246,17 +401,68 @@ const ViewAdvancePaymentsPage = () => {
                 <option value="inventory">Inventory Items</option>
               </select>
             </div>
+
+            {/* Branch filter for all users */}
+            <div className="flex items-center space-x-2">
+              <Building className="h-5 w-5 text-gray-400" />
+              {userRole === 'admin' ? (
+                <div className="flex items-center space-x-2">
+                  <select
+                    className="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedBranchId || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedBranchId(value ? Number(value) : null);
+                      // Don't call fetchPayments here as it will be triggered by the useEffect
+                    }}
+                  >
+                    <option value="">All Branches</option>
+                    {branches.map(branch => (
+                      <option key={branch.branch_id} value={branch.branch_id}>
+                        {branch.branch_name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center ml-2">
+                    <input
+                      type="checkbox"
+                      id="adminFilterByBranch"
+                      className="h-4 w-4 text-blue-500 focus:ring-blue-400 border-gray-300 rounded"
+                      checked={filterByBranch}
+                      onChange={(e) => {
+                        setFilterByBranch(e.target.checked);
+                        // Don't call fetchPayments here as it will be triggered by the useEffect
+                      }}
+                    />
+                    <label htmlFor="adminFilterByBranch" className="ml-2 block text-sm text-gray-700">
+                      Filter by branch
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700">
+                    {branches.find(b => b.branch_id === userBranchId)?.branch_name ||
+                    (userBranchId === 1 ? 'Mahiyangana Branch' :
+                    userBranchId === 2 ? 'Mahaoya Branch' : `Branch ${userBranchId}`)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          
+
           <button
-            onClick={() => router.push('/DashView/advance-payment')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            onClick={fetchPayments}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md flex items-center text-sm"
           >
-            New Advance Payment
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
           </button>
         </div>
       </div>
-      
+
       {/* Payments Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {loading ? (
@@ -298,6 +504,9 @@ const ViewAdvancePaymentsPage = () => {
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Reference
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Branch
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
@@ -357,6 +566,12 @@ const ViewAdvancePaymentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
+                        <Building className="h-5 w-5 text-gray-400 mr-2" />
+                        <span>{payment.branch_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
                         {payment.is_custom_order ? (
                           <>
                             <Package className="h-5 w-5 text-purple-500 mr-2" />
@@ -404,6 +619,14 @@ const ViewAdvancePaymentsPage = () => {
                         >
                           View
                         </button>
+                        {payment.is_custom_order && payment.order_id && (
+                          <button
+                            onClick={() => handleViewHistory(payment)}
+                            className="text-purple-600 hover:text-purple-900"
+                          >
+                            History
+                          </button>
+                        )}
                         {payment.payment_status !== 'Completed' && (
                           <button
                             onClick={() => handleMakeAdditionalPayment(payment)}
@@ -421,7 +644,7 @@ const ViewAdvancePaymentsPage = () => {
           </div>
         )}
       </div>
-      
+
       {/* Payment Details Modal */}
       {showDetailsModal && selectedPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -437,7 +660,7 @@ const ViewAdvancePaymentsPage = () => {
                 </svg>
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Reference</h3>
@@ -467,7 +690,7 @@ const ViewAdvancePaymentsPage = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="mb-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Item Details</h3>
               {selectedPayment.is_custom_order ? (
@@ -496,7 +719,7 @@ const ViewAdvancePaymentsPage = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="bg-gray-50 p-4 rounded-md mb-6">
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -513,7 +736,7 @@ const ViewAdvancePaymentsPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-between">
               <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedPayment.payment_status)}`}>
                 <div className="flex items-center">
@@ -521,7 +744,7 @@ const ViewAdvancePaymentsPage = () => {
                   {selectedPayment.payment_status}
                 </div>
               </span>
-              
+
               {selectedPayment.payment_status !== 'Completed' && (
                 <button
                   onClick={() => {
@@ -534,6 +757,114 @@ const ViewAdvancePaymentsPage = () => {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Payment History</h2>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {loadingHistory ? (
+              <div className="flex justify-center items-center p-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : paymentHistory.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No payment history found.
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4 p-4 bg-gray-50 rounded-md">
+                  <h3 className="text-lg font-semibold mb-2">Payment Summary</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Customer</p>
+                      <p className="font-medium">{paymentHistory[0].customer_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Order Reference</p>
+                      <p className="font-medium">{paymentHistory[0].order_reference || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Total Amount</p>
+                      <p className="font-medium">{formatCurrency(paymentHistory[0].total_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Total Payments</p>
+                      <p className="font-medium">{paymentHistory.length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance After</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paymentHistory.map((payment, index) => (
+                        <tr key={payment.payment_id} className={index === 0 ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Calendar className="h-5 w-5 text-gray-400 mr-2" />
+                              <span>{formatDate(payment.payment_date)}</span>
+                              {index === 0 && <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Latest</span>}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">{payment.payment_reference}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <CreditCard className="h-5 w-5 text-gray-400 mr-2" />
+                              <span>{payment.payment_method}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <DollarSign className="h-5 w-5 text-green-500 mr-1" />
+                              <span>{formatCurrency(payment.advance_amount)}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <DollarSign className="h-5 w-5 text-red-500 mr-1" />
+                              <span>{formatCurrency(payment.balance_amount)}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.payment_status)}`}>
+                              <div className="flex items-center">
+                                {getStatusIcon(payment.payment_status)}
+                                {payment.payment_status}
+                              </div>
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

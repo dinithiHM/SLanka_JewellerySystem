@@ -80,65 +80,148 @@ const AdvancePaymentPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
 
-  // State for existing payments
-  const [existingPayments, setExistingPayments] = useState<any[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
-
-  // Fetch existing payments
-  const fetchExistingPayments = async () => {
-    setLoadingPayments(true);
-    try {
-      const response = await fetch('http://localhost:3002/advance-payments');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched existing payments:', data);
-        setExistingPayments(data);
-      } else {
-        console.error('Failed to fetch existing payments');
-      }
-    } catch (err) {
-      console.error('Error fetching existing payments:', err);
-    } finally {
-      setLoadingPayments(false);
-    }
-  };
-
-  // Check for order ID in URL query parameters
+  // Check for URL query parameters
   useEffect(() => {
     // Get the URL search params
     const searchParams = new URLSearchParams(window.location.search);
-    const orderIdParam = searchParams.get('order');
+    const typeParam = searchParams.get('type');
 
-    if (orderIdParam) {
-      // If order ID is in URL, set payment type to custom order
-      setPaymentType(PaymentType.CUSTOM_ORDER);
-      console.log(`Order ID found in URL: ${orderIdParam}`);
+    // Handle custom order parameters
+    if (typeParam === 'custom') {
+      const orderIdParam = searchParams.get('order_id');
+      if (orderIdParam) {
+        // If order ID is in URL, set payment type to custom order
+        setPaymentType(PaymentType.CUSTOM_ORDER);
+        console.log(`Custom order ID found in URL: ${orderIdParam}`);
 
-      // Wait for custom orders to load before selecting
-      const checkAndSelectOrder = () => {
-        if (customOrders.length > 0) {
-          const orderId = parseInt(orderIdParam);
-          setSelectedOrderId(orderId);
+        // Wait for custom orders to load before selecting
+        const checkAndSelectOrder = () => {
+          if (customOrders.length > 0) {
+            const orderId = parseInt(orderIdParam);
+            setSelectedOrderId(orderId);
 
-          // Scroll to the payment form
-          const paymentForm = document.getElementById('payment-form');
-          if (paymentForm) {
-            paymentForm.scrollIntoView({ behavior: 'smooth' });
+            // Scroll to the payment form
+            const paymentForm = document.getElementById('payment-form');
+            if (paymentForm) {
+              paymentForm.scrollIntoView({ behavior: 'smooth' });
+            }
+          } else {
+            // If custom orders not loaded yet, try again in 500ms
+            setTimeout(checkAndSelectOrder, 500);
           }
-        } else {
-          // If custom orders not loaded yet, try again in 500ms
-          setTimeout(checkAndSelectOrder, 500);
-        }
-      };
+        };
 
-      checkAndSelectOrder();
+        checkAndSelectOrder();
+      }
     }
-  }, [customOrders]);
+    // Handle inventory item parameters
+    else if (typeParam === 'inventory') {
+      setPaymentType(PaymentType.INVENTORY_ITEM);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchExistingPayments();
-  }, []);
+      const itemIdParam = searchParams.get('item_id');
+      const customerNameParam = searchParams.get('customer_name');
+      const totalAmountParam = searchParams.get('total_amount');
+      const balanceParam = searchParams.get('balance');
+      const advanceParam = searchParams.get('advance');
+      const paymentIdParam = searchParams.get('payment_id');
+      const quantityParam = searchParams.get('quantity');
+
+      console.log(`Inventory item parameters found in URL: item_id=${itemIdParam}, customer=${customerNameParam}`);
+
+      // Set customer name if provided
+      if (customerNameParam) {
+        setCustomerName(customerNameParam);
+      }
+
+      // Set total amount if provided
+      if (totalAmountParam) {
+        setTotalAmount(parseFloat(totalAmountParam));
+      }
+
+      // Set quantity if provided
+      if (quantityParam) {
+        const qty = parseInt(quantityParam);
+        if (qty > 0) {
+          setQuantity(qty);
+        }
+      }
+
+      // Set suggested advance amount (the remaining balance)
+      // If we have both balance and advance, use them to calculate the correct amount
+      if (balanceParam) {
+        // We want to set the advance amount to the remaining balance
+        const balance = parseFloat(balanceParam);
+        setAdvanceAmount(balance);
+      }
+
+      // Add note about the previous payment
+      if (paymentIdParam && advanceParam) {
+        const previousAdvance = parseFloat(advanceParam);
+        setNotes(`Additional payment for previous payment ID: ${paymentIdParam}. Previous advance payment: ${previousAdvance.toFixed(2)}`);
+      } else if (paymentIdParam) {
+        setNotes(`Additional payment for previous payment ID: ${paymentIdParam}`);
+      }
+
+      // Wait for items to load before selecting
+      if (itemIdParam) {
+        const checkAndSelectItem = () => {
+          if (availableItems.length > 0) {
+            const itemId = parseInt(itemIdParam);
+
+            // Find the item to get its category
+            const item = availableItems.find(i => i.item_id === itemId);
+            if (item) {
+              // Set the category first
+              setSelectedCategory(item.category);
+
+              // Then set the item ID after a short delay to ensure the filtered items are updated
+              setTimeout(() => {
+                setSelectedItemId(itemId);
+
+                // Scroll to the payment form
+                const paymentForm = document.getElementById('payment-form');
+                if (paymentForm) {
+                  paymentForm.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            }
+          } else {
+            // If items not loaded yet, try again in 500ms
+            setTimeout(checkAndSelectItem, 500);
+          }
+        };
+
+        checkAndSelectItem();
+      }
+    }
+    // Legacy support for old URL format
+    else {
+      const orderIdParam = searchParams.get('order');
+      if (orderIdParam) {
+        setPaymentType(PaymentType.CUSTOM_ORDER);
+        console.log(`Legacy order ID found in URL: ${orderIdParam}`);
+
+        // Wait for custom orders to load before selecting
+        const checkAndSelectOrder = () => {
+          if (customOrders.length > 0) {
+            const orderId = parseInt(orderIdParam);
+            setSelectedOrderId(orderId);
+
+            // Scroll to the payment form
+            const paymentForm = document.getElementById('payment-form');
+            if (paymentForm) {
+              paymentForm.scrollIntoView({ behavior: 'smooth' });
+            }
+          } else {
+            // If custom orders not loaded yet, try again in 500ms
+            setTimeout(checkAndSelectOrder, 500);
+          }
+        };
+
+        checkAndSelectOrder();
+      }
+    }
+  }, [customOrders, availableItems]);
 
   // Fetch available items and custom orders on component mount
   useEffect(() => {
@@ -477,9 +560,6 @@ const AdvancePaymentPage = () => {
       setPaymentReference(result.payment_reference);
       setShowSuccessModal(true);
 
-      // Refresh the payments list
-      fetchExistingPayments();
-
       // Reset form after successful submission
       if (paymentType === PaymentType.INVENTORY_ITEM) {
         setSelectedItemId(null);
@@ -508,74 +588,18 @@ const AdvancePaymentPage = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Advance Payment</h1>
-
-      {/* Existing Payments Table */}
-      <div className="mb-10 bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Existing Advance Payments</h2>
-          <button
-            onClick={fetchExistingPayments}
-            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md flex items-center text-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
-        </div>
-
-        {loadingPayments ? (
-          <div className="flex justify-center items-center h-20">
-            <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : existingPayments.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-2 px-4 border-b text-left">ID</th>
-                  <th className="py-2 px-4 border-b text-left">Reference</th>
-                  <th className="py-2 px-4 border-b text-left">Customer</th>
-                  <th className="py-2 px-4 border-b text-left">Date</th>
-                  <th className="py-2 px-4 border-b text-right">Total Amount</th>
-                  <th className="py-2 px-4 border-b text-right">Advance Amount</th>
-                  <th className="py-2 px-4 border-b text-right">Balance</th>
-                  <th className="py-2 px-4 border-b text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {existingPayments.map((payment) => (
-                  <tr key={payment.payment_id} className="hover:bg-gray-50">
-                    <td className="py-2 px-4 border-b">{payment.payment_id}</td>
-                    <td className="py-2 px-4 border-b">{payment.payment_reference}</td>
-                    <td className="py-2 px-4 border-b">{payment.customer_name}</td>
-                    <td className="py-2 px-4 border-b">{new Date(payment.payment_date).toLocaleDateString()}</td>
-                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.total_amount)}</td>
-                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.advance_amount)}</td>
-                    <td className="py-2 px-4 border-b text-right">{formatCurrency(payment.balance_amount)}</td>
-                    <td className="py-2 px-4 border-b text-center">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded-full ${
-                          payment.payment_status === 'Completed'
-                            ? 'bg-green-100 text-green-800'
-                            : payment.payment_status === 'Partially Paid'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {payment.payment_status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-4 text-gray-500">No advance payments found</div>
-        )}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Advance Payment</h1>
+        <button
+          onClick={() => router.push('/DashView/advance-payment/view')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+        >
+          <FileText className="mr-2 h-5 w-5" />
+          View All Payments
+        </button>
       </div>
+
+
 
       {/* Error message */}
       {error && (
@@ -677,6 +701,19 @@ const AdvancePaymentPage = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Show notification for additional payment */}
+              {selectedItem && new URLSearchParams(window.location.search).get('payment_id') && (
+                <div className="mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
+                  <strong>Making additional payment for inventory item</strong>
+                  <br />
+                  <span>Previous payment: {formatCurrency(parseFloat(new URLSearchParams(window.location.search).get('advance') || '0'))}</span>
+                  <br />
+                  <span>Remaining balance: {formatCurrency(parseFloat(new URLSearchParams(window.location.search).get('balance') || '0'))}</span>
+                  <br />
+                  <span className="text-green-700">The suggested advance amount is set to the remaining balance.</span>
+                </div>
+              )}
             </div>
 
             <div>

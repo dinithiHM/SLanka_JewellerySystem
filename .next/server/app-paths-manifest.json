@@ -3,8 +3,6 @@
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/login/page": "app/login/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/DashView/custom-orders/page": "app/DashView/custom-orders/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/DashView/admin/page": "app/DashView/admin/page.js",
-  "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js"
+  "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js",
+  "/DashView/advance-payment/view/page": "app/DashView/advance-payment/view/page.js"
 }

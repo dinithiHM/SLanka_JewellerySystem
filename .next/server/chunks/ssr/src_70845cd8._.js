@@ -170,62 +170,134 @@ const AdvancePaymentPage = ()=>{
     const [success, setSuccess] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [showSuccessModal, setShowSuccessModal] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [paymentReference, setPaymentReference] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
-    // State for existing payments
-    const [existingPayments, setExistingPayments] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
-    const [loadingPayments, setLoadingPayments] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
-    // Fetch existing payments
-    const fetchExistingPayments = async ()=>{
-        setLoadingPayments(true);
-        try {
-            const response = await fetch('http://localhost:3002/advance-payments');
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Fetched existing payments:', data);
-                setExistingPayments(data);
-            } else {
-                console.error('Failed to fetch existing payments');
-            }
-        } catch (err) {
-            console.error('Error fetching existing payments:', err);
-        } finally{
-            setLoadingPayments(false);
-        }
-    };
-    // Check for order ID in URL query parameters
+    // Check for URL query parameters
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         // Get the URL search params
         const searchParams = new URLSearchParams(window.location.search);
-        const orderIdParam = searchParams.get('order');
-        if (orderIdParam) {
-            // If order ID is in URL, set payment type to custom order
-            setPaymentType("custom_order");
-            console.log(`Order ID found in URL: ${orderIdParam}`);
-            // Wait for custom orders to load before selecting
-            const checkAndSelectOrder = ()=>{
-                if (customOrders.length > 0) {
-                    const orderId = parseInt(orderIdParam);
-                    setSelectedOrderId(orderId);
-                    // Scroll to the payment form
-                    const paymentForm = document.getElementById('payment-form');
-                    if (paymentForm) {
-                        paymentForm.scrollIntoView({
-                            behavior: 'smooth'
-                        });
+        const typeParam = searchParams.get('type');
+        // Handle custom order parameters
+        if (typeParam === 'custom') {
+            const orderIdParam = searchParams.get('order_id');
+            if (orderIdParam) {
+                // If order ID is in URL, set payment type to custom order
+                setPaymentType("custom_order");
+                console.log(`Custom order ID found in URL: ${orderIdParam}`);
+                // Wait for custom orders to load before selecting
+                const checkAndSelectOrder = ()=>{
+                    if (customOrders.length > 0) {
+                        const orderId = parseInt(orderIdParam);
+                        setSelectedOrderId(orderId);
+                        // Scroll to the payment form
+                        const paymentForm = document.getElementById('payment-form');
+                        if (paymentForm) {
+                            paymentForm.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }
+                    } else {
+                        // If custom orders not loaded yet, try again in 500ms
+                        setTimeout(checkAndSelectOrder, 500);
                     }
-                } else {
-                    // If custom orders not loaded yet, try again in 500ms
-                    setTimeout(checkAndSelectOrder, 500);
+                };
+                checkAndSelectOrder();
+            }
+        } else if (typeParam === 'inventory') {
+            setPaymentType("inventory_item");
+            const itemIdParam = searchParams.get('item_id');
+            const customerNameParam = searchParams.get('customer_name');
+            const totalAmountParam = searchParams.get('total_amount');
+            const balanceParam = searchParams.get('balance');
+            const advanceParam = searchParams.get('advance');
+            const paymentIdParam = searchParams.get('payment_id');
+            const quantityParam = searchParams.get('quantity');
+            console.log(`Inventory item parameters found in URL: item_id=${itemIdParam}, customer=${customerNameParam}`);
+            // Set customer name if provided
+            if (customerNameParam) {
+                setCustomerName(customerNameParam);
+            }
+            // Set total amount if provided
+            if (totalAmountParam) {
+                setTotalAmount(parseFloat(totalAmountParam));
+            }
+            // Set quantity if provided
+            if (quantityParam) {
+                const qty = parseInt(quantityParam);
+                if (qty > 0) {
+                    setQuantity(qty);
                 }
-            };
-            checkAndSelectOrder();
+            }
+            // Set suggested advance amount (the remaining balance)
+            // If we have both balance and advance, use them to calculate the correct amount
+            if (balanceParam) {
+                // We want to set the advance amount to the remaining balance
+                const balance = parseFloat(balanceParam);
+                setAdvanceAmount(balance);
+            }
+            // Add note about the previous payment
+            if (paymentIdParam && advanceParam) {
+                const previousAdvance = parseFloat(advanceParam);
+                setNotes(`Additional payment for previous payment ID: ${paymentIdParam}. Previous advance payment: ${previousAdvance.toFixed(2)}`);
+            } else if (paymentIdParam) {
+                setNotes(`Additional payment for previous payment ID: ${paymentIdParam}`);
+            }
+            // Wait for items to load before selecting
+            if (itemIdParam) {
+                const checkAndSelectItem = ()=>{
+                    if (availableItems.length > 0) {
+                        const itemId = parseInt(itemIdParam);
+                        // Find the item to get its category
+                        const item = availableItems.find((i)=>i.item_id === itemId);
+                        if (item) {
+                            // Set the category first
+                            setSelectedCategory(item.category);
+                            // Then set the item ID after a short delay to ensure the filtered items are updated
+                            setTimeout(()=>{
+                                setSelectedItemId(itemId);
+                                // Scroll to the payment form
+                                const paymentForm = document.getElementById('payment-form');
+                                if (paymentForm) {
+                                    paymentForm.scrollIntoView({
+                                        behavior: 'smooth'
+                                    });
+                                }
+                            }, 100);
+                        }
+                    } else {
+                        // If items not loaded yet, try again in 500ms
+                        setTimeout(checkAndSelectItem, 500);
+                    }
+                };
+                checkAndSelectItem();
+            }
+        } else {
+            const orderIdParam = searchParams.get('order');
+            if (orderIdParam) {
+                setPaymentType("custom_order");
+                console.log(`Legacy order ID found in URL: ${orderIdParam}`);
+                // Wait for custom orders to load before selecting
+                const checkAndSelectOrder = ()=>{
+                    if (customOrders.length > 0) {
+                        const orderId = parseInt(orderIdParam);
+                        setSelectedOrderId(orderId);
+                        // Scroll to the payment form
+                        const paymentForm = document.getElementById('payment-form');
+                        if (paymentForm) {
+                            paymentForm.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }
+                    } else {
+                        // If custom orders not loaded yet, try again in 500ms
+                        setTimeout(checkAndSelectOrder, 500);
+                    }
+                };
+                checkAndSelectOrder();
+            }
         }
     }, [
-        customOrders
+        customOrders,
+        availableItems
     ]);
-    // Fetch all data on component mount
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        fetchExistingPayments();
-    }, []);
     // Fetch available items and custom orders on component mount
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         const fetchData = async ()=>{
@@ -519,8 +591,6 @@ const AdvancePaymentPage = ()=>{
             setSuccess('Advance payment created successfully!');
             setPaymentReference(result.payment_reference);
             setShowSuccessModal(true);
-            // Refresh the payments list
-            fetchExistingPayments();
             // Reset form after successful submission
             if (paymentType === "inventory_item") {
                 setSelectedItemId(null);
@@ -546,271 +616,39 @@ const AdvancePaymentPage = ()=>{
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "p-6 max-w-6xl mx-auto",
         children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                className: "text-2xl font-bold text-gray-800 mb-6",
-                children: "Advance Payment"
-            }, void 0, false, {
-                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 511,
-                columnNumber: 7
-            }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "mb-10 bg-white p-6 rounded-lg shadow-md",
+                className: "flex justify-between items-center mb-6",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "flex justify-between items-center mb-4",
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+                        className: "text-2xl font-bold text-gray-800",
+                        children: "Advance Payment"
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                        lineNumber: 592,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        onClick: ()=>router.push('/DashView/advance-payment/view'),
+                        className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center",
                         children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "text-xl font-semibold",
-                                children: "Existing Advance Payments"
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"], {
+                                className: "mr-2 h-5 w-5"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 516,
+                                lineNumber: 597,
                                 columnNumber: 11
                             }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                onClick: fetchExistingPayments,
-                                className: "px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md flex items-center text-sm",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
-                                        xmlns: "http://www.w3.org/2000/svg",
-                                        className: "h-4 w-4 mr-1",
-                                        fill: "none",
-                                        viewBox: "0 0 24 24",
-                                        stroke: "currentColor",
-                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
-                                            strokeLinecap: "round",
-                                            strokeLinejoin: "round",
-                                            strokeWidth: 2,
-                                            d: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 522,
-                                            columnNumber: 15
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 521,
-                                        columnNumber: 13
-                                    }, this),
-                                    "Refresh"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 517,
-                                columnNumber: 11
-                            }, this)
+                            "View All Payments"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 515,
+                        lineNumber: 593,
                         columnNumber: 9
-                    }, this),
-                    loadingPayments ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "flex justify-center items-center h-20",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
-                        }, void 0, false, {
-                            fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 530,
-                            columnNumber: 13
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 529,
-                        columnNumber: 11
-                    }, this) : existingPayments.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "overflow-x-auto",
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
-                            className: "min-w-full bg-white border border-gray-200",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
-                                    className: "bg-gray-100",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-left",
-                                                children: "ID"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 537,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-left",
-                                                children: "Reference"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 538,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-left",
-                                                children: "Customer"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 539,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-left",
-                                                children: "Date"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 540,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-right",
-                                                children: "Total Amount"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 541,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-right",
-                                                children: "Advance Amount"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 542,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-right",
-                                                children: "Balance"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 543,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                className: "py-2 px-4 border-b text-center",
-                                                children: "Status"
-                                            }, void 0, false, {
-                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 544,
-                                                columnNumber: 19
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 536,
-                                        columnNumber: 17
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                    lineNumber: 535,
-                                    columnNumber: 15
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
-                                    children: existingPayments.map((payment)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
-                                            className: "hover:bg-gray-50",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b",
-                                                    children: payment.payment_id
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 550,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b",
-                                                    children: payment.payment_reference
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 551,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b",
-                                                    children: payment.customer_name
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 552,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b",
-                                                    children: new Date(payment.payment_date).toLocaleDateString()
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 553,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b text-right",
-                                                    children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(payment.total_amount)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 554,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b text-right",
-                                                    children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(payment.advance_amount)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 555,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b text-right",
-                                                    children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(payment.balance_amount)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 556,
-                                                    columnNumber: 21
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
-                                                    className: "py-2 px-4 border-b text-center",
-                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                        className: `inline-block px-2 py-1 text-xs rounded-full ${payment.payment_status === 'Completed' ? 'bg-green-100 text-green-800' : payment.payment_status === 'Partially Paid' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`,
-                                                        children: payment.payment_status
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 558,
-                                                        columnNumber: 23
-                                                    }, this)
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 557,
-                                                    columnNumber: 21
-                                                }, this)
-                                            ]
-                                        }, payment.payment_id, true, {
-                                            fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 549,
-                                            columnNumber: 19
-                                        }, this))
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                    lineNumber: 547,
-                                    columnNumber: 15
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 534,
-                            columnNumber: 13
-                        }, this)
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 533,
-                        columnNumber: 11
-                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "text-center py-4 text-gray-500",
-                        children: "No advance payments found"
-                    }, void 0, false, {
-                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 576,
-                        columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 514,
+                lineNumber: 591,
                 columnNumber: 7
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -821,7 +659,7 @@ const AdvancePaymentPage = ()=>{
                         children: error
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 583,
+                        lineNumber: 607,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -831,18 +669,18 @@ const AdvancePaymentPage = ()=>{
                             size: 18
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 588,
+                            lineNumber: 612,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 584,
+                        lineNumber: 608,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 582,
+                lineNumber: 606,
                 columnNumber: 9
             }, this),
             success && !showSuccessModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -853,7 +691,7 @@ const AdvancePaymentPage = ()=>{
                         children: success
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 596,
+                        lineNumber: 620,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -863,18 +701,18 @@ const AdvancePaymentPage = ()=>{
                             size: 18
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 601,
+                            lineNumber: 625,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 597,
+                        lineNumber: 621,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 595,
+                lineNumber: 619,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -885,7 +723,7 @@ const AdvancePaymentPage = ()=>{
                         children: "Payment Type"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 608,
+                        lineNumber: 632,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -901,14 +739,14 @@ const AdvancePaymentPage = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 619,
+                                        lineNumber: 643,
                                         columnNumber: 13
                                     }, this),
                                     "Inventory Item"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 610,
+                                lineNumber: 634,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -921,26 +759,26 @@ const AdvancePaymentPage = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 631,
+                                        lineNumber: 655,
                                         columnNumber: 13
                                     }, this),
                                     "Custom Order"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 622,
+                                lineNumber: 646,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 609,
+                        lineNumber: 633,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 607,
+                lineNumber: 631,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -959,7 +797,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Category"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 642,
+                                        lineNumber: 666,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -974,23 +812,23 @@ const AdvancePaymentPage = ()=>{
                                                     children: category
                                                 }, category, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 653,
+                                                    lineNumber: 677,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 646,
+                                            lineNumber: 670,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 645,
+                                        lineNumber: 669,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 641,
+                                lineNumber: 665,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1001,7 +839,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Item"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 662,
+                                        lineNumber: 686,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1017,7 +855,7 @@ const AdvancePaymentPage = ()=>{
                                                     children: "Select an item"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 672,
+                                                    lineNumber: 696,
                                                     columnNumber: 19
                                                 }, this),
                                                 filteredItems.map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1032,24 +870,83 @@ const AdvancePaymentPage = ()=>{
                                                         ]
                                                     }, item.item_id, true, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 674,
+                                                        lineNumber: 698,
                                                         columnNumber: 21
                                                     }, this))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 666,
+                                            lineNumber: 690,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 665,
+                                        lineNumber: 689,
                                         columnNumber: 15
+                                    }, this),
+                                    selectedItem && new URLSearchParams(window.location.search).get('payment_id') && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-sm",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                                children: "Making additional payment for inventory item"
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 708,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 709,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                children: [
+                                                    "Previous payment: ",
+                                                    (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(parseFloat(new URLSearchParams(window.location.search).get('advance') || '0'))
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 710,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 711,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                children: [
+                                                    "Remaining balance: ",
+                                                    (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(parseFloat(new URLSearchParams(window.location.search).get('balance') || '0'))
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 712,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 713,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "text-green-700",
+                                                children: "The suggested advance amount is set to the remaining balance."
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                                lineNumber: 714,
+                                                columnNumber: 19
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
+                                        lineNumber: 707,
+                                        columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 661,
+                                lineNumber: 685,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1060,7 +957,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Quantity"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 683,
+                                        lineNumber: 720,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1074,19 +971,19 @@ const AdvancePaymentPage = ()=>{
                                         max: selectedItem?.in_stock || 1
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 686,
+                                        lineNumber: 723,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 682,
+                                lineNumber: 719,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 640,
+                        lineNumber: 664,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "mb-6",
@@ -1101,13 +998,13 @@ const AdvancePaymentPage = ()=>{
                                         children: "(Only showing orders that need payment)"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 701,
+                                        lineNumber: 738,
                                         columnNumber: 28
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 700,
+                                lineNumber: 737,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1123,7 +1020,7 @@ const AdvancePaymentPage = ()=>{
                                             children: "Select a custom order"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 710,
+                                            lineNumber: 747,
                                             columnNumber: 17
                                         }, this),
                                         customOrders.length > 0 ? customOrders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1138,7 +1035,7 @@ const AdvancePaymentPage = ()=>{
                                                 ]
                                             }, order.order_id, true, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 713,
+                                                lineNumber: 750,
                                                 columnNumber: 21
                                             }, this)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
                                             value: "",
@@ -1146,18 +1043,18 @@ const AdvancePaymentPage = ()=>{
                                             children: "No orders requiring payment found"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 719,
+                                            lineNumber: 756,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                    lineNumber: 704,
+                                    lineNumber: 741,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 703,
+                                lineNumber: 740,
                                 columnNumber: 13
                             }, this),
                             selectedOrder && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1167,7 +1064,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Order Status:"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 726,
+                                        lineNumber: 763,
                                         columnNumber: 17
                                     }, this),
                                     " ",
@@ -1176,35 +1073,35 @@ const AdvancePaymentPage = ()=>{
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 729,
+                                                lineNumber: 766,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
                                                 children: "Current advance payment:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 730,
+                                                lineNumber: 767,
                                                 columnNumber: 21
                                             }, this),
                                             " ",
                                             (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(selectedOrder.advance_amount || 0),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 731,
+                                                lineNumber: 768,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
                                                 children: "Remaining balance:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 732,
+                                                lineNumber: 769,
                                                 columnNumber: 21
                                             }, this),
                                             " ",
                                             (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(selectedOrder.balance_amount || (selectedOrder.estimated_amount || 0) - (selectedOrder.advance_amount || 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 733,
+                                                lineNumber: 770,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1212,7 +1109,7 @@ const AdvancePaymentPage = ()=>{
                                                 children: "Any amount entered below will be an additional payment."
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 734,
+                                                lineNumber: 771,
                                                 columnNumber: 21
                                             }, this)
                                         ]
@@ -1220,21 +1117,21 @@ const AdvancePaymentPage = ()=>{
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 738,
+                                                lineNumber: 775,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
                                                 children: "Total amount:"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 739,
+                                                lineNumber: 776,
                                                 columnNumber: 21
                                             }, this),
                                             " ",
                                             (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["formatCurrency"])(selectedOrder.estimated_amount || 0),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 740,
+                                                lineNumber: 777,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1242,7 +1139,7 @@ const AdvancePaymentPage = ()=>{
                                                 children: "No payments have been made yet."
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 741,
+                                                lineNumber: 778,
                                                 columnNumber: 21
                                             }, this)
                                         ]
@@ -1250,13 +1147,13 @@ const AdvancePaymentPage = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 725,
+                                lineNumber: 762,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 699,
+                        lineNumber: 736,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1268,7 +1165,7 @@ const AdvancePaymentPage = ()=>{
                                 children: "Customer Name"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 751,
+                                lineNumber: 788,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1280,12 +1177,12 @@ const AdvancePaymentPage = ()=>{
                                             className: "h-5 w-5 text-gray-400"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 756,
+                                            lineNumber: 793,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 755,
+                                        lineNumber: 792,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1298,19 +1195,19 @@ const AdvancePaymentPage = ()=>{
                                         readOnly: paymentType === "custom_order" && !!selectedOrder
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 758,
+                                        lineNumber: 795,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 754,
+                                lineNumber: 791,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 750,
+                        lineNumber: 787,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1324,7 +1221,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Total Amount"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 773,
+                                        lineNumber: 810,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1336,12 +1233,12 @@ const AdvancePaymentPage = ()=>{
                                                     className: "h-5 w-5 text-gray-400"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 778,
+                                                    lineNumber: 815,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 777,
+                                                lineNumber: 814,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1356,19 +1253,19 @@ const AdvancePaymentPage = ()=>{
                                                 step: "0.01"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 780,
+                                                lineNumber: 817,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 776,
+                                        lineNumber: 813,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 772,
+                                lineNumber: 809,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1379,7 +1276,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Advance Amount"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 798,
+                                        lineNumber: 835,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1391,12 +1288,12 @@ const AdvancePaymentPage = ()=>{
                                                     className: "h-5 w-5 text-gray-400"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 803,
+                                                    lineNumber: 840,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 802,
+                                                lineNumber: 839,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1411,19 +1308,19 @@ const AdvancePaymentPage = ()=>{
                                                 step: "0.01"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 805,
+                                                lineNumber: 842,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 801,
+                                        lineNumber: 838,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 797,
+                                lineNumber: 834,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1434,7 +1331,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Balance Amount"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 820,
+                                        lineNumber: 857,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1446,12 +1343,12 @@ const AdvancePaymentPage = ()=>{
                                                     className: "h-5 w-5 text-gray-400"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 825,
+                                                    lineNumber: 862,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 824,
+                                                lineNumber: 861,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1462,19 +1359,19 @@ const AdvancePaymentPage = ()=>{
                                                 readOnly: true
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 827,
+                                                lineNumber: 864,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 823,
+                                        lineNumber: 860,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 819,
+                                lineNumber: 856,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1485,7 +1382,7 @@ const AdvancePaymentPage = ()=>{
                                         children: "Payment Method"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 838,
+                                        lineNumber: 875,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1497,12 +1394,12 @@ const AdvancePaymentPage = ()=>{
                                                     className: "h-5 w-5 text-gray-400"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                    lineNumber: 843,
+                                                    lineNumber: 880,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 842,
+                                                lineNumber: 879,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1516,7 +1413,7 @@ const AdvancePaymentPage = ()=>{
                                                         children: "Cash"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 851,
+                                                        lineNumber: 888,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1524,7 +1421,7 @@ const AdvancePaymentPage = ()=>{
                                                         children: "Credit Card"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 852,
+                                                        lineNumber: 889,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1532,7 +1429,7 @@ const AdvancePaymentPage = ()=>{
                                                         children: "Debit Card"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 853,
+                                                        lineNumber: 890,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1540,7 +1437,7 @@ const AdvancePaymentPage = ()=>{
                                                         children: "Bank Transfer"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 854,
+                                                        lineNumber: 891,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1548,31 +1445,31 @@ const AdvancePaymentPage = ()=>{
                                                         children: "Cheque"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                        lineNumber: 855,
+                                                        lineNumber: 892,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                                lineNumber: 845,
+                                                lineNumber: 882,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 841,
+                                        lineNumber: 878,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 837,
+                                lineNumber: 874,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 771,
+                        lineNumber: 808,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1584,7 +1481,7 @@ const AdvancePaymentPage = ()=>{
                                 children: "Notes (Optional)"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 863,
+                                lineNumber: 900,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1596,12 +1493,12 @@ const AdvancePaymentPage = ()=>{
                                             className: "h-5 w-5 text-gray-400"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                            lineNumber: 868,
+                                            lineNumber: 905,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 867,
+                                        lineNumber: 904,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -1613,19 +1510,19 @@ const AdvancePaymentPage = ()=>{
                                         rows: 3
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                        lineNumber: 870,
+                                        lineNumber: 907,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 866,
+                                lineNumber: 903,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 862,
+                        lineNumber: 899,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1638,7 +1535,7 @@ const AdvancePaymentPage = ()=>{
                                 children: "Cancel"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 883,
+                                lineNumber: 920,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1648,19 +1545,19 @@ const AdvancePaymentPage = ()=>{
                                 children: loading ? 'Processing...' : 'Confirm Payment'
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 890,
+                                lineNumber: 927,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                        lineNumber: 882,
+                        lineNumber: 919,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 637,
+                lineNumber: 661,
                 columnNumber: 7
             }, this),
             showSuccessModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1674,12 +1571,12 @@ const AdvancePaymentPage = ()=>{
                                 size: 48
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                lineNumber: 905,
+                                lineNumber: 942,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 904,
+                            lineNumber: 941,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1687,7 +1584,7 @@ const AdvancePaymentPage = ()=>{
                             children: "Payment Successful!"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 907,
+                            lineNumber: 944,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1695,7 +1592,7 @@ const AdvancePaymentPage = ()=>{
                             children: "Your advance payment has been processed successfully."
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 908,
+                            lineNumber: 945,
                             columnNumber: 13
                         }, this),
                         paymentReference && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1706,7 +1603,7 @@ const AdvancePaymentPage = ()=>{
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 910,
+                            lineNumber: 947,
                             columnNumber: 15
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1718,7 +1615,7 @@ const AdvancePaymentPage = ()=>{
                                     children: "Close"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                    lineNumber: 913,
+                                    lineNumber: 950,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1730,30 +1627,30 @@ const AdvancePaymentPage = ()=>{
                                     children: "Print Receipt"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                                    lineNumber: 919,
+                                    lineNumber: 956,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                            lineNumber: 912,
+                            lineNumber: 949,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                    lineNumber: 903,
+                    lineNumber: 940,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-                lineNumber: 902,
+                lineNumber: 939,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/advance-payment/page.tsx",
-        lineNumber: 510,
+        lineNumber: 590,
         columnNumber: 5
     }, this);
 };
