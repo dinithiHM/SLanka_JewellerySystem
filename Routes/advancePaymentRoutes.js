@@ -3,23 +3,106 @@ import con from '../utils/db.js';
 
 const router = express.Router();
 
-// Get all advance payments
+// Get all advance payments with branch filtering
 router.get("/", (req, res) => {
-  console.log('GET /advance-payments - Fetching all advance payments');
+  console.log('GET /advance-payments - Fetching advance payments');
 
-  const sql = `
-    SELECT * FROM advance_payment_details
-    ORDER BY payment_date DESC
-  `;
+  const userRole = req.query.role || '';
+  const branchId = req.query.branch_id;
+  const filterBranch = req.query.filter_branch === 'true';
+  const grouped = req.query.grouped === 'true'; // New parameter to get grouped payments
 
-  con.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching advance payments:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  console.log(`Role: ${userRole}, Branch ID: ${branchId}, Filter by branch: ${filterBranch}, Grouped: ${grouped}`);
+
+  if (grouped) {
+    // Get grouped payments (latest payment for each order/customer combination)
+    let sql = `
+      SELECT ap.*, apd.*
+      FROM advance_payments ap
+      JOIN advance_payment_details apd ON ap.payment_id = apd.payment_id
+      JOIN (
+        SELECT
+          CASE
+            WHEN is_custom_order = 1 THEN order_id
+            ELSE CONCAT('item_', item_id)
+          END as order_key,
+          customer_name,
+          MAX(payment_date) as latest_payment_date
+        FROM advance_payments
+        GROUP BY
+          CASE
+            WHEN is_custom_order = 1 THEN order_id
+            ELSE CONCAT('item_', item_id)
+          END,
+          customer_name
+      ) latest ON
+        CASE
+          WHEN ap.is_custom_order = 1 THEN ap.order_id
+          ELSE CONCAT('item_', ap.item_id)
+        END = latest.order_key
+        AND ap.customer_name = latest.customer_name
+        AND ap.payment_date = latest.latest_payment_date
+    `;
+
+    const queryParams = [];
+
+    // Apply branch filtering based on role and parameters
+    if (filterBranch && branchId) {
+      sql += ` WHERE ap.branch_id = ?`;
+      queryParams.push(branchId);
+      console.log(`Filtering grouped advance payments by branch_id: ${branchId}`);
     }
 
-    res.json(results || []);
-  });
+    // Add ordering
+    sql += ` ORDER BY ap.payment_date DESC`;
+
+    console.log('Executing grouped SQL:', sql, 'with params:', queryParams);
+
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching grouped advance payments:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      console.log(`Found ${results.length} grouped advance payments`);
+      res.json(results || []);
+    });
+  } else {
+    // Original non-grouped query
+    let sql = `
+      SELECT * FROM advance_payment_details
+    `;
+
+    const queryParams = [];
+
+    // Apply branch filtering based on role and parameters
+    if (filterBranch && branchId) {
+      // Any user filtering by branch - join with advance_payments to filter by branch_id
+      sql = `
+        SELECT apd.*
+        FROM advance_payment_details apd
+        JOIN advance_payments ap ON apd.payment_id = ap.payment_id
+        WHERE ap.branch_id = ?
+      `;
+      queryParams.push(branchId);
+      console.log(`Filtering advance payments by branch_id: ${branchId}`);
+    }
+
+    // Add ordering
+    sql += ` ORDER BY payment_date DESC`;
+
+    console.log('Executing SQL:', sql, 'with params:', queryParams);
+
+    con.query(sql, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching advance payments:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      console.log(`Found ${results.length} advance payments`);
+      res.json(results || []);
+    });
+  }
 });
 
 // Get advance payment by ID
@@ -42,6 +125,61 @@ router.get("/:id", (req, res) => {
     }
 
     res.json(results[0]);
+  });
+});
+
+// Get payment history for a specific order
+router.get("/history/order/:orderId", (req, res) => {
+  const orderId = req.params.orderId;
+
+  const sql = `
+    SELECT apd.*
+    FROM advance_payment_details apd
+    JOIN advance_payments ap ON apd.payment_id = ap.payment_id
+    WHERE ap.order_id = ? AND ap.is_custom_order = 1
+    ORDER BY apd.payment_date ASC
+  `;
+
+  con.query(sql, [orderId], (err, results) => {
+    if (err) {
+      console.error("Error fetching payment history:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log(`Found ${results.length} payments for order ${orderId}`);
+    res.json({
+      order_id: orderId,
+      payments: results || [],
+      total_payments: results.length,
+      total_paid: results.reduce((sum, payment) => sum + parseFloat(payment.advance_amount), 0)
+    });
+  });
+});
+
+// Get payment history for a customer
+router.get("/history/customer/:customerName", (req, res) => {
+  const customerName = req.params.customerName;
+
+  const sql = `
+    SELECT apd.*
+    FROM advance_payment_details apd
+    WHERE apd.customer_name = ?
+    ORDER BY apd.payment_date ASC
+  `;
+
+  con.query(sql, [customerName], (err, results) => {
+    if (err) {
+      console.error("Error fetching customer payment history:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log(`Found ${results.length} payments for customer ${customerName}`);
+    res.json({
+      customer_name: customerName,
+      payments: results || [],
+      total_payments: results.length,
+      total_paid: results.reduce((sum, payment) => sum + parseFloat(payment.advance_amount), 0)
+    });
   });
 });
 
