@@ -4,5 +4,7 @@
   "/login/page": "app/login/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
   "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js",
-  "/DashView/advance-payment/view/page": "app/DashView/advance-payment/view/page.js"
+  "/DashView/advance-payment/view/page": "app/DashView/advance-payment/view/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js"
 }

@@ -277,8 +277,30 @@ const ViewAdvancePaymentsPage = () => {
     }
   };
 
-  // Fetch payment history for an order
-  const fetchPaymentHistory = async (orderId: number) => {
+  // This function has been replaced by fetchCustomOrderPaymentHistory and fetchInventoryItemPaymentHistory
+
+  // Handle view details
+  const handleViewDetails = (payment: AdvancePayment) => {
+    setSelectedPayment(payment);
+    setShowDetailsModal(true);
+  };
+
+  // Handle view payment history
+  const handleViewHistory = (payment: AdvancePayment) => {
+    if (payment.is_custom_order && payment.order_id) {
+      fetchCustomOrderPaymentHistory(payment.order_id);
+    } else if (payment.item_id) {
+      // For inventory items, fetch all payments for this item and customer
+      fetchInventoryItemPaymentHistory(payment.item_id, payment.customer_name);
+    } else {
+      // Fallback to just showing the single payment
+      setPaymentHistory([payment]);
+      setShowHistoryModal(true);
+    }
+  };
+
+  // Fetch payment history for a custom order
+  const fetchCustomOrderPaymentHistory = async (orderId: number) => {
     setLoadingHistory(true);
     try {
       const response = await fetch(`http://localhost:3002/advance-payments/history/order/${orderId}`);
@@ -298,20 +320,37 @@ const ViewAdvancePaymentsPage = () => {
     }
   };
 
-  // Handle view details
-  const handleViewDetails = (payment: AdvancePayment) => {
-    setSelectedPayment(payment);
-    setShowDetailsModal(true);
-  };
+  // Fetch payment history for an inventory item
+  const fetchInventoryItemPaymentHistory = async (itemId: number, customerName: string) => {
+    setLoadingHistory(true);
+    try {
+      // First try to get all payments for this item and customer
+      const response = await fetch(`http://localhost:3002/advance-payments/history/item/${itemId}?customer=${encodeURIComponent(customerName)}`);
 
-  // Handle view payment history
-  const handleViewHistory = (payment: AdvancePayment) => {
-    if (payment.is_custom_order && payment.order_id) {
-      fetchPaymentHistory(payment.order_id);
-    } else {
-      // For inventory items, just show the single payment
-      setPaymentHistory([payment]);
+      if (!response.ok) {
+        // If the endpoint doesn't exist, fall back to customer history
+        console.log('Item history endpoint not available, falling back to customer history');
+        const customerResponse = await fetch(`http://localhost:3002/advance-payments/history/customer/${encodeURIComponent(customerName)}`);
+
+        if (!customerResponse.ok) {
+          throw new Error(`Failed to fetch payment history: ${customerResponse.status}`);
+        }
+
+        const data = await customerResponse.json();
+        // Filter to only include payments for this item
+        const filteredPayments = data.payments.filter((p: AdvancePayment) => p.item_id === itemId);
+        setPaymentHistory(filteredPayments);
+      } else {
+        const data = await response.json();
+        setPaymentHistory(data.payments);
+      }
+
       setShowHistoryModal(true);
+    } catch (err) {
+      console.error('Error fetching inventory item payment history:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching payment history');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -333,6 +372,13 @@ const ViewAdvancePaymentsPage = () => {
         payment_id: payment.payment_id.toString(),
         quantity: payment.item_quantity?.toString() || '1'
       }).toString();
+
+      console.log('Navigating to make additional payment with params:', {
+        total: payment.total_amount,
+        balance: payment.balance_amount,
+        advance: payment.advance_amount,
+        payment_id: payment.payment_id
+      });
 
       router.push(`/DashView/advance-payment?${queryParams}`);
     }
@@ -619,14 +665,12 @@ const ViewAdvancePaymentsPage = () => {
                         >
                           View
                         </button>
-                        {payment.is_custom_order && payment.order_id && (
-                          <button
-                            onClick={() => handleViewHistory(payment)}
-                            className="text-purple-600 hover:text-purple-900"
-                          >
-                            History
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleViewHistory(payment)}
+                          className="text-purple-600 hover:text-purple-900"
+                        >
+                          History
+                        </button>
                         {payment.payment_status !== 'Completed' && (
                           <button
                             onClick={() => handleMakeAdditionalPayment(payment)}

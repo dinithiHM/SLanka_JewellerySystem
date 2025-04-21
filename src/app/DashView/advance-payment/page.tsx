@@ -146,12 +146,21 @@ const AdvancePaymentPage = () => {
         }
       }
 
-      // Set suggested advance amount (the remaining balance)
+      // Set up for additional payments
       // If we have both balance and advance, use them to calculate the correct amount
-      if (balanceParam) {
-        // We want to set the advance amount to the remaining balance
+      if (balanceParam && advanceParam) {
+        // Get the remaining balance and previous advance
         const balance = parseFloat(balanceParam);
-        setAdvanceAmount(balance);
+        const previousAdvance = parseFloat(advanceParam);
+
+        // For additional payments, we set advance amount to 0 (empty field for user to enter)
+        setAdvanceAmount(0);
+
+        // Set the balance to the remaining balance
+        setBalanceAmount(balance);
+
+        console.log(`Setting advance amount to 0 and balance to remaining balance: ${balance}`);
+        console.log(`Previous advance payment: ${previousAdvance}`);
       }
 
       // Add note about the previous payment
@@ -388,10 +397,65 @@ const AdvancePaymentPage = () => {
     }
   };
 
+  // Add a special effect to handle the initial setup for inventory items with existing payments
+  useEffect(() => {
+    const paymentIdParam = new URLSearchParams(window.location.search).get('payment_id');
+    const balanceParam = new URLSearchParams(window.location.search).get('balance');
+    const advanceParam = new URLSearchParams(window.location.search).get('advance');
+    const totalAmountParam = new URLSearchParams(window.location.search).get('total_amount');
+
+    if (paymentIdParam && balanceParam && paymentType === PaymentType.INVENTORY_ITEM) {
+      // This is for an inventory item with an existing payment
+      const remainingBalance = parseFloat(balanceParam);
+      const totalAmount = totalAmountParam ? parseFloat(totalAmountParam) : 0;
+      const previousAdvance = advanceParam ? parseFloat(advanceParam) : 0;
+
+      console.log(`Initial setup for inventory item with payment ID ${paymentIdParam}:`);
+      console.log(`Total amount: ${totalAmount}, Previous advance: ${previousAdvance}, Remaining balance: ${remainingBalance}`);
+
+      // Set the advance amount to 0 (empty field for user to enter)
+      setAdvanceAmount(0);
+
+      // Set the balance to the remaining balance
+      setBalanceAmount(remainingBalance);
+
+      console.log(`Setting advance amount to 0`);
+      console.log(`Setting balance amount to remaining balance: ${remainingBalance}`);
+
+      // Force update the form fields after a short delay to ensure they're set correctly
+      setTimeout(() => {
+        const advanceInput = document.getElementById('advanceAmount') as HTMLInputElement;
+        const balanceInput = document.getElementById('balanceAmount') as HTMLInputElement;
+
+        if (advanceInput && balanceInput) {
+          console.log('Directly updating form fields');
+          advanceInput.value = '0';
+          balanceInput.value = remainingBalance.toString();
+        }
+      }, 500);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   // Calculate balance amount when total or advance amount changes
   useEffect(() => {
+    // Check if this is an additional payment for an inventory item
+    const paymentIdParam = new URLSearchParams(window.location.search).get('payment_id');
+    const balanceParam = new URLSearchParams(window.location.search).get('balance');
+
+    if (paymentType === PaymentType.INVENTORY_ITEM && paymentIdParam && balanceParam) {
+      // This is an additional payment for an inventory item
+      // For inventory items with existing payments, we don't auto-update the balance
+      // This matches the custom order behavior
+      const remainingBalance = parseFloat(balanceParam);
+      console.log(`For inventory item with existing payment, keeping balance at: ${remainingBalance}`);
+
+      // Only set the balance once when the component mounts
+      if (advanceAmount === 0) {
+        setBalanceAmount(remainingBalance);
+      }
+    }
     // If this is a custom order with existing advance payment, account for it
-    if (selectedOrder && selectedOrder.advance_amount && selectedOrder.advance_amount > 0) {
+    else if (selectedOrder && selectedOrder.advance_amount && selectedOrder.advance_amount > 0) {
       // Get the existing advance amount from the server data
       const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
         parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
@@ -400,18 +464,19 @@ const AdvancePaymentPage = () => {
       const totalAmt = typeof selectedOrder.estimated_amount === 'string' ?
         parseFloat(selectedOrder.estimated_amount) : (selectedOrder.estimated_amount || 0);
 
-      // The balance is: total - (existing advance + new advance)
-      // This correctly calculates the remaining balance after the new payment
-      const newBalance = totalAmt - (existingAdvance + advanceAmount);
-      setBalanceAmount(newBalance);
-
-      console.log(`Updated balance calculation: ${totalAmt} - (${existingAdvance} + ${advanceAmount}) = ${newBalance}`);
+      // For custom orders, we don't auto-update the balance when the advance amount changes
+      // Only set it once when the component mounts
+      if (advanceAmount === 0) {
+        const remainingBalance = totalAmt - existingAdvance;
+        setBalanceAmount(remainingBalance);
+        console.log(`Setting initial balance for custom order: ${totalAmt} - ${existingAdvance} = ${remainingBalance}`);
+      }
     } else {
       // Normal calculation for new payments
       setBalanceAmount(totalAmount - advanceAmount);
       console.log(`Standard balance calculation: ${totalAmount} - ${advanceAmount} = ${totalAmount - advanceAmount}`);
     }
-  }, [totalAmount, advanceAmount, selectedOrder]);
+  }, [totalAmount, advanceAmount, selectedOrder, paymentType]);
 
   // Handle payment type change
   const handlePaymentTypeChange = (type: PaymentType) => {
@@ -510,8 +575,28 @@ const AdvancePaymentPage = () => {
       item_quantity: paymentType === PaymentType.INVENTORY_ITEM ? quantity : null
     };
 
+    // Check if this is an additional payment for an inventory item
+    const paymentIdParam = new URLSearchParams(window.location.search).get('payment_id');
+    const advanceParam = new URLSearchParams(window.location.search).get('advance');
+    const balanceParam = new URLSearchParams(window.location.search).get('balance');
+
+    if (paymentType === PaymentType.INVENTORY_ITEM && paymentIdParam && advanceParam && balanceParam) {
+      // This is an additional payment for an inventory item
+      const previousAdvance = parseFloat(advanceParam);
+      const remainingBalance = parseFloat(balanceParam);
+
+      // Include the existing payment ID and advance amount
+      paymentData.previous_payment_id = parseInt(paymentIdParam);
+      paymentData.existing_advance_amount = previousAdvance;
+      console.log(`Including existing advance amount for inventory item: ${previousAdvance}`);
+
+      // Calculate the new balance amount: remaining balance - new advance
+      const calculatedBalance = remainingBalance - advanceAmount;
+      paymentData.balance_amount = calculatedBalance;
+      console.log(`Calculated balance for inventory item: ${remainingBalance} - ${advanceAmount} = ${calculatedBalance}`);
+    }
     // If this is a custom order with existing advance payment, include it
-    if (paymentType === PaymentType.CUSTOM_ORDER && selectedOrder?.advance_amount) {
+    else if (paymentType === PaymentType.CUSTOM_ORDER && selectedOrder?.advance_amount) {
       const existingAdvance = typeof selectedOrder.advance_amount === 'string' ?
         parseFloat(selectedOrder.advance_amount) : selectedOrder.advance_amount;
 
@@ -528,7 +613,7 @@ const AdvancePaymentPage = () => {
       paymentData.balance_amount = calculatedBalance;
       console.log(`Calculated balance for submission: ${totalAmt} - (${existingAdvance} + ${advanceAmount}) = ${calculatedBalance}`);
     } else {
-      // Standard balance calculation for new payments
+      // Standard calculation for new payments
       paymentData.balance_amount = totalAmount - advanceAmount;
       console.log(`Standard balance calculation for submission: ${totalAmount} - ${advanceAmount} = ${paymentData.balance_amount}`);
     }
@@ -705,13 +790,13 @@ const AdvancePaymentPage = () => {
               {/* Show notification for additional payment */}
               {selectedItem && new URLSearchParams(window.location.search).get('payment_id') && (
                 <div className="mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
-                  <strong>Making additional payment for inventory item</strong>
+                  <strong>Order Status: Partially Paid</strong>
                   <br />
-                  <span>Previous payment: {formatCurrency(parseFloat(new URLSearchParams(window.location.search).get('advance') || '0'))}</span>
+                  <span>Current advance payment: {formatCurrency(parseFloat(new URLSearchParams(window.location.search).get('total_amount') || '0') - parseFloat(new URLSearchParams(window.location.search).get('balance') || '0'))}</span>
                   <br />
                   <span>Remaining balance: {formatCurrency(parseFloat(new URLSearchParams(window.location.search).get('balance') || '0'))}</span>
                   <br />
-                  <span className="text-green-700">The suggested advance amount is set to the remaining balance.</span>
+                  <span className="text-green-700">Any amount entered below will be an additional payment.</span>
                 </div>
               )}
             </div>
@@ -845,7 +930,24 @@ const AdvancePaymentPage = () => {
                 className="block w-full pl-10 p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
                 placeholder="0.00"
                 value={advanceAmount || ''}
-                onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const newAdvance = parseFloat(e.target.value) || 0;
+                  setAdvanceAmount(newAdvance);
+
+                  // Check if this is an additional payment
+                  const paymentIdParam = new URLSearchParams(window.location.search).get('payment_id');
+                  const balanceParam = new URLSearchParams(window.location.search).get('balance');
+
+                  if (paymentIdParam && balanceParam) {
+                    // For additional payments, balance remains the same - we don't auto-update it
+                    // This matches the custom order behavior
+                    const remainingBalance = parseFloat(balanceParam);
+                    console.log(`Keeping balance at: ${remainingBalance} (not auto-updating)`);
+                  } else {
+                    // Standard calculation for new payments
+                    setBalanceAmount(totalAmount - newAdvance);
+                  }
+                }}
                 min="0"
                 max={totalAmount}
                 step="0.01"
@@ -867,6 +969,8 @@ const AdvancePaymentPage = () => {
                 className="block w-full pl-10 p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-yellow-500 focus:border-yellow-500"
                 value={balanceAmount || ''}
                 readOnly
+                // Add key to force re-render when balance changes
+                key={`balance-${balanceAmount}-${Date.now()}`}
               />
             </div>
           </div>
