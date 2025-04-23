@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar } from 'lucide-react';
+import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar, Eye } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { formatDate } from '@/utils/formatters';
 
 interface AssayReport {
@@ -58,7 +60,7 @@ const AssayReportsPage = () => {
   const [userBranchId, setUserBranchId] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string>('');
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
+  const [formMode, setFormMode] = useState<'add' | 'edit' | 'view'>('add');
   const [currentReport, setCurrentReport] = useState<AssayReport | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [jewelleryItems, setJewelleryItems] = useState<JewelleryItem[]>([]);
@@ -454,6 +456,128 @@ const AssayReportsPage = () => {
     setShowForm(true);
   };
 
+  // Handle view report
+  const handleViewReport = async (reportId: number) => {
+    try {
+      setLoading(true);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`http://localhost:3002/assay-reports/${reportId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch report details: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Ensure numeric fields are properly parsed
+      const parsedData = {
+        ...data,
+        weight: parseFloat(data.weight) || 0,
+        gold_percentage: parseFloat(data.gold_percentage) || 0,
+        gold_concentration: parseFloat(data.gold_concentration) || 0,
+        gold_carat: parseFloat(data.gold_carat) || 0
+      };
+
+      setCurrentReport(parsedData);
+      setCertificateNo(parsedData.certificate_no);
+      setReportDate(parsedData.report_date.split('T')[0]);
+      setCustomerName(parsedData.customer_name || '');
+      setWeight(parsedData.weight);
+      setGoldPercentage(parsedData.gold_percentage);
+      setGoldConcentration(parsedData.gold_concentration);
+      setGoldCarat(parsedData.gold_carat);
+      setSampleType(data.sample_type || '');
+      setRemarks(data.remarks || '');
+      setBranchId(data.branch_id);
+
+      // If compositions are available, use them
+      if (data.compositions && data.compositions.length > 0) {
+        // Ensure concentration is properly parsed as a number
+        const parsedCompositions = data.compositions.map((comp: any) => ({
+          ...comp,
+          concentration: typeof comp.concentration === 'number' ? comp.concentration : parseFloat(comp.concentration) || 0
+        }));
+        setCompositions(parsedCompositions);
+      } else {
+        // Fetch compositions separately
+        try {
+          const compResponse = await fetch(`http://localhost:3002/assay-reports/${reportId}/compositions`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (compResponse.ok) {
+            const compData = await compResponse.json();
+
+            // Ensure concentration is properly parsed as a number
+            const parsedCompData = compData.map((comp: any) => ({
+              ...comp,
+              concentration: typeof comp.concentration === 'number' ? comp.concentration : parseFloat(comp.concentration) || 0
+            }));
+
+            setCompositions(parsedCompData);
+          } else {
+            // If no compositions found, set default empty compositions
+            setCompositions([
+              { composition_id: 0, report_id: reportId, element_name: 'SILVER', element_symbol: 'Ag', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'COPPER', element_symbol: 'Cu', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'ZINC', element_symbol: 'Zn', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'NICKEL', element_symbol: 'Ni', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'PALLADIUM', element_symbol: 'Pd', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'CADMIUM', element_symbol: 'Cd', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'IRIDIUM', element_symbol: 'Ir', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'INDIUM', element_symbol: 'In', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'RUTHENIUM', element_symbol: 'Ru', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'RHODIUM', element_symbol: 'Rh', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'TUNGSTEN', element_symbol: 'W', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'TIN', element_symbol: 'Sn', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'LEAD', element_symbol: 'Pb', concentration: 0 },
+              { composition_id: 0, report_id: reportId, element_name: 'PLATINUM', element_symbol: 'Pt', concentration: 0 }
+            ]);
+          }
+        } catch (err) {
+          console.error('Error fetching compositions:', err);
+          // If error, set default empty compositions
+          setCompositions([
+            { composition_id: 0, report_id: reportId, element_name: 'SILVER', element_symbol: 'Ag', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'COPPER', element_symbol: 'Cu', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'ZINC', element_symbol: 'Zn', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'NICKEL', element_symbol: 'Ni', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'PALLADIUM', element_symbol: 'Pd', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'CADMIUM', element_symbol: 'Cd', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'IRIDIUM', element_symbol: 'Ir', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'INDIUM', element_symbol: 'In', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'RUTHENIUM', element_symbol: 'Ru', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'RHODIUM', element_symbol: 'Rh', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'TUNGSTEN', element_symbol: 'W', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'TIN', element_symbol: 'Sn', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'LEAD', element_symbol: 'Pb', concentration: 0 },
+            { composition_id: 0, report_id: reportId, element_name: 'PLATINUM', element_symbol: 'Pt', concentration: 0 }
+          ]);
+        }
+      }
+
+      // Set form mode to view (read-only)
+      setFormMode('view' as any);
+      setShowForm(true);
+    } catch (err) {
+      console.error('Error fetching report details:', err);
+      alert('Failed to load report details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle edit report
   const handleEditReport = async (reportId: number) => {
     try {
@@ -594,6 +718,11 @@ const AssayReportsPage = () => {
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Don't submit if in view mode
+    if ((formMode as any) === 'view') {
+      return;
+    }
+
     // Validate form
     if ((formMode === 'edit' && !certificateNo) || !reportDate || weight <= 0 || goldPercentage <= 0 || goldCarat <= 0) {
       alert('Please fill all required fields with valid values');
@@ -716,7 +845,229 @@ const AssayReportsPage = () => {
   };
 
   // Calculate total composition percentage
-  const totalComposition = compositions.reduce((sum, comp) => sum + comp.concentration, 0);
+  const totalComposition = compositions && compositions.length > 0
+    ? compositions.reduce((sum, comp) => {
+        // Ensure concentration is a valid number
+        const concentration = typeof comp.concentration === 'number'
+          ? comp.concentration
+          : parseFloat(comp.concentration) || 0;
+        return sum + concentration;
+      }, 0)
+    : 0;
+
+  // Handle PDF download
+  const handleDownloadPDF = () => {
+    // Create a simpler version of the report for PDF generation
+    const pdfContent = `
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            width: 210mm; /* A4 width */
+            height: 297mm; /* A4 height */
+            margin: 0 auto;
+            line-height: 1.3;
+            font-size: 12px;
+            box-sizing: border-box;
+          }
+          h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+          }
+          .report-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            align-items: center;
+          }
+          .title {
+            color: #D4AF37; /* Golden yellow color */
+            padding: 10px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: left;
+          }
+          .subtitle {
+            text-align: right;
+          }
+          .subtitle-main {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 3px;
+          }
+          .subtitle-sub {
+            font-size: 11px;
+          }
+          .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+          }
+          .info-left, .info-right {
+            width: 48%;
+          }
+          .info-right {
+            text-align: right;
+          }
+          .info-item {
+            margin-bottom: 8px;
+          }
+          .info-label {
+            font-weight: bold;
+          }
+          .box {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+          }
+          .box-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .composition-grid {
+            width: 100%;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+          }
+          .composition-column {
+            flex: 1;
+            padding: 5px;
+          }
+          .element-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 3px;
+          }
+          .element-symbol {
+            color: #555;
+            display: block;
+            margin-bottom: 3px;
+          }
+          .element-value {
+            font-size: 14px;
+          }
+          .gold-summary {
+            margin-top: 15px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            text-align: left;
+          }
+          .gold-value {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <h3>ASSAY REPORT</h3>
+
+        <div class="report-container">
+          <div class="header">
+            <div class="title">SLanka Jewellery</div>
+            <div class="subtitle">
+              <div class="subtitle-main">GOLD TESTING REPORT</div>
+              <div class="subtitle-sub">Instant Gold Testing By Assay</div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <div class="info-left">
+              <div class="info-item"><span class="info-label">Name:</span> ${customerName}</div>
+              <div class="info-item"><span class="info-label">Weight:</span> ${weight.toFixed(3)}g</div>
+              <div class="info-item"><span class="info-label">Gold %:</span> ${goldPercentage.toFixed(2)}</div>
+            </div>
+            <div class="info-right">
+              <div class="info-item"><span class="info-label">Date:</span> ${reportDate}</div>
+              <div class="info-item"><span class="info-label">Certificate No:</span> ${certificateNo}</div>
+              <div class="info-item"><span class="info-label">Sample:</span> ${sampleType}</div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="composition-grid">
+              ${compositions
+                .filter(comp => comp.concentration > 0)
+                .map(comp => `
+                  <div class="composition-column">
+                    <div class="element-name">${comp.element_name}</div>
+                    <div class="element-symbol">${comp.element_symbol}</div>
+                    <div class="element-value">${comp.concentration.toFixed(2)}</div>
+                  </div>
+                `).join('')}
+            </div>
+
+            <div class="gold-summary">
+              <div class="gold-value">GOLD (Au): ${goldPercentage.toFixed(2)}%</div>
+              <div class="gold-value">CARAT: ${goldCarat.toFixed(2)}K</div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="box-title">DETAILS OF THE ARTICLE:</div>
+            <div>${sampleType} - ${weight.toFixed(3)}g</div>
+          </div>
+
+          ${remarks ? `
+            <div class="box">
+              <div class="box-title">Remarks:</div>
+              <div>${remarks}</div>
+            </div>
+          ` : ''}
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create a temporary iframe to render the content
+    const iframe = document.createElement('iframe');
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(pdfContent);
+      iframeDoc.close();
+
+      // Wait for content to load
+      setTimeout(() => {
+        // @ts-ignore - TypeScript doesn't recognize the constructor parameters
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        // Use html2canvas on the iframe's body
+        html2canvas(iframeDoc.body).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 210; // A4 width in mm
+          const imgHeight = canvas.height * imgWidth / canvas.width;
+
+          // @ts-ignore - TypeScript doesn't recognize these parameters
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          pdf.save(`Assay_Report_${certificateNo}.pdf`);
+
+          // Clean up
+          document.body.removeChild(iframe);
+        });
+      }, 500);
+    }
+  };
 
   return (
     <div className="p-4">
@@ -877,14 +1228,23 @@ const AssayReportsPage = () => {
                       <td className="py-2 px-4 border-b">
                         <div className="flex gap-2">
                           <button
+                            className="text-green-500 hover:text-green-700"
+                            onClick={() => handleViewReport(report.report_id)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
                             className="text-blue-500 hover:text-blue-700"
                             onClick={() => handleEditReport(report.report_id)}
+                            title="Edit"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             className="text-red-500 hover:text-red-700"
                             onClick={() => handleDeleteReport(report.report_id)}
+                            title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -904,10 +1264,87 @@ const AssayReportsPage = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
-              {formMode === 'add' ? 'Add New Assay Report' : 'Edit Assay Report'}
+              {formMode === 'add' ? 'Add New Assay Report' : formMode === 'edit' ? 'Edit Assay Report' : 'ASSAY REPORT'}
             </h2>
 
-            <form onSubmit={handleSubmitForm}>
+            {(formMode as any) === 'view' ? (
+              <div id="assay-report-view" className="bg-white p-6 rounded-lg border border-gray-300 mb-4">
+                <h3 className="text-xl font-bold mb-4">ASSAY REPORT</h3>
+
+                <div className="border border-gray-200 rounded-lg p-6 mb-6">
+                  <div className="flex justify-between mb-6">
+                    <div className="text-[#D4AF37] py-3 px-6 text-2xl font-bold">
+                      SLanka Jewellery
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg">GOLD TESTING REPORT</div>
+                      <div className="text-sm">Instant Gold Testing By Assay</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <div className="mb-2"><span className="font-bold">Name:</span> {customerName}</div>
+                      <div className="mb-2"><span className="font-bold">Weight:</span> {weight.toFixed(3)}g</div>
+                      <div className="mb-2"><span className="font-bold">Gold %:</span> {goldPercentage.toFixed(2)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="mb-2"><span className="font-bold">Date:</span> {reportDate}</div>
+                      <div className="mb-2"><span className="font-bold">Certificate No:</span> {certificateNo}</div>
+                      <div className="mb-2"><span className="font-bold">Sample:</span> {sampleType}</div>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-md p-4 mb-6">
+                    <div className="flex justify-around text-center">
+                      {compositions.filter(comp => comp.concentration > 0).map((comp, index) => (
+                        <div key={index} className="mb-2">
+                          <div className="font-bold text-base">{comp.element_name}</div>
+                          <div className="text-gray-600">{comp.element_symbol}</div>
+                          <div className="text-base">{comp.concentration.toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-gray-200 text-left">
+                      <div className="font-bold text-lg">GOLD (Au): {goldPercentage.toFixed(2)}%</div>
+                      <div className="font-bold text-lg">CARAT: {goldCarat.toFixed(2)}K</div>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-md p-4 mb-6">
+                    <div className="font-bold mb-2">DETAILS OF THE ARTICLE:</div>
+                    <div>{sampleType} - {weight.toFixed(3)}g</div>
+                  </div>
+
+                  {remarks && (
+                    <div className="border border-gray-200 rounded-md p-4 mb-6">
+                      <div className="font-bold mb-2">Remarks:</div>
+                      <div>{remarks}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-[#3b82f6] text-white rounded-md hover:bg-[#2563eb]"
+                    onClick={() => handleDownloadPDF()}
+                  >
+                    <Download className="h-4 w-4 inline mr-1" /> Download PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitForm}>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 {formMode === 'add' && (
                   <div className="md:col-span-2">
@@ -948,7 +1385,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md bg-gray-100"
                     value={formMode === 'add' ? 'Will be generated automatically (AC-X)' : certificateNo}
                     onChange={(e) => setCertificateNo(e.target.value)}
-                    disabled={formMode === 'add'}
+                    disabled={formMode === 'add' || (formMode as any) === 'view'}
                     required
                   />
                 </div>
@@ -962,6 +1399,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={reportDate}
                     onChange={(e) => setReportDate(e.target.value)}
+                    disabled={(formMode as any) === 'view'}
                     required
                   />
                 </div>
@@ -975,6 +1413,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
+                    disabled={(formMode as any) === 'view'}
                   />
                 </div>
 
@@ -987,6 +1426,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={sampleType}
                     onChange={(e) => setSampleType(e.target.value)}
+                    disabled={(formMode as any) === 'view'}
                     placeholder="e.g., BRACELET, NECKLACE"
                   />
                 </div>
@@ -1001,6 +1441,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={weight}
                     onChange={(e) => setWeight(parseFloat(e.target.value))}
+                    disabled={(formMode as any) === 'view'}
                     required
                     min="0.001"
                   />
@@ -1016,6 +1457,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={goldPercentage}
                     onChange={(e) => setGoldPercentage(parseFloat(e.target.value))}
+                    disabled={(formMode as any) === 'view'}
                     required
                     min="0.01"
                     max="100"
@@ -1032,6 +1474,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={goldConcentration}
                     onChange={(e) => setGoldConcentration(parseFloat(e.target.value))}
+                    disabled={(formMode as any) === 'view'}
                     min="0"
                     max="100"
                     placeholder="Same as Gold Percentage if not specified"
@@ -1048,6 +1491,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={goldCarat}
                     onChange={(e) => setGoldCarat(parseFloat(e.target.value))}
+                    disabled={(formMode as any) === 'view'}
                     required
                     min="0.01"
                     max="24"
@@ -1062,7 +1506,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={branchId || ''}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBranchId(e.target.value ? parseInt(e.target.value) : null)}
-                    disabled={userRole !== 'admin'}
+                    disabled={userRole !== 'admin' || (formMode as any) === 'view'}
                   >
                     <option value="">Select Branch</option>
                     <option value="1">Mahiyanganaya Branch</option>
@@ -1078,6 +1522,7 @@ const AssayReportsPage = () => {
                     className="w-full p-2 border rounded-md"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
+                    disabled={(formMode as any) === 'view'}
                     rows={3}
                   />
                 </div>
@@ -1095,6 +1540,7 @@ const AssayReportsPage = () => {
                         className="mr-2 h-4 w-4"
                         checked={isHomogeneous}
                         onChange={(e) => setIsHomogeneous(e.target.checked)}
+                        disabled={(formMode as any) === 'view'}
                       />
                       <label htmlFor="is_homogeneous" className="text-sm font-medium">
                         Is Homogeneous
@@ -1108,6 +1554,7 @@ const AssayReportsPage = () => {
                         className="mr-2 h-4 w-4"
                         checked={hasSolder}
                         onChange={(e) => setHasSolder(e.target.checked)}
+                        disabled={(formMode as any) === 'view'}
                       />
                       <label htmlFor="has_solder" className="text-sm font-medium">
                         Has Solder
@@ -1124,6 +1571,7 @@ const AssayReportsPage = () => {
                           className="w-full p-2 border rounded-md"
                           value={solderQuality}
                           onChange={(e) => setSolderQuality(e.target.value)}
+                          disabled={(formMode as any) === 'view'}
                           placeholder="e.g., Good, Fair, Poor"
                         />
                       </div>
@@ -1135,8 +1583,8 @@ const AssayReportsPage = () => {
               <div className="mb-4 md:col-span-2 border-t pt-4 mt-2">
                 <h3 className="text-lg font-medium mb-2">Metal Composition</h3>
                 <p className="text-sm text-gray-500 mb-2">
-                  Enter the percentage concentration of each metal element. Total: {totalComposition.toFixed(2)}%
-                  {totalComposition > 100 && (
+                  Enter the percentage concentration of each metal element. Total: {typeof totalComposition === 'number' ? totalComposition.toFixed(2) : '0.00'}%
+                  {typeof totalComposition === 'number' && totalComposition > 100 && (
                     <span className="text-red-500 ml-2">Total exceeds 100%!</span>
                   )}
                 </p>
@@ -1153,6 +1601,7 @@ const AssayReportsPage = () => {
                         className="w-full p-2 border rounded-md"
                         value={comp.concentration}
                         onChange={(e) => handleCompositionChange(index, parseFloat(e.target.value) || 0)}
+                        disabled={(formMode as any) === 'view'}
                         min="0"
                         max="100"
                       />
@@ -1162,21 +1611,34 @@ const AssayReportsPage = () => {
               </div>
 
               <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                  onClick={() => setShowForm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  {formMode === 'add' ? 'Add Report' : 'Update Report'}
-                </button>
+                {(formMode as any) === 'view' ? (
+                  <button
+                    type="button"
+                    className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                      onClick={() => setShowForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    >
+                      {formMode === 'add' ? 'Add Report' : 'Update Report'}
+                    </button>
+                  </>
+                )}
               </div>
             </form>
+            )}
           </div>
         </div>
       )}

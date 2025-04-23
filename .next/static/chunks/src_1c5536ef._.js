@@ -61,10 +61,16 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$search$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Search$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/search.js [app-client] (ecmascript) <export default as Search>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$filter$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Filter$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/filter.js [app-client] (ecmascript) <export default as Filter>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Plus$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/plus.js [app-client] (ecmascript) <export default as Plus>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/download.js [app-client] (ecmascript) <export default as Download>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$eye$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Eye$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/eye.js [app-client] (ecmascript) <export default as Eye>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$html2canvas$2f$dist$2f$html2canvas$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/html2canvas/dist/html2canvas.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jspdf$2f$dist$2f$jspdf$2e$es$2e$min$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/formatters.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 "use client";
+;
+;
 ;
 ;
 ;
@@ -541,6 +547,284 @@ const AssayReportsPage = ()=>{
         setFormMode('add');
         setShowForm(true);
     };
+    // Handle view report
+    const handleViewReport = async (reportId)=>{
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+            const response = await fetch(`http://localhost:3002/assay-reports/${reportId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch report details: ${response.status}`);
+            }
+            const data = await response.json();
+            // Ensure numeric fields are properly parsed
+            const parsedData = {
+                ...data,
+                weight: parseFloat(data.weight) || 0,
+                gold_percentage: parseFloat(data.gold_percentage) || 0,
+                gold_concentration: parseFloat(data.gold_concentration) || 0,
+                gold_carat: parseFloat(data.gold_carat) || 0
+            };
+            setCurrentReport(parsedData);
+            setCertificateNo(parsedData.certificate_no);
+            setReportDate(parsedData.report_date.split('T')[0]);
+            setCustomerName(parsedData.customer_name || '');
+            setWeight(parsedData.weight);
+            setGoldPercentage(parsedData.gold_percentage);
+            setGoldConcentration(parsedData.gold_concentration);
+            setGoldCarat(parsedData.gold_carat);
+            setSampleType(data.sample_type || '');
+            setRemarks(data.remarks || '');
+            setBranchId(data.branch_id);
+            // If compositions are available, use them
+            if (data.compositions && data.compositions.length > 0) {
+                // Ensure concentration is properly parsed as a number
+                const parsedCompositions = data.compositions.map((comp)=>({
+                        ...comp,
+                        concentration: typeof comp.concentration === 'number' ? comp.concentration : parseFloat(comp.concentration) || 0
+                    }));
+                setCompositions(parsedCompositions);
+            } else {
+                // Fetch compositions separately
+                try {
+                    const compResponse = await fetch(`http://localhost:3002/assay-reports/${reportId}/compositions`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (compResponse.ok) {
+                        const compData = await compResponse.json();
+                        // Ensure concentration is properly parsed as a number
+                        const parsedCompData = compData.map((comp)=>({
+                                ...comp,
+                                concentration: typeof comp.concentration === 'number' ? comp.concentration : parseFloat(comp.concentration) || 0
+                            }));
+                        setCompositions(parsedCompData);
+                    } else {
+                        // If no compositions found, set default empty compositions
+                        setCompositions([
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'SILVER',
+                                element_symbol: 'Ag',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'COPPER',
+                                element_symbol: 'Cu',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'ZINC',
+                                element_symbol: 'Zn',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'NICKEL',
+                                element_symbol: 'Ni',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'PALLADIUM',
+                                element_symbol: 'Pd',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'CADMIUM',
+                                element_symbol: 'Cd',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'IRIDIUM',
+                                element_symbol: 'Ir',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'INDIUM',
+                                element_symbol: 'In',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'RUTHENIUM',
+                                element_symbol: 'Ru',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'RHODIUM',
+                                element_symbol: 'Rh',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'TUNGSTEN',
+                                element_symbol: 'W',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'TIN',
+                                element_symbol: 'Sn',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'LEAD',
+                                element_symbol: 'Pb',
+                                concentration: 0
+                            },
+                            {
+                                composition_id: 0,
+                                report_id: reportId,
+                                element_name: 'PLATINUM',
+                                element_symbol: 'Pt',
+                                concentration: 0
+                            }
+                        ]);
+                    }
+                } catch (err) {
+                    console.error('Error fetching compositions:', err);
+                    // If error, set default empty compositions
+                    setCompositions([
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'SILVER',
+                            element_symbol: 'Ag',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'COPPER',
+                            element_symbol: 'Cu',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'ZINC',
+                            element_symbol: 'Zn',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'NICKEL',
+                            element_symbol: 'Ni',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'PALLADIUM',
+                            element_symbol: 'Pd',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'CADMIUM',
+                            element_symbol: 'Cd',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'IRIDIUM',
+                            element_symbol: 'Ir',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'INDIUM',
+                            element_symbol: 'In',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'RUTHENIUM',
+                            element_symbol: 'Ru',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'RHODIUM',
+                            element_symbol: 'Rh',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'TUNGSTEN',
+                            element_symbol: 'W',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'TIN',
+                            element_symbol: 'Sn',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'LEAD',
+                            element_symbol: 'Pb',
+                            concentration: 0
+                        },
+                        {
+                            composition_id: 0,
+                            report_id: reportId,
+                            element_name: 'PLATINUM',
+                            element_symbol: 'Pt',
+                            concentration: 0
+                        }
+                    ]);
+                }
+            }
+            // Set form mode to view (read-only)
+            setFormMode('view');
+            setShowForm(true);
+        } catch (err) {
+            console.error('Error fetching report details:', err);
+            alert('Failed to load report details');
+        } finally{
+            setLoading(false);
+        }
+    };
     // Handle edit report
     const handleEditReport = async (reportId)=>{
         try {
@@ -660,6 +944,10 @@ const AssayReportsPage = ()=>{
     // Handle form submission
     const handleSubmitForm = async (e)=>{
         e.preventDefault();
+        // Don't submit if in view mode
+        if (formMode === 'view') {
+            return;
+        }
         // Validate form
         if (formMode === 'edit' && !certificateNo || !reportDate || weight <= 0 || goldPercentage <= 0 || goldCarat <= 0) {
             alert('Please fill all required fields with valid values');
@@ -770,7 +1058,216 @@ const AssayReportsPage = ()=>{
         setCompositions(updatedCompositions);
     };
     // Calculate total composition percentage
-    const totalComposition = compositions.reduce((sum, comp)=>sum + comp.concentration, 0);
+    const totalComposition = compositions && compositions.length > 0 ? compositions.reduce((sum, comp)=>{
+        // Ensure concentration is a valid number
+        const concentration = typeof comp.concentration === 'number' ? comp.concentration : parseFloat(comp.concentration) || 0;
+        return sum + concentration;
+    }, 0) : 0;
+    // Handle PDF download
+    const handleDownloadPDF = ()=>{
+        // Create a simpler version of the report for PDF generation
+        const pdfContent = `
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            width: 210mm; /* A4 width */
+            height: 297mm; /* A4 height */
+            margin: 0 auto;
+            line-height: 1.3;
+            font-size: 12px;
+            box-sizing: border-box;
+          }
+          h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+          }
+          .report-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            align-items: center;
+          }
+          .title {
+            color: #D4AF37; /* Golden yellow color */
+            padding: 10px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: left;
+          }
+          .subtitle {
+            text-align: right;
+          }
+          .subtitle-main {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 3px;
+          }
+          .subtitle-sub {
+            font-size: 11px;
+          }
+          .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+          }
+          .info-left, .info-right {
+            width: 48%;
+          }
+          .info-right {
+            text-align: right;
+          }
+          .info-item {
+            margin-bottom: 8px;
+          }
+          .info-label {
+            font-weight: bold;
+          }
+          .box {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+          }
+          .box-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .composition-grid {
+            width: 100%;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+          }
+          .composition-column {
+            flex: 1;
+            padding: 5px;
+          }
+          .element-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 3px;
+          }
+          .element-symbol {
+            color: #555;
+            display: block;
+            margin-bottom: 3px;
+          }
+          .element-value {
+            font-size: 14px;
+          }
+          .gold-summary {
+            margin-top: 15px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            text-align: left;
+          }
+          .gold-value {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <h3>ASSAY REPORT</h3>
+
+        <div class="report-container">
+          <div class="header">
+            <div class="title">SLanka Jewellery</div>
+            <div class="subtitle">
+              <div class="subtitle-main">GOLD TESTING REPORT</div>
+              <div class="subtitle-sub">Instant Gold Testing By Assay</div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <div class="info-left">
+              <div class="info-item"><span class="info-label">Name:</span> ${customerName}</div>
+              <div class="info-item"><span class="info-label">Weight:</span> ${weight.toFixed(3)}g</div>
+              <div class="info-item"><span class="info-label">Gold %:</span> ${goldPercentage.toFixed(2)}</div>
+            </div>
+            <div class="info-right">
+              <div class="info-item"><span class="info-label">Date:</span> ${reportDate}</div>
+              <div class="info-item"><span class="info-label">Certificate No:</span> ${certificateNo}</div>
+              <div class="info-item"><span class="info-label">Sample:</span> ${sampleType}</div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="composition-grid">
+              ${compositions.filter((comp)=>comp.concentration > 0).map((comp)=>`
+                  <div class="composition-column">
+                    <div class="element-name">${comp.element_name}</div>
+                    <div class="element-symbol">${comp.element_symbol}</div>
+                    <div class="element-value">${comp.concentration.toFixed(2)}</div>
+                  </div>
+                `).join('')}
+            </div>
+
+            <div class="gold-summary">
+              <div class="gold-value">GOLD (Au): ${goldPercentage.toFixed(2)}%</div>
+              <div class="gold-value">CARAT: ${goldCarat.toFixed(2)}K</div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="box-title">DETAILS OF THE ARTICLE:</div>
+            <div>${sampleType} - ${weight.toFixed(3)}g</div>
+          </div>
+
+          ${remarks ? `
+            <div class="box">
+              <div class="box-title">Remarks:</div>
+              <div>${remarks}</div>
+            </div>
+          ` : ''}
+        </div>
+      </body>
+      </html>
+    `;
+        // Create a temporary iframe to render the content
+        const iframe = document.createElement('iframe');
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+            iframeDoc.open();
+            iframeDoc.write(pdfContent);
+            iframeDoc.close();
+            // Wait for content to load
+            setTimeout(()=>{
+                // @ts-ignore - TypeScript doesn't recognize the constructor parameters
+                const pdf = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jspdf$2f$dist$2f$jspdf$2e$es$2e$min$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]('p', 'mm', 'a4');
+                // Use html2canvas on the iframe's body
+                (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$html2canvas$2f$dist$2f$html2canvas$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(iframeDoc.body).then((canvas)=>{
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 210; // A4 width in mm
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    // @ts-ignore - TypeScript doesn't recognize these parameters
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    pdf.save(`Assay_Report_${certificateNo}.pdf`);
+                    // Clean up
+                    document.body.removeChild(iframe);
+                });
+            }, 500);
+        }
+    };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "p-4",
         children: [
@@ -779,7 +1276,7 @@ const AssayReportsPage = ()=>{
                 children: "Assay Reports"
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                lineNumber: 723,
+                lineNumber: 1074,
                 columnNumber: 7
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -788,12 +1285,12 @@ const AssayReportsPage = ()=>{
                     children: error
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                    lineNumber: 727,
+                    lineNumber: 1078,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                lineNumber: 726,
+                lineNumber: 1077,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -813,20 +1310,20 @@ const AssayReportsPage = ()=>{
                                         onChange: (e)=>setSearchTerm(e.target.value)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                        lineNumber: 734,
+                                        lineNumber: 1085,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$search$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Search$3e$__["Search"], {
                                         className: "absolute left-2 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                        lineNumber: 741,
+                                        lineNumber: 1092,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                lineNumber: 733,
+                                lineNumber: 1084,
                                 columnNumber: 11
                             }, this),
                             userRole && userRole.toLowerCase() === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -898,7 +1395,7 @@ const AssayReportsPage = ()=>{
                                                 children: "All Branches"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 817,
+                                                lineNumber: 1168,
                                                 columnNumber: 17
                                             }, this),
                                             branches.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -906,32 +1403,32 @@ const AssayReportsPage = ()=>{
                                                     children: branch.branch_name
                                                 }, branch.branch_id, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 819,
+                                                    lineNumber: 1170,
                                                     columnNumber: 19
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                        lineNumber: 747,
+                                        lineNumber: 1098,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$filter$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Filter$3e$__["Filter"], {
                                         className: "absolute left-2 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                        lineNumber: 824,
+                                        lineNumber: 1175,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                lineNumber: 746,
+                                lineNumber: 1097,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                        lineNumber: 732,
+                        lineNumber: 1083,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -944,25 +1441,25 @@ const AssayReportsPage = ()=>{
                                     className: "h-4 w-4"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 834,
+                                    lineNumber: 1185,
                                     columnNumber: 13
                                 }, this),
                                 "Add New Report"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                            lineNumber: 830,
+                            lineNumber: 1181,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                        lineNumber: 829,
+                        lineNumber: 1180,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                lineNumber: 731,
+                lineNumber: 1082,
                 columnNumber: 7
             }, this),
             loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -971,12 +1468,12 @@ const AssayReportsPage = ()=>{
                     className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                    lineNumber: 842,
+                    lineNumber: 1193,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                lineNumber: 841,
+                lineNumber: 1192,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: filteredReports.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -985,12 +1482,12 @@ const AssayReportsPage = ()=>{
                         children: "No assay reports found."
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                        lineNumber: 848,
+                        lineNumber: 1199,
                         columnNumber: 15
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                    lineNumber: 847,
+                    lineNumber: 1198,
                     columnNumber: 13
                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "overflow-x-auto",
@@ -1006,7 +1503,7 @@ const AssayReportsPage = ()=>{
                                             children: "Certificate No"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 855,
+                                            lineNumber: 1206,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1014,7 +1511,7 @@ const AssayReportsPage = ()=>{
                                             children: "Date"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 856,
+                                            lineNumber: 1207,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1022,7 +1519,7 @@ const AssayReportsPage = ()=>{
                                             children: "Customer"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 857,
+                                            lineNumber: 1208,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1030,7 +1527,7 @@ const AssayReportsPage = ()=>{
                                             children: "Sample Type"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 858,
+                                            lineNumber: 1209,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1038,7 +1535,7 @@ const AssayReportsPage = ()=>{
                                             children: "Weight (g)"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 859,
+                                            lineNumber: 1210,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1046,7 +1543,7 @@ const AssayReportsPage = ()=>{
                                             children: "Gold %"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 860,
+                                            lineNumber: 1211,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1054,7 +1551,7 @@ const AssayReportsPage = ()=>{
                                             children: "Carat"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 861,
+                                            lineNumber: 1212,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1062,7 +1559,7 @@ const AssayReportsPage = ()=>{
                                             children: "Branch"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 862,
+                                            lineNumber: 1213,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1070,18 +1567,18 @@ const AssayReportsPage = ()=>{
                                             children: "Actions"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 863,
+                                            lineNumber: 1214,
                                             columnNumber: 21
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 854,
+                                    lineNumber: 1205,
                                     columnNumber: 19
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                lineNumber: 853,
+                                lineNumber: 1204,
                                 columnNumber: 17
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1093,7 +1590,7 @@ const AssayReportsPage = ()=>{
                                                 children: report.certificate_no
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 869,
+                                                lineNumber: 1220,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1101,7 +1598,7 @@ const AssayReportsPage = ()=>{
                                                 children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$formatters$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatDate"])(report.report_date)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 870,
+                                                lineNumber: 1221,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1109,7 +1606,7 @@ const AssayReportsPage = ()=>{
                                                 children: report.customer_name || '-'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 871,
+                                                lineNumber: 1222,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1117,7 +1614,7 @@ const AssayReportsPage = ()=>{
                                                 children: report.sample_type || '-'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 872,
+                                                lineNumber: 1223,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1125,7 +1622,7 @@ const AssayReportsPage = ()=>{
                                                 children: typeof report.weight === 'number' ? report.weight.toFixed(3) : (parseFloat(report.weight) || 0).toFixed(3)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 873,
+                                                lineNumber: 1224,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1136,7 +1633,7 @@ const AssayReportsPage = ()=>{
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 874,
+                                                lineNumber: 1225,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1147,7 +1644,7 @@ const AssayReportsPage = ()=>{
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 875,
+                                                lineNumber: 1226,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1155,7 +1652,7 @@ const AssayReportsPage = ()=>{
                                                 children: report.branch_name || '-'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 876,
+                                                lineNumber: 1227,
                                                 columnNumber: 23
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1164,66 +1661,84 @@ const AssayReportsPage = ()=>{
                                                     className: "flex gap-2",
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                            className: "text-blue-500 hover:text-blue-700",
-                                                            onClick: ()=>handleEditReport(report.report_id),
-                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$pencil$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Pencil$3e$__["Pencil"], {
+                                                            className: "text-green-500 hover:text-green-700",
+                                                            onClick: ()=>handleViewReport(report.report_id),
+                                                            title: "View Details",
+                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$eye$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Eye$3e$__["Eye"], {
                                                                 className: "h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                                lineNumber: 883,
+                                                                lineNumber: 1235,
                                                                 columnNumber: 29
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 879,
+                                                            lineNumber: 1230,
+                                                            columnNumber: 27
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                            className: "text-blue-500 hover:text-blue-700",
+                                                            onClick: ()=>handleEditReport(report.report_id),
+                                                            title: "Edit",
+                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$pencil$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Pencil$3e$__["Pencil"], {
+                                                                className: "h-4 w-4"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                lineNumber: 1242,
+                                                                columnNumber: 29
+                                                            }, this)
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1237,
                                                             columnNumber: 27
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                             className: "text-red-500 hover:text-red-700",
                                                             onClick: ()=>handleDeleteReport(report.report_id),
+                                                            title: "Delete",
                                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$trash$2d$2$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Trash2$3e$__["Trash2"], {
                                                                 className: "h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                                lineNumber: 889,
+                                                                lineNumber: 1249,
                                                                 columnNumber: 29
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 885,
+                                                            lineNumber: 1244,
                                                             columnNumber: 27
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 878,
+                                                    lineNumber: 1229,
                                                     columnNumber: 25
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                lineNumber: 877,
+                                                lineNumber: 1228,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, report.report_id, true, {
                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                        lineNumber: 868,
+                                        lineNumber: 1219,
                                         columnNumber: 21
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                lineNumber: 866,
+                                lineNumber: 1217,
                                 columnNumber: 17
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                        lineNumber: 852,
+                        lineNumber: 1203,
                         columnNumber: 15
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                    lineNumber: 851,
+                    lineNumber: 1202,
                     columnNumber: 13
                 }, this)
             }, void 0, false),
@@ -1234,13 +1749,395 @@ const AssayReportsPage = ()=>{
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                             className: "text-xl font-bold mb-4",
-                            children: formMode === 'add' ? 'Add New Assay Report' : 'Edit Assay Report'
+                            children: formMode === 'add' ? 'Add New Assay Report' : formMode === 'edit' ? 'Edit Assay Report' : 'ASSAY REPORT'
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                            lineNumber: 906,
+                            lineNumber: 1266,
                             columnNumber: 13
                         }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
+                        formMode === 'view' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            id: "assay-report-view",
+                            className: "bg-white p-6 rounded-lg border border-gray-300 mb-4",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                    className: "text-xl font-bold mb-4",
+                                    children: "ASSAY REPORT"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                    lineNumber: 1272,
+                                    columnNumber: 17
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "border border-gray-200 rounded-lg p-6 mb-6",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "flex justify-between mb-6",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "text-[#D4AF37] py-3 px-6 text-2xl font-bold",
+                                                    children: "SLanka Jewellery"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1276,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "text-right",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "font-bold text-lg",
+                                                            children: "GOLD TESTING REPORT"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1280,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "text-sm",
+                                                            children: "Instant Gold Testing By Assay"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1281,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1279,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1275,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "grid grid-cols-2 gap-6 mb-6",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Name:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1287,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                customerName
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1287,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Weight:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1288,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                weight.toFixed(3),
+                                                                "g"
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1288,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Gold %:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1289,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                goldPercentage.toFixed(2)
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1289,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1286,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "text-right",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Date:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1292,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                reportDate
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1292,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Certificate No:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1293,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                certificateNo
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1293,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "font-bold",
+                                                                    children: "Sample:"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1294,
+                                                                    columnNumber: 45
+                                                                }, this),
+                                                                " ",
+                                                                sampleType
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1294,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1291,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1285,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "border border-gray-200 rounded-md p-4 mb-6",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "flex justify-around text-center",
+                                                    children: compositions.filter((comp)=>comp.concentration > 0).map((comp, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "mb-2",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    className: "font-bold text-base",
+                                                                    children: comp.element_name
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1302,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    className: "text-gray-600",
+                                                                    children: comp.element_symbol
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1303,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    className: "text-base",
+                                                                    children: comp.concentration.toFixed(2)
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                                    lineNumber: 1304,
+                                                                    columnNumber: 27
+                                                                }, this)
+                                                            ]
+                                                        }, index, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1301,
+                                                            columnNumber: 25
+                                                        }, this))
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1299,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "mt-4 pt-4 border-t border-gray-200 text-left",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "font-bold text-lg",
+                                                            children: [
+                                                                "GOLD (Au): ",
+                                                                goldPercentage.toFixed(2),
+                                                                "%"
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1310,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "font-bold text-lg",
+                                                            children: [
+                                                                "CARAT: ",
+                                                                goldCarat.toFixed(2),
+                                                                "K"
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                            lineNumber: 1311,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1309,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1298,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "border border-gray-200 rounded-md p-4 mb-6",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "font-bold mb-2",
+                                                    children: "DETAILS OF THE ARTICLE:"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1316,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        sampleType,
+                                                        " - ",
+                                                        weight.toFixed(3),
+                                                        "g"
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1317,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1315,
+                                            columnNumber: 19
+                                        }, this),
+                                        remarks && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "border border-gray-200 rounded-md p-4 mb-6",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "font-bold mb-2",
+                                                    children: "Remarks:"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1322,
+                                                    columnNumber: 23
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: remarks
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1323,
+                                                    columnNumber: 23
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1321,
+                                            columnNumber: 21
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                    lineNumber: 1274,
+                                    columnNumber: 17
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex justify-end gap-2 mt-4",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: "px-4 py-2 bg-[#3b82f6] text-white rounded-md hover:bg-[#2563eb]",
+                                            onClick: ()=>handleDownloadPDF(),
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
+                                                    className: "h-4 w-4 inline mr-1"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                    lineNumber: 1334,
+                                                    columnNumber: 21
+                                                }, this),
+                                                " Download PDF"
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1329,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: "px-4 py-2 border rounded-md hover:bg-gray-100",
+                                            onClick: ()=>setShowForm(false),
+                                            children: "Close"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                            lineNumber: 1336,
+                                            columnNumber: 19
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                    lineNumber: 1328,
+                                    columnNumber: 17
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                            lineNumber: 1271,
+                            columnNumber: 15
+                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
                             onSubmit: handleSubmitForm,
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1254,7 +2151,7 @@ const AssayReportsPage = ()=>{
                                                     children: "Select Jewellery Item"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 914,
+                                                    lineNumber: 1351,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1270,7 +2167,7 @@ const AssayReportsPage = ()=>{
                                                                     children: "-- Select an item --"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                                    lineNumber: 923,
+                                                                    lineNumber: 1360,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 jewelleryItems.map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1284,13 +2181,13 @@ const AssayReportsPage = ()=>{
                                                                         ]
                                                                     }, item.item_id, true, {
                                                                         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                                        lineNumber: 925,
+                                                                        lineNumber: 1362,
                                                                         columnNumber: 27
                                                                     }, this))
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 918,
+                                                            lineNumber: 1355,
                                                             columnNumber: 23
                                                         }, this),
                                                         loadingItems && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1299,18 +2196,18 @@ const AssayReportsPage = ()=>{
                                                                 className: "animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                                lineNumber: 932,
+                                                                lineNumber: 1369,
                                                                 columnNumber: 27
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 931,
+                                                            lineNumber: 1368,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 917,
+                                                    lineNumber: 1354,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1318,13 +2215,13 @@ const AssayReportsPage = ()=>{
                                                     children: "Selecting an item will auto-populate weight, carat, and other details"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 936,
+                                                    lineNumber: 1373,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 913,
+                                            lineNumber: 1350,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1338,13 +2235,13 @@ const AssayReportsPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 944,
+                                                            lineNumber: 1381,
                                                             columnNumber: 36
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 943,
+                                                    lineNumber: 1380,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1352,17 +2249,17 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md bg-gray-100",
                                                     value: formMode === 'add' ? 'Will be generated automatically (AC-X)' : certificateNo,
                                                     onChange: (e)=>setCertificateNo(e.target.value),
-                                                    disabled: formMode === 'add',
+                                                    disabled: formMode === 'add' || formMode === 'view',
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 946,
+                                                    lineNumber: 1383,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 942,
+                                            lineNumber: 1379,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1376,13 +2273,13 @@ const AssayReportsPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 958,
+                                                            lineNumber: 1395,
                                                             columnNumber: 33
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 957,
+                                                    lineNumber: 1394,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1390,16 +2287,17 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: reportDate,
                                                     onChange: (e)=>setReportDate(e.target.value),
+                                                    disabled: formMode === 'view',
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 960,
+                                                    lineNumber: 1397,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 956,
+                                            lineNumber: 1393,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1409,23 +2307,24 @@ const AssayReportsPage = ()=>{
                                                     children: "Customer Name"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 970,
+                                                    lineNumber: 1408,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
                                                     type: "text",
                                                     className: "w-full p-2 border rounded-md",
                                                     value: customerName,
-                                                    onChange: (e)=>setCustomerName(e.target.value)
+                                                    onChange: (e)=>setCustomerName(e.target.value),
+                                                    disabled: formMode === 'view'
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 973,
+                                                    lineNumber: 1411,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 969,
+                                            lineNumber: 1407,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1435,7 +2334,7 @@ const AssayReportsPage = ()=>{
                                                     children: "Sample Type"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 982,
+                                                    lineNumber: 1421,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1443,16 +2342,17 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: sampleType,
                                                     onChange: (e)=>setSampleType(e.target.value),
+                                                    disabled: formMode === 'view',
                                                     placeholder: "e.g., BRACELET, NECKLACE"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 985,
+                                                    lineNumber: 1424,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 981,
+                                            lineNumber: 1420,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1466,13 +2366,13 @@ const AssayReportsPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 996,
+                                                            lineNumber: 1436,
                                                             columnNumber: 32
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 995,
+                                                    lineNumber: 1435,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1481,17 +2381,18 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: weight,
                                                     onChange: (e)=>setWeight(parseFloat(e.target.value)),
+                                                    disabled: formMode === 'view',
                                                     required: true,
                                                     min: "0.001"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 998,
+                                                    lineNumber: 1438,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 994,
+                                            lineNumber: 1434,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1505,13 +2406,13 @@ const AssayReportsPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1011,
+                                                            lineNumber: 1452,
                                                             columnNumber: 41
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1010,
+                                                    lineNumber: 1451,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1520,18 +2421,19 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: goldPercentage,
                                                     onChange: (e)=>setGoldPercentage(parseFloat(e.target.value)),
+                                                    disabled: formMode === 'view',
                                                     required: true,
                                                     min: "0.01",
                                                     max: "100"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1013,
+                                                    lineNumber: 1454,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1009,
+                                            lineNumber: 1450,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1541,7 +2443,7 @@ const AssayReportsPage = ()=>{
                                                     children: "Gold Concentration (%)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1026,
+                                                    lineNumber: 1468,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1550,18 +2452,19 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: goldConcentration,
                                                     onChange: (e)=>setGoldConcentration(parseFloat(e.target.value)),
+                                                    disabled: formMode === 'view',
                                                     min: "0",
                                                     max: "100",
                                                     placeholder: "Same as Gold Percentage if not specified"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1029,
+                                                    lineNumber: 1471,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1025,
+                                            lineNumber: 1467,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1575,13 +2478,13 @@ const AssayReportsPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1043,
+                                                            lineNumber: 1486,
                                                             columnNumber: 36
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1042,
+                                                    lineNumber: 1485,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1590,18 +2493,19 @@ const AssayReportsPage = ()=>{
                                                     className: "w-full p-2 border rounded-md",
                                                     value: goldCarat,
                                                     onChange: (e)=>setGoldCarat(parseFloat(e.target.value)),
+                                                    disabled: formMode === 'view',
                                                     required: true,
                                                     min: "0.01",
                                                     max: "24"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1045,
+                                                    lineNumber: 1488,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1041,
+                                            lineNumber: 1484,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1611,21 +2515,21 @@ const AssayReportsPage = ()=>{
                                                     children: "Branch"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1058,
+                                                    lineNumber: 1502,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
                                                     className: "w-full p-2 border rounded-md",
                                                     value: branchId || '',
                                                     onChange: (e)=>setBranchId(e.target.value ? parseInt(e.target.value) : null),
-                                                    disabled: userRole !== 'admin',
+                                                    disabled: userRole !== 'admin' || formMode === 'view',
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
                                                             value: "",
                                                             children: "Select Branch"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1067,
+                                                            lineNumber: 1511,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1633,7 +2537,7 @@ const AssayReportsPage = ()=>{
                                                             children: "Mahiyanganaya Branch"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1068,
+                                                            lineNumber: 1512,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1641,19 +2545,19 @@ const AssayReportsPage = ()=>{
                                                             children: "Mahaoya Branch"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1069,
+                                                            lineNumber: 1513,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1061,
+                                                    lineNumber: 1505,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1057,
+                                            lineNumber: 1501,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1664,29 +2568,30 @@ const AssayReportsPage = ()=>{
                                                     children: "Remarks"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1074,
+                                                    lineNumber: 1518,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
                                                     className: "w-full p-2 border rounded-md",
                                                     value: remarks,
                                                     onChange: (e)=>setRemarks(e.target.value),
+                                                    disabled: formMode === 'view',
                                                     rows: 3
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1077,
+                                                    lineNumber: 1521,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1073,
+                                            lineNumber: 1517,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 911,
+                                    lineNumber: 1348,
                                     columnNumber: 15
                                 }, this),
                                 selectedItemId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1697,7 +2602,7 @@ const AssayReportsPage = ()=>{
                                             children: "Item Metadata"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1089,
+                                            lineNumber: 1534,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1711,10 +2616,11 @@ const AssayReportsPage = ()=>{
                                                             id: "is_homogeneous",
                                                             className: "mr-2 h-4 w-4",
                                                             checked: isHomogeneous,
-                                                            onChange: (e)=>setIsHomogeneous(e.target.checked)
+                                                            onChange: (e)=>setIsHomogeneous(e.target.checked),
+                                                            disabled: formMode === 'view'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1092,
+                                                            lineNumber: 1537,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -1723,13 +2629,13 @@ const AssayReportsPage = ()=>{
                                                             children: "Is Homogeneous"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1099,
+                                                            lineNumber: 1545,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1091,
+                                                    lineNumber: 1536,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1740,10 +2646,11 @@ const AssayReportsPage = ()=>{
                                                             id: "has_solder",
                                                             className: "mr-2 h-4 w-4",
                                                             checked: hasSolder,
-                                                            onChange: (e)=>setHasSolder(e.target.checked)
+                                                            onChange: (e)=>setHasSolder(e.target.checked),
+                                                            disabled: formMode === 'view'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1105,
+                                                            lineNumber: 1551,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -1752,13 +2659,13 @@ const AssayReportsPage = ()=>{
                                                             children: "Has Solder"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1112,
+                                                            lineNumber: 1559,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1104,
+                                                    lineNumber: 1550,
                                                     columnNumber: 21
                                                 }, this),
                                                 hasSolder && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1768,7 +2675,7 @@ const AssayReportsPage = ()=>{
                                                             children: "Solder Quality"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1119,
+                                                            lineNumber: 1566,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1776,28 +2683,29 @@ const AssayReportsPage = ()=>{
                                                             className: "w-full p-2 border rounded-md",
                                                             value: solderQuality,
                                                             onChange: (e)=>setSolderQuality(e.target.value),
+                                                            disabled: formMode === 'view',
                                                             placeholder: "e.g., Good, Fair, Poor"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1122,
+                                                            lineNumber: 1569,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1118,
+                                                    lineNumber: 1565,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1090,
+                                            lineNumber: 1535,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 1088,
+                                    lineNumber: 1533,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1808,27 +2716,27 @@ const AssayReportsPage = ()=>{
                                             children: "Metal Composition"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1136,
+                                            lineNumber: 1584,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "text-sm text-gray-500 mb-2",
                                             children: [
                                                 "Enter the percentage concentration of each metal element. Total: ",
-                                                totalComposition.toFixed(2),
+                                                typeof totalComposition === 'number' ? totalComposition.toFixed(2) : '0.00',
                                                 "%",
-                                                totalComposition > 100 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                typeof totalComposition === 'number' && totalComposition > 100 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                     className: "text-red-500 ml-2",
                                                     children: "Total exceeds 100%!"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1140,
+                                                    lineNumber: 1588,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1137,
+                                            lineNumber: 1585,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1845,7 +2753,7 @@ const AssayReportsPage = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1147,
+                                                            lineNumber: 1595,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1854,79 +2762,91 @@ const AssayReportsPage = ()=>{
                                                             className: "w-full p-2 border rounded-md",
                                                             value: comp.concentration,
                                                             onChange: (e)=>handleCompositionChange(index, parseFloat(e.target.value) || 0),
+                                                            disabled: formMode === 'view',
                                                             min: "0",
                                                             max: "100"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                            lineNumber: 1150,
+                                                            lineNumber: 1598,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, index, true, {
                                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                                    lineNumber: 1146,
+                                                    lineNumber: 1594,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1144,
+                                            lineNumber: 1592,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 1135,
+                                    lineNumber: 1583,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex justify-end gap-2",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                            type: "button",
-                                            className: "px-4 py-2 border rounded-md hover:bg-gray-100",
-                                            onClick: ()=>setShowForm(false),
-                                            children: "Cancel"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1165,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                            type: "submit",
-                                            className: "px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600",
-                                            children: formMode === 'add' ? 'Add Report' : 'Update Report'
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                            lineNumber: 1172,
-                                            columnNumber: 17
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
+                                    children: formMode === 'view' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        className: "px-4 py-2 border rounded-md hover:bg-gray-100",
+                                        onClick: ()=>setShowForm(false),
+                                        children: "Close"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                        lineNumber: 1615,
+                                        columnNumber: 19
+                                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                type: "button",
+                                                className: "px-4 py-2 border rounded-md hover:bg-gray-100",
+                                                onClick: ()=>setShowForm(false),
+                                                children: "Cancel"
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                lineNumber: 1624,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                type: "submit",
+                                                className: "px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600",
+                                                children: formMode === 'add' ? 'Add Report' : 'Update Report'
+                                            }, void 0, false, {
+                                                fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
+                                                lineNumber: 1631,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true)
+                                }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                                    lineNumber: 1164,
+                                    lineNumber: 1613,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                            lineNumber: 910,
-                            columnNumber: 13
+                            lineNumber: 1346,
+                            columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                    lineNumber: 905,
+                    lineNumber: 1265,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-                lineNumber: 904,
+                lineNumber: 1264,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/assay-reports/page.tsx",
-        lineNumber: 722,
+        lineNumber: 1073,
         columnNumber: 5
     }, this);
 };

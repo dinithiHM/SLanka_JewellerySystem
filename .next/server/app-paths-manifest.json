@@ -4,9 +4,8 @@
   "/login/page": "app/login/page.js",
   "/DashView/admin/page": "app/DashView/admin/page.js",
   "/DashView/assay-reports/page": "app/DashView/assay-reports/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/DashView/list/SalesAssociate/page": "app/DashView/list/SalesAssociate/page.js",
-  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
-  "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js"
+  "/DashView/custom-orders/page": "app/DashView/custom-orders/page.js",
+  "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js",
+  "/DashView/admin/sales-report/page": "app/DashView/admin/sales-report/page.js",
+  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js"
 }
