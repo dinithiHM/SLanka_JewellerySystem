@@ -78,6 +78,12 @@ router.get("/", (req, res) => {
         return res.status(500).json({ message: "Database error", error: err.message });
       }
       console.log(`Found ${results.length} jewellery items`);
+
+      // Log the first item to check if gold-related fields are included
+      if (results.length > 0) {
+        console.log('Sample item data:', JSON.stringify(results[0], null, 2));
+      }
+
       res.json(results || []);
     });
   });
@@ -108,7 +114,11 @@ router.post("/create", (req, res) => {
     in_stock,
     buying_price,
     selling_price,
-    branch_id
+    branch_id,
+    gold_carat,
+    weight,
+    assay_certificate,
+    is_solid_gold
   } = req.body;
 
   console.log('POST /jewellery-items/create - Creating new jewellery item');
@@ -127,8 +137,12 @@ router.post("/create", (req, res) => {
       buying_price,
       selling_price,
       branch_id,
+      gold_carat,
+      weight,
+      assay_certificate,
+      is_solid_gold,
       product_added
-    ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
 
   const values = [
@@ -137,7 +151,11 @@ router.post("/create", (req, res) => {
     in_stock,
     buying_price,
     selling_price,
-    branch_id || null // Default to null if branch_id is not provided
+    branch_id || null, // Default to null if branch_id is not provided
+    gold_carat || null,
+    weight || null,
+    assay_certificate || null,
+    is_solid_gold !== undefined ? is_solid_gold : true
   ];
 
   con.query(sql, values, (err, result) => {
@@ -162,7 +180,11 @@ router.put("/update/:id", (req, res) => {
     in_stock,
     buying_price,
     selling_price,
-    branch_id
+    branch_id,
+    gold_carat,
+    weight,
+    assay_certificate,
+    is_solid_gold
   } = req.body;
 
   console.log('PUT /jewellery-items/update/:id - Updating jewellery item');
@@ -182,6 +204,10 @@ router.put("/update/:id", (req, res) => {
       buying_price = ?,
       selling_price = ?,
       branch_id = ?,
+      gold_carat = ?,
+      weight = ?,
+      assay_certificate = ?,
+      is_solid_gold = ?,
       updated_at = NOW()
     WHERE item_id = ?
   `;
@@ -193,6 +219,10 @@ router.put("/update/:id", (req, res) => {
     buying_price,
     selling_price,
     branch_id || null, // Default to null if branch_id is not provided
+    gold_carat || null,
+    weight || null,
+    assay_certificate || null,
+    is_solid_gold !== undefined ? is_solid_gold : true,
     itemId
   ];
 

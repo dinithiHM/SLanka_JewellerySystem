@@ -29,6 +29,8 @@ import { fixMissingAdvancePaymentsRouter } from "./Routes/fixMissingAdvancePayme
 import { fixAllAdvancePaymentsRouter } from "./Routes/fixAllAdvancePaymentsRoute.js"; // ✅ Import Fix All Advance Payments Routes
 import { fixPaymentStatusDirectlyRouter } from "./Routes/fixPaymentStatusDirectly.js"; // ✅ Import Fix Payment Status Directly Routes
 import branchesRouter from "./Routes/branchesRoutes.js"; // ✅ Import Branches Routes
+import { assayReportRouter } from "./Routes/assayReportRoutes.new.js"; // ✅ Import Assay Report Routes
+import { authRouter } from "./Routes/authRoute.js"; // ✅ Import Auth Routes
 
 const app = express();
 
@@ -80,7 +82,8 @@ app.use((req, _res, next) => {
 });
 
 // ✅ API Routes
-app.use("/auth", adminRouter);
+app.use("/auth", authRouter); // ✅ Add auth routes
+app.use("/admin", adminRouter);
 app.use("/suppliers", supplierRouter);
 app.use("/users", userRouter); // ✅ Add user-related routes
 app.use("/sales-associates", salesAssociateRouter);
@@ -99,6 +102,7 @@ app.use("/maintenance", fixMissingAdvancePaymentsRouter); // ✅ Add fix missing
 app.use("/maintenance", fixAllAdvancePaymentsRouter); // ✅ Add fix all advance payments routes
 app.use("/maintenance", fixPaymentStatusDirectlyRouter); // ✅ Add fix payment status directly routes
 app.use("/branches", branchesRouter); // ✅ Add branches routes
+app.use("/assay-reports", assayReportRouter); // ✅ Add assay report routes
 
 // ✅ Start the server
 const PORT = 3002;
