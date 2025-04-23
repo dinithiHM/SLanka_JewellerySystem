@@ -4,6 +4,9 @@
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/login/page": "app/login/page.js",
   "/DashView/admin/page": "app/DashView/admin/page.js",
-  "/DashView/assay-reports/page": "app/DashView/assay-reports/page.js",
-  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js"
+  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
+  "/DashView/list/Supplier/page": "app/DashView/list/Supplier/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/supplier/login/page": "app/supplier/login/page.js",
+  "/supplier/dashboard/page": "app/supplier/dashboard/page.js"
 }
