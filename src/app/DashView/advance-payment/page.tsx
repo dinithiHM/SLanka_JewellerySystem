@@ -839,7 +839,7 @@ const AdvancePaymentPage = () => {
                   ))
                 ) : (
                   <option value="" disabled>No orders requiring payment found</option>
-                )}
+               )}
               </select>
             </div>
 

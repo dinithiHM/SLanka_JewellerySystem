@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react"; // Importing useState and us
 import Link from "next/link";
 import {
   Home, Users, Tag, ClipboardList, Coins, ShoppingCart, BarChart, CalendarCheck, CreditCard,
-  Bell, UserCircle, Settings, LogOut, Boxes, Package
+  Bell, UserCircle, Settings, LogOut, Boxes, Package, FileText
 } from "lucide-react"; // Importing correct icons
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -21,6 +21,7 @@ const menuItems = [
       { icon: BarChart, label: "Supplier Details", href: "/DashView/supplier-details", visible: ["Admin", "Store Manager"] },
       { icon: ClipboardList, label: "Orders", href: "/DashView/orders", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: Boxes, label: "Jewellery Stock", href: "/DashView/jewellery-stock", visible: ["Admin", "Store Manager", "Sales Associate"] },
+      { icon: FileText, label: "Assay Reports", href: "/DashView/assay-reports", visible: ["Admin", "Store Manager", "Sales Associate"] },
       { icon: Coins, label: "Gold Stock", href: "/DashView/gold-stock", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: Tag, label: "Categories", href: "/list/assignments", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: ShoppingCart, label: "Sales", href: "/DashView/sales/manage", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },

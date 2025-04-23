@@ -148,6 +148,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$log$2d$out$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__LogOut$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/log-out.js [app-ssr] (ecmascript) <export default as LogOut>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$boxes$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Boxes$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/boxes.js [app-ssr] (ecmascript) <export default as Boxes>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$package$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Package$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/package.js [app-ssr] (ecmascript) <export default as Package>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/file-text.js [app-ssr] (ecmascript) <export default as FileText>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/contexts/LanguageContext.tsx [app-ssr] (ecmascript)");
 'use client'; // This marks it as a client-side component
 ;
@@ -228,6 +229,16 @@ const menuItems = [
                 icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$boxes$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Boxes$3e$__["Boxes"],
                 label: "Jewellery Stock",
                 href: "/DashView/jewellery-stock",
+                visible: [
+                    "Admin",
+                    "Store Manager",
+                    "Sales Associate"
+                ]
+            },
+            {
+                icon: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"],
+                label: "Assay Reports",
+                href: "/DashView/assay-reports",
                 visible: [
                     "Admin",
                     "Store Manager",
@@ -418,7 +429,7 @@ const Menu = ()=>{
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/src/components/Menu.tsx",
-            lineNumber: 92,
+            lineNumber: 93,
             columnNumber: 12
         }, this); // Show loading while fetching role
     }
@@ -432,7 +443,7 @@ const Menu = ()=>{
                         children: translations[section.title] || section.title
                     }, void 0, false, {
                         fileName: "[project]/src/components/Menu.tsx",
-                        lineNumber: 99,
+                        lineNumber: 100,
                         columnNumber: 11
                     }, this),
                     section.items.map((item)=>{
@@ -447,7 +458,7 @@ const Menu = ()=>{
                                         className: "text-black"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 112,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -455,13 +466,13 @@ const Menu = ()=>{
                                         children: translations[item.label] || item.label
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/Menu.tsx",
-                                        lineNumber: 112,
+                                        lineNumber: 113,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, item.label, true, {
                                 fileName: "[project]/src/components/Menu.tsx",
-                                lineNumber: 106,
+                                lineNumber: 107,
                                 columnNumber: 17
                             }, this);
                         }
@@ -470,12 +481,12 @@ const Menu = ()=>{
                 ]
             }, section.title, true, {
                 fileName: "[project]/src/components/Menu.tsx",
-                lineNumber: 98,
+                lineNumber: 99,
                 columnNumber: 9
             }, this))
     }, void 0, false, {
         fileName: "[project]/src/components/Menu.tsx",
-        lineNumber: 96,
+        lineNumber: 97,
         columnNumber: 5
     }, this);
 };

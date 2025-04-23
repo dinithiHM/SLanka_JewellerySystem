@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar } from 'lucide-react';
+import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar, Eye } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { exportJewelleryItemsToPDF } from '@/utils/pdfExport';
 import { exportJewelleryItemsToCSV } from '@/utils/csvExport';
@@ -19,6 +19,10 @@ interface JewelleryItem {
   product_added: string;
   branch_id?: number;
   branch_name?: string;
+  gold_carat?: number;
+  weight?: number;
+  assay_certificate?: string;
+  is_solid_gold?: number; // 1 for true, 0 for false
 }
 
 interface Category {
@@ -54,12 +58,20 @@ const JewelleryStockPage = () => {
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [currentItem, setCurrentItem] = useState<JewelleryItem | null>(null);
 
+  // For the details modal
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+  const [detailsItem, setDetailsItem] = useState<JewelleryItem | null>(null);
+
   // Form fields
   const [productTitle, setProductTitle] = useState<string>('');
   const [category, setCategory] = useState<string>('');
   const [inStock, setInStock] = useState<number>(0);
   const [buyingPrice, setBuyingPrice] = useState<number>(0);
   const [sellingPrice, setSellingPrice] = useState<number>(0);
+  const [goldCarat, setGoldCarat] = useState<number | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [assayCertificate, setAssayCertificate] = useState<string>('');
+  const [isSolidGold, setIsSolidGold] = useState<boolean>(true);
 
   // Get user info from localStorage and fetch items immediately
   useEffect(() => {
@@ -262,6 +274,11 @@ const JewelleryStockPage = () => {
     if (item.branch_id) {
       setUserBranchId(item.branch_id);
     }
+    // Set gold details if available
+    setGoldCarat(item.gold_carat !== undefined ? item.gold_carat : null);
+    setWeight(item.weight !== undefined ? item.weight : null);
+    setAssayCertificate(item.assay_certificate || '');
+    setIsSolidGold(item.is_solid_gold === 1);
     setFormMode('edit');
     setShowForm(true);
   };
@@ -319,6 +336,18 @@ const JewelleryStockPage = () => {
     setInStock(0);
     setBuyingPrice(0);
     setSellingPrice(0);
+    // Reset gold details
+    setGoldCarat(null);
+    setWeight(null);
+    setAssayCertificate('');
+    setIsSolidGold(true);
+    // Keep the current branch ID for non-admin users
+    if (userRole !== 'admin' && userBranchId) {
+      // Branch ID is already set from localStorage
+    } else if (userRole === 'admin') {
+      // Admin needs to select a branch
+      setUserBranchId(null);
+    }
     setFormMode('add');
     setShowForm(true);
   };
@@ -328,7 +357,7 @@ const JewelleryStockPage = () => {
     e.preventDefault();
 
     // Validate form
-    if (!productTitle || !category || inStock < 0 || buyingPrice <= 0 || sellingPrice <= 0) {
+    if (!productTitle || !category || inStock < 0 || buyingPrice <= 0 || sellingPrice <= 0 || !userBranchId) {
       alert('Please fill all fields with valid values');
       return;
     }
@@ -339,7 +368,11 @@ const JewelleryStockPage = () => {
       in_stock: inStock,
       buying_price: buyingPrice,
       selling_price: sellingPrice,
-      branch_id: userBranchId // Include branch_id from user info
+      branch_id: userBranchId, // Include branch_id from user info
+      gold_carat: goldCarat,
+      weight: weight,
+      assay_certificate: assayCertificate,
+      is_solid_gold: isSolidGold ? 1 : 0
     };
 
     console.log('Submitting jewellery item data:', itemData);
@@ -402,6 +435,18 @@ const JewelleryStockPage = () => {
   // Cancel form
   const handleCancelForm = () => {
     setShowForm(false);
+  };
+
+  // View item details
+  const handleViewDetails = (item: JewelleryItem) => {
+    setDetailsItem(item);
+    setShowDetails(true);
+  };
+
+  // Close details modal
+  const handleCloseDetails = () => {
+    setShowDetails(false);
+    setDetailsItem(null);
   };
 
   // Fetch branches
@@ -650,13 +695,13 @@ const JewelleryStockPage = () => {
                   In-Stock
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Buying Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Selling Price
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product Added
+                  Gold Carat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Weight
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -691,16 +736,23 @@ const JewelleryStockPage = () => {
                       {item.in_stock}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {formatCurrency(item.buying_price)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       {formatCurrency(item.selling_price)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(item.product_added)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.gold_carat || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.weight ? `${item.weight} g` : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Details"
+                          onClick={() => handleViewDetails(item)}
+                        >
+                          <Eye size={18} />
+                        </button>
                         <button
                           className="text-yellow-600 hover:text-yellow-900"
                           title="Edit Item"
@@ -728,98 +780,160 @@ const JewelleryStockPage = () => {
       {/* Add/Edit Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+
+            <h2 className="text-xl font-bold mb-4 text-center">
               {formMode === 'add' ? 'Add New Jewellery Item' : 'Edit Jewellery Item'}
             </h2>
 
             <form onSubmit={handleSubmitForm}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Product Title</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={productTitle}
-                  onChange={(e) => setProductTitle(e.target.value)}
-                  required
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                {/* Product Title */}
+                <div className="mb-3 col-span-2">
+                  <label className="block text-sm font-medium mb-1">Product Title</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={productTitle}
+                    onChange={(e) => setProductTitle(e.target.value)}
+                    required
+                  />
+                </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Category</label>
-                <input
-                  type="text"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  required
-                  list="categories"
-                />
-                <datalist id="categories">
-                  {categories
-                    .filter(cat => cat.category_id !== 0) // Skip 'All Categories'
-                    .map(cat => (
-                      <option key={cat.category_id} value={cat.category_name} />
-                    ))
-                  }
-                </datalist>
-              </div>
+                {/* Category */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Category</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    required
+                    list="categories"
+                  />
+                  <datalist id="categories">
+                    {categories
+                      .filter(cat => cat.category_id !== 0) // Skip 'All Categories'
+                      .map(cat => (
+                        <option key={cat.category_id} value={cat.category_name} />
+                      ))
+                    }
+                  </datalist>
+                </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">In Stock</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={inStock}
-                  onChange={(e) => setInStock(Number(e.target.value))}
-                  min="0"
-                  required
-                />
-              </div>
+                {/* In Stock */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">In Stock</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={inStock}
+                    onChange={(e) => setInStock(Number(e.target.value))}
+                    min="0"
+                    required
+                  />
+                </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Buying Price</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={buyingPrice}
-                  onChange={(e) => setBuyingPrice(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
+                {/* Buying Price */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Buying Price</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={buyingPrice}
+                    onChange={(e) => setBuyingPrice(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Selling Price</label>
-                <input
-                  type="number"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={sellingPrice}
-                  onChange={(e) => setSellingPrice(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
+                {/* Selling Price */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Selling Price</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
 
-              {userRole === 'admin' && (
-                <div className="mb-4">
+                {/* Branch */}
+                <div className="mb-3">
                   <label className="block text-sm font-medium mb-1">Branch</label>
                   <select
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={userBranchId || ''}
                     onChange={(e) => setUserBranchId(Number(e.target.value) || null)}
                     required
+                    disabled={userRole !== 'admin'}
                   >
                     <option value="">Select Branch</option>
                     <option value="1">Mahiyangana Branch</option>
                     <option value="2">Mahaoya Branch</option>
                   </select>
                 </div>
-              )}
 
-              <div className="flex justify-end space-x-2 mt-6">
+                {/* Gold Carat */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Gold Carat</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={goldCarat || ''}
+                    onChange={(e) => setGoldCarat(e.target.value ? Number(e.target.value) : null)}
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 22.5"
+                  />
+                </div>
+
+                {/* Weight */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Weight (grams)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={weight || ''}
+                    onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : null)}
+                    min="0"
+                    step="0.001"
+                    placeholder="e.g. 10.5"
+                  />
+                </div>
+
+                {/* Assay Certificate */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-1">Assay Certificate</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={assayCertificate}
+                    onChange={(e) => setAssayCertificate(e.target.value)}
+                    placeholder="Certificate number"
+                  />
+                </div>
+
+                {/* Is Solid Gold */}
+                <div className="mb-3 flex items-center">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2 h-4 w-4"
+                      checked={isSolidGold}
+                      onChange={(e) => setIsSolidGold(e.target.checked)}
+                    />
+                    <span className="text-sm font-medium">Is Solid Gold</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex justify-end space-x-4 mt-4">
                 <button
                   type="button"
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
@@ -829,12 +943,83 @@ const JewelleryStockPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-yellow-400 text-black rounded-md"
+                  className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-md"
                 >
                   {formMode === 'add' ? 'Add Item' : 'Update Item'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Item Details Modal */}
+      {showDetails && detailsItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+            <h2 className="text-xl font-bold mb-4 text-center">
+              Jewellery Item Details
+            </h2>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Product Title</p>
+                <p className="text-base">{detailsItem.product_title}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Category</p>
+                <p className="text-base">{detailsItem.category_name || detailsItem.category}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Branch</p>
+                <p className="text-base">
+                  {detailsItem.branch_name ||
+                   (detailsItem.branch_id === 1 ? 'Mahiyangana Branch' :
+                    detailsItem.branch_id === 2 ? 'Mahaoya Branch' :
+                    `Branch ${detailsItem.branch_id || 'Unknown'}`)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">In Stock</p>
+                <p className="text-base">{detailsItem.in_stock}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Buying Price</p>
+                <p className="text-base">{formatCurrency(detailsItem.buying_price)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Selling Price</p>
+                <p className="text-base">{formatCurrency(detailsItem.selling_price)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Gold Carat</p>
+                <p className="text-base">{detailsItem.gold_carat || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Weight</p>
+                <p className="text-base">{detailsItem.weight ? `${detailsItem.weight} g` : '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Assay Certificate</p>
+                <p className="text-base">{detailsItem.assay_certificate || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Solid Gold</p>
+                <p className="text-base">{detailsItem.is_solid_gold ? 'Yes' : 'No'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Product Added</p>
+                <p className="text-base">{formatDate(detailsItem.product_added)}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                onClick={handleCloseDetails}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

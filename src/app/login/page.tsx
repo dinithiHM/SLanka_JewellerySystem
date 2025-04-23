@@ -22,10 +22,23 @@ const Login = () => {
     const data = { email, password };
 
     try {
-      const adminResponse = await axios.post("http://localhost:3002/auth/adminlogin", data);
+      const adminResponse = await axios.post("http://localhost:3002/auth/login", data);
       if (adminResponse.data.loginStatus) {
-        localStorage.setItem("token", adminResponse.data.accessToken);
+        localStorage.setItem("token", adminResponse.data.token);
         localStorage.setItem("role", "Admin"); // Store role
+
+        // Store user info in a single object for easier access
+        const userInfo = {
+          role: "Admin",
+          userName: "Administrator",
+          userId: 0,
+          branch_id: null,
+          branchName: ''
+        };
+
+        localStorage.setItem("userInfo", JSON.stringify(userInfo));
+        console.log("Stored admin user info:", userInfo);
+
         router.push("/DashView/admin");
         return;
       }
@@ -78,6 +91,18 @@ const Login = () => {
             localStorage.setItem("branchName", branchName);
             console.log("Set hardcoded branch name:", branchName);
           }
+
+          // Store all user info in a single object for easier access
+          const userInfo = {
+            role: userResponse.data.role,
+            userName: userResponse.data.userName || '',
+            userId: userResponse.data.userId,
+            branch_id: userResponse.data.branchId,
+            branchName: userResponse.data.branchName || localStorage.getItem("branchName") || ''
+          };
+
+          localStorage.setItem("userInfo", JSON.stringify(userInfo));
+          console.log("Stored user info:", userInfo);
         }
 
         router.push(userResponse.data.redirectUrl || "/DashView/user");
