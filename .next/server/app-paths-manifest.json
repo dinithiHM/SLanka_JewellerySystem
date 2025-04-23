@@ -1,5 +1,9 @@
 {
   "/page": "app/page.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js"
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/login/page": "app/login/page.js",
+  "/DashView/admin/page": "app/DashView/admin/page.js",
+  "/DashView/assay-reports/page": "app/DashView/assay-reports/page.js",
+  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js"
 }

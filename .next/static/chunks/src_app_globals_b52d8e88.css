@@ -3209,24 +3209,6 @@
   }
 
   @media (width >= 48rem) {
-    .md\:justify-center {
-      justify-content: center;
-    }
-  }
-
-  @media (width >= 48rem) {
-    .md\:gap-6 {
-      gap: calc(var(--spacing) * 6);
-    }
-  }
-
-  @media (width >= 48rem) {
-    .md\:gap-8 {
-      gap: calc(var(--spacing) * 8);
-    }
-  }
-
-  @media (width >= 48rem) {
     :where(.md\:space-y-0 > :not(:last-child)) {
       --tw-space-y-reverse: 0;
       margin-block-start: calc(calc(var(--spacing) * 0) * var(--tw-space-y-reverse));
@@ -3466,12 +3448,6 @@
   }
 
   @media (width >= 80rem) {
-    .xl\:gap-8 {
-      gap: calc(var(--spacing) * 8);
-    }
-  }
-
-  @media (width >= 80rem) {
     .xl\:px-40 {
       padding-inline: calc(var(--spacing) * 40);
     }
@@ -3495,13 +3471,6 @@
     .xl\:text-4xl {
       font-size: var(--text-4xl);
       line-height: var(--tw-leading, var(--text-4xl--line-height));
-    }
-  }
-
-  @media (width >= 80rem) {
-    .xl\:text-5xl {
-      font-size: var(--text-5xl);
-      line-height: var(--tw-leading, var(--text-5xl--line-height));
     }
   }
 
