@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar, Eye } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
-import { exportJewelleryItemsToPDF } from '@/utils/pdfExport';
 import { exportJewelleryItemsToCSV } from '@/utils/csvExport';
 
 
@@ -39,7 +38,6 @@ interface Branch {
 const JewelleryStockPage = () => {
   const [jewelleryItems, setJewelleryItems] = useState<JewelleryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All Categories');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -61,6 +59,9 @@ const JewelleryStockPage = () => {
   // For the details modal
   const [showDetails, setShowDetails] = useState<boolean>(false);
   const [detailsItem, setDetailsItem] = useState<JewelleryItem | null>(null);
+
+  // For the report view
+  const [showReport, setShowReport] = useState<boolean>(false);
 
   // Form fields
   const [productTitle, setProductTitle] = useState<string>('');
@@ -119,7 +120,6 @@ const JewelleryStockPage = () => {
         setJewelleryItems(data);
       } catch (err) {
         console.error('Error fetching jewellery items:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
         setLoading(false);
       }
@@ -142,7 +142,6 @@ const JewelleryStockPage = () => {
         setCategories([{ category_id: 0, category_name: 'All Categories' }, ...data]);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback categories
         setCategories([
@@ -197,7 +196,6 @@ const JewelleryStockPage = () => {
         setJewelleryItems(data);
       } catch (err) {
         console.error('Error fetching jewellery items:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
         setLoading(false);
       }
@@ -491,28 +489,7 @@ const JewelleryStockPage = () => {
     setSearchTerm('');
   };
 
-  // Export to PDF
-  const exportToPDF = async () => {
-    try {
-      // Prepare filters object
-      const filters = {
-        branch: branchFilter,
-        category: categoryFilter,
-        startDate: startDate,
-        endDate: endDate
-      };
 
-      // Call the utility function (it's async now)
-      const success = await exportJewelleryItemsToPDF(filteredItems, filters, userRole);
-
-      if (!success) {
-        alert('Failed to generate PDF. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error exporting to PDF:', err);
-      alert('An error occurred while generating the PDF.');
-    }
-  };
 
   // Export to CSV
   const exportToCSV = () => {
@@ -549,10 +526,10 @@ const JewelleryStockPage = () => {
               <>
                 <button
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium flex items-center"
-                  onClick={exportToPDF}
+                  onClick={() => setShowReport(true)}
                 >
-                  <Download size={18} className="mr-1" />
-                  PDF
+                  <Eye size={18} className="mr-1" />
+                  Generate Report
                 </button>
                 <button
                   className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium flex items-center"
@@ -1016,6 +993,335 @@ const JewelleryStockPage = () => {
               <button
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
                 onClick={handleCloseDetails}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report View Modal */}
+      {showReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <div id="jewellery-report-view">
+              <h2 className="text-2xl font-bold mb-4 text-center">Jewellery Stock Report</h2>
+
+              <div className="mb-4 flex justify-between items-center">
+                <div>
+                  <p className="text-sm"><span className="font-medium">Generated on:</span> {new Date().toLocaleDateString()}</p>
+                  {branchFilter !== 'All Branches' && (
+                    <p className="text-sm"><span className="font-medium">Branch:</span> {branchFilter}</p>
+                  )}
+                  {categoryFilter !== 'All Categories' && (
+                    <p className="text-sm"><span className="font-medium">Category:</span> {categoryFilter}</p>
+                  )}
+                  {startDate && (
+                    <p className="text-sm"><span className="font-medium">From:</span> {startDate}</p>
+                  )}
+                  {endDate && (
+                    <p className="text-sm"><span className="font-medium">To:</span> {endDate}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold" style={{ color: '#D4AF37' }}>SLanka Jewellery</div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border border-gray-200 rounded-lg mb-4">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-yellow-400">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Product Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Category</th>
+                      {userRole === 'admin' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Branch</th>
+                      )}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">In Stock</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Buying Price</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Selling Price</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Gold Carat</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Weight</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Date Added</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredItems.map((item) => (
+                      <tr key={item.item_id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.item_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.product_title}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.category_name || item.category}</td>
+                        {userRole === 'admin' && (
+                          <td className="px-6 py-4 whitespace-nowrap">{item.branch_name || `Branch ${item.branch_id}`}</td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap">{item.in_stock}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatCurrency(item.buying_price)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatCurrency(item.selling_price)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.gold_carat || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{item.weight ? `${item.weight} g` : '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatDate(item.product_added)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 border-t pt-4">
+                <p className="text-sm"><span className="font-medium">Total Items:</span> {filteredItems.length}</p>
+                <p className="text-sm"><span className="font-medium">Total Stock:</span> {filteredItems.reduce((sum, item) => sum + item.in_stock, 0)}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center"
+                onClick={() => {
+                  try {
+                    // Create a simplified version of the report for PDF generation
+                    const reportElement = document.getElementById('jewellery-report-view');
+                    if (!reportElement) return;
+
+                    // Show loading indicator
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]';
+                    loadingIndicator.innerHTML = `
+                      <div class="bg-white p-4 rounded-lg shadow-lg flex items-center">
+                        <div class="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mr-3"></div>
+                        <p>Generating PDF...</p>
+                      </div>
+                    `;
+                    document.body.appendChild(loadingIndicator);
+
+                    // Use a timeout to allow the loading indicator to render
+                    setTimeout(() => {
+                      // Generate PDF using jsPDF directly
+                      import('jspdf').then(jsPDFModule => {
+                        const jsPDF = jsPDFModule.default;
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+
+                        // Add title
+                        pdf.setFontSize(18);
+                        pdf.text('Jewellery Stock Report', 14, 22);
+
+                        // Add filters info
+                        pdf.setFontSize(10);
+                        const today = new Date().toLocaleDateString();
+                        pdf.text(`Generated on: ${today}`, 14, 30);
+
+                        let line = 35;
+                        if (branchFilter !== 'All Branches') {
+                          // Make branch name more prominent
+                          pdf.setFontSize(12);
+                          pdf.setFont('helvetica', 'bold');
+                          pdf.text(`Branch: ${branchFilter}`, 14, line);
+                          pdf.setFont('helvetica', 'normal');
+                          pdf.setFontSize(10);
+                          line += 5;
+                        }
+
+                        if (categoryFilter !== 'All Categories') {
+                          pdf.text(`Category: ${categoryFilter}`, 14, line);
+                          line += 5;
+                        }
+
+                        if (startDate) {
+                          pdf.text(`From: ${startDate}`, 14, line);
+                          line += 5;
+                        }
+
+                        if (endDate) {
+                          pdf.text(`To: ${endDate}`, 14, line);
+                          line += 5;
+                        }
+
+                        // Add SLanka Jewellery text
+                        pdf.setTextColor(212, 175, 55); // #D4AF37 in RGB
+                        pdf.setFontSize(16);
+                        pdf.text('SLanka Jewellery', 170, 22, { align: 'right' });
+                        pdf.setTextColor(0, 0, 0); // Reset to black
+
+                        // Create table data
+                        const tableColumn = [
+                          'ID', 'Product Title', 'Category',
+                          'In Stock', 'Buying Price', 'Selling Price', 'Gold Carat', 'Weight', 'Date Added'
+                        ];
+
+                        const tableRows = filteredItems.map(item => {
+                          const row = [
+                            item.item_id,
+                            item.product_title,
+                            item.category_name || item.category,
+                            item.in_stock,
+                            formatCurrency(item.buying_price),
+                            formatCurrency(item.selling_price),
+                            item.gold_carat || '-',
+                            item.weight ? `${item.weight} g` : '-',
+                            // Use a more compact date format for PDF
+                            (() => {
+                              const date = new Date(item.product_added);
+                              return date.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                              }) + ' ' + date.toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              });
+                            })()
+                          ];
+                          return row;
+                        });
+
+                        // Create a simple table manually instead of using autoTable
+                        // Set up table parameters
+                        const startY = line + 5;
+                        const cellPadding = 2;
+                        const fontSize = 8;
+                        const lineHeight = fontSize * 1.5;
+                        const columnWidths = [
+                          10, // ID
+                          35, // Product Title
+                          20, // Category
+                          // Branch column removed since it's in the header
+                          12, // In Stock
+                          25, // Buying Price
+                          25, // Selling Price
+                          15, // Gold Carat
+                          15, // Weight
+                          35  // Date Added
+                        ];
+
+                        // Calculate total width and scale if needed
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+                        // Use a fixed scale to make columns more compact
+                        const scale = Math.min(0.95, (pageWidth - 15) / tableWidth);
+
+                        // Draw header
+                        pdf.setFillColor(255, 204, 0);
+                        pdf.setTextColor(0, 0, 0);
+                        pdf.setFontSize(fontSize);
+
+                        let currentX = 8;
+                        let currentY = startY;
+
+                        // Draw header cells
+                        tableColumn.forEach((header, index) => {
+                          const width = columnWidths[index] * scale;
+                          pdf.setFillColor(255, 204, 0);
+                          pdf.rect(currentX, currentY, width, lineHeight, 'F');
+
+                          // Make header text bold
+                          pdf.setFont('helvetica', 'bold');
+                          pdf.text(header, currentX + cellPadding, currentY + lineHeight - cellPadding);
+                          pdf.setFont('helvetica', 'normal');
+
+                          currentX += width;
+                        });
+
+                        // Draw bottom line for header
+                        pdf.setDrawColor(180, 180, 180);
+                        pdf.line(8, currentY + lineHeight, 8 + tableWidth * scale, currentY + lineHeight);
+
+                        currentY += lineHeight;
+
+                        // Draw rows
+                        pdf.setFillColor(255, 255, 255);
+
+                        // Check if we need a new page
+                        const checkAndAddPage = () => {
+                          if (currentY > pdf.internal.pageSize.getHeight() - 20) {
+                            pdf.addPage();
+                            currentY = 20;
+                            return true;
+                          }
+                          return false;
+                        };
+
+                        // Draw rows with alternating background
+                        tableRows.forEach((row, rowIndex, allRows) => {
+                          checkAndAddPage();
+                          currentX = 8;
+
+                          // Alternating row colors
+                          if (rowIndex % 2 === 0) {
+                            pdf.setFillColor(245, 245, 245);
+                          } else {
+                            pdf.setFillColor(255, 255, 255);
+                          }
+
+                          // Draw row background
+                          pdf.rect(8, currentY, tableWidth * scale, lineHeight, 'F');
+
+                          // Draw horizontal grid line (light gray)
+                          pdf.setDrawColor(220, 220, 220);
+                          pdf.line(8, currentY, 8 + tableWidth * scale, currentY);
+
+                          // Draw cells
+                          row.forEach((cell, cellIndex) => {
+                            const width = columnWidths[cellIndex] * scale;
+
+                            // Use the full text without truncation for important columns
+                            let cellText = String(cell);
+
+                            // Only truncate product title if extremely long
+                            const textWidth = pdf.getStringUnitWidth(cellText) * fontSize / pdf.internal.scaleFactor;
+                            if (cellIndex === 1 && textWidth > (width - 2 * cellPadding) && cellText.length > 30) {
+                              // For product title, allow truncation only if very long
+                              const ratio = (width - 2 * cellPadding) / textWidth;
+                              const fitLength = Math.floor(cellText.length * ratio) - 2;
+                              if (fitLength > 0) {
+                                cellText = cellText.substring(0, fitLength) + '..';
+                              }
+                            }
+
+                            pdf.text(cellText, currentX + cellPadding, currentY + lineHeight - cellPadding);
+                            currentX += width;
+                          });
+
+                          currentY += lineHeight;
+
+                          // Draw bottom line for the last row
+                          if (rowIndex === allRows.length - 1) {
+                            pdf.setDrawColor(180, 180, 180);
+                            pdf.line(8, currentY, 8 + tableWidth * scale, currentY);
+                          }
+                        });
+
+                        // Add summary at the bottom
+                        currentY += 10;
+                        checkAndAddPage();
+                        pdf.setFontSize(10);
+                        pdf.text(`Total Items: ${filteredItems.length}`, 8, currentY);
+                        currentY += 5;
+                        pdf.text(`Total Stock: ${filteredItems.reduce((sum, item) => sum + item.in_stock, 0)}`, 8, currentY);
+
+                        // Save the PDF
+                        pdf.save('jewellery-stock-report.pdf');
+
+                        // Remove loading indicator
+                        document.body.removeChild(loadingIndicator);
+                      }).catch(err => {
+                        console.error('Error loading jspdf:', err);
+                        alert('Failed to generate PDF. Please try again.');
+                        document.body.removeChild(loadingIndicator);
+                      });
+                    }, 100);
+                  } catch (err) {
+                    console.error('Error generating PDF:', err);
+                    alert('An error occurred while generating the PDF.');
+                  }
+                }}
+              >
+                <Download size={18} className="mr-1" />
+                Download PDF
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                onClick={() => setShowReport(false)}
               >
                 Close
               </button>
