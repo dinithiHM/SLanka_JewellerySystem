@@ -18,6 +18,9 @@ interface SaleItem {
   product_title: string;
   quantity: number;
   unit_price: number;
+  original_price?: number;
+  discount_amount?: number;
+  discount_type?: 'percentage' | 'fixed';
   subtotal: number;
 }
 
@@ -34,6 +37,9 @@ const AddSalePage = () => {
   const [selectedItem, setSelectedItem] = useState<JewelleryItem | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [customPrice, setCustomPrice] = useState<number | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
@@ -123,6 +129,30 @@ const AddSalePage = () => {
     }
   }, [searchTerm, availableItems]);
 
+  // Calculate price after discount
+  const calculatePriceAfterDiscount = (originalPrice: number, discountAmount: number, discountType: 'percentage' | 'fixed'): number => {
+    if (discountAmount <= 0) return originalPrice;
+
+    if (discountType === 'percentage') {
+      // Limit percentage discount to 75%
+      const limitedPercentage = Math.min(discountAmount, 75);
+      return originalPrice * (1 - limitedPercentage / 100);
+    } else {
+      // For fixed discount, ensure it doesn't exceed 75% of the original price
+      const maxDiscount = originalPrice * 0.75;
+      const limitedDiscount = Math.min(discountAmount, maxDiscount);
+      return originalPrice - limitedDiscount;
+    }
+  };
+
+  // Calculate final price for the current item
+  const finalUnitPrice = selectedItem ?
+    calculatePriceAfterDiscount(
+      customPrice !== null ? customPrice : selectedItem.selling_price,
+      discountAmount,
+      discountType
+    ) : 0;
+
   // Calculate total
   const totalAmount = saleItems.reduce((sum, item) => sum + item.subtotal, 0);
 
@@ -134,6 +164,9 @@ const AddSalePage = () => {
     }
     setSelectedItem(item);
     setQuantity(1);
+    setCustomPrice(null); // Reset custom price
+    setDiscountAmount(0); // Reset discount
+    setDiscountType('fixed'); // Reset discount type
     setShowItemDropdown(false);
     setError(null);
   };
@@ -159,13 +192,23 @@ const AddSalePage = () => {
         return;
       }
 
-      const subtotal = quantity * selectedItem.selling_price;
+      // Get the original price (either custom or from the item)
+      const originalPrice = customPrice !== null ? customPrice : selectedItem.selling_price;
+
+      // Calculate the final unit price after discount
+      const finalPrice = calculatePriceAfterDiscount(originalPrice, discountAmount, discountType);
+
+      // Calculate subtotal based on the final price
+      const subtotal = quantity * finalPrice;
 
       const newItem: SaleItem = {
         item_id: selectedItem.item_id,
         product_title: selectedItem.product_title,
         quantity,
-        unit_price: selectedItem.selling_price,
+        original_price: originalPrice,
+        unit_price: finalPrice,
+        discount_amount: discountAmount > 0 ? discountAmount : undefined,
+        discount_type: discountAmount > 0 ? discountType : undefined,
         subtotal
       };
 
@@ -257,7 +300,10 @@ const AddSalePage = () => {
         items: saleItems.map(item => ({
           item_id: item.item_id,
           quantity: item.quantity,
-          unit_price: item.unit_price
+          unit_price: item.unit_price,
+          original_price: item.original_price,
+          discount_amount: item.discount_amount,
+          discount_type: item.discount_type
         })),
         user_id: userId,
         branch_id: branchId
@@ -451,9 +497,102 @@ const AddSalePage = () => {
           <div className="flex items-center">
             <div className="w-32 font-medium">Unit price</div>
             <div className="flex-1">
-              <div className="p-3 bg-gray-100 rounded-md">
-                {selectedItem ? formatCurrency(selectedItem.selling_price) : '0.00'}
+              {selectedItem ? (
+                <input
+                  type="number"
+                  className="w-full p-3 border border-gray-300 rounded-md"
+                  value={customPrice !== null ? customPrice : selectedItem.selling_price}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value > 0) {
+                      setCustomPrice(value);
+                    } else if (e.target.value === '') {
+                      setCustomPrice(null); // Reset to original price
+                    }
+                  }}
+                  placeholder="Enter custom price"
+                  min="0"
+                  step="0.01"
+                />
+              ) : (
+                <div className="p-3 bg-gray-100 rounded-md">0.00</div>
+              )}
+              {customPrice !== null && selectedItem && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Original price: {formatCurrency(selectedItem.selling_price)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Discount */}
+          <div className="flex items-center">
+            <div className="w-32 font-medium">Discount</div>
+            <div className="flex-1 flex space-x-2">
+              <input
+                type="number"
+                className="flex-1 p-3 border border-gray-300 rounded-md"
+                value={discountAmount}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!isNaN(value) && value >= 0) {
+                    // For percentage, limit to 75%
+                    if (discountType === 'percentage' && value > 75) {
+                      setError('Maximum discount allowed is 75%');
+                      setDiscountAmount(75);
+                    } else if (discountType === 'fixed' && selectedItem) {
+                      // For fixed amount, limit to 75% of the price
+                      const basePrice = customPrice !== null ? customPrice : selectedItem.selling_price;
+                      const maxDiscount = basePrice * 0.75;
+                      if (value > maxDiscount) {
+                        setError(`Maximum discount allowed is ${formatCurrency(maxDiscount)}`);
+                        setDiscountAmount(maxDiscount);
+                      } else {
+                        setDiscountAmount(value);
+                        setError(null);
+                      }
+                    } else {
+                      setDiscountAmount(value);
+                      setError(null);
+                    }
+                  } else {
+                    setDiscountAmount(0);
+                  }
+                }}
+                min="0"
+                step={discountType === 'percentage' ? '1' : '0.01'}
+                disabled={!selectedItem}
+              />
+              <select
+                className="p-3 border border-gray-300 rounded-md"
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
+                disabled={!selectedItem}
+              >
+                <option value="fixed">₹</option>
+                <option value="percentage">%</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Final Price After Discount */}
+          <div className="flex items-center">
+            <div className="w-32 font-medium">Final price</div>
+            <div className="flex-1">
+              <div className="p-3 bg-gray-100 rounded-md font-bold">
+                {selectedItem ? formatCurrency(calculatePriceAfterDiscount(
+                  customPrice !== null ? customPrice : selectedItem.selling_price,
+                  discountAmount,
+                  discountType
+                )) : '0.00'}
               </div>
+              {discountAmount > 0 && selectedItem && (
+                <div className="text-xs text-green-600 mt-1">
+                  {discountType === 'percentage'
+                    ? `${discountAmount}% discount applied`
+                    : `${formatCurrency(discountAmount)} discount applied`}
+                </div>
+              )}
             </div>
           </div>
 
@@ -480,7 +619,13 @@ const AddSalePage = () => {
             <div className="w-32 font-medium">Total</div>
             <div className="flex-1">
               <div className="p-3 bg-gray-100 rounded-md">
-                {selectedItem ? formatCurrency(selectedItem.selling_price * quantity) : '0.00'}
+                {selectedItem ? formatCurrency(
+                  calculatePriceAfterDiscount(
+                    customPrice !== null ? customPrice : selectedItem.selling_price,
+                    discountAmount,
+                    discountType
+                  ) * quantity
+                ) : '0.00'}
               </div>
             </div>
           </div>
@@ -540,7 +685,9 @@ const AddSalePage = () => {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Original Price</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Discount</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Final Price</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                     </tr>
@@ -550,6 +697,14 @@ const AddSalePage = () => {
                       <tr key={index}>
                         <td className="px-4 py-2">{item.product_title}</td>
                         <td className="px-4 py-2">{item.quantity}</td>
+                        <td className="px-4 py-2">{formatCurrency(item.original_price || item.unit_price)}</td>
+                        <td className="px-4 py-2">
+                          {item.discount_amount ? (
+                            item.discount_type === 'percentage'
+                              ? `${item.discount_amount}%`
+                              : formatCurrency(item.discount_amount)
+                          ) : '-'}
+                        </td>
                         <td className="px-4 py-2">{formatCurrency(item.unit_price)}</td>
                         <td className="px-4 py-2">{formatCurrency(item.subtotal)}</td>
                         <td className="px-4 py-2">
@@ -563,7 +718,7 @@ const AddSalePage = () => {
                       </tr>
                     ))}
                     <tr className="bg-gray-50 font-bold">
-                      <td className="px-4 py-2" colSpan={3}>Total</td>
+                      <td className="px-4 py-2" colSpan={5}>Total</td>
                       <td className="px-4 py-2">{formatCurrency(totalAmount)}</td>
                       <td className="px-4 py-2"></td>
                     </tr>

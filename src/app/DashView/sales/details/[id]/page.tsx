@@ -12,6 +12,9 @@ interface SaleItem {
   category: string;
   quantity: number;
   unit_price: number;
+  original_price?: number;
+  discount_amount?: number;
+  discount_type?: 'percentage' | 'fixed';
   subtotal: number;
 }
 
@@ -29,28 +32,28 @@ interface Sale {
 const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
   const router = useRouter();
   const saleId = params.id;
-  
+
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Fetch sale details
   useEffect(() => {
     const fetchSaleDetails = async () => {
       try {
         setLoading(true);
         const response = await fetch(`http://localhost:3002/sales/${saleId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch sale details: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setSale(data);
       } catch (err) {
         console.error('Error fetching sale details:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        
+
         // Use sample data for development
         setSale({
           sale_id: parseInt(saleId),
@@ -76,12 +79,12 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
         setLoading(false);
       }
     };
-    
+
     if (saleId) {
       fetchSaleDetails();
     }
   }, [saleId]);
-  
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -94,28 +97,28 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
       hour12: true
     }).format(date);
   };
-  
+
   // Handle back button
   const handleBack = () => {
     router.push('/DashView/sales/view');
   };
-  
+
   // Handle generate invoice
   const handleGenerateInvoice = async () => {
     if (!sale) return;
-    
+
     try {
       const response = await fetch(`http://localhost:3002/sales/generate-invoice/${sale.sale_id}`, {
         method: 'POST'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to generate invoice');
       }
-      
+
       const result = await response.json();
       alert(`Invoice generated: ${result.invoice_number}`);
-      
+
       // Refresh sale data
       const saleResponse = await fetch(`http://localhost:3002/sales/${saleId}`);
       if (saleResponse.ok) {
@@ -127,7 +130,7 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
       alert('Failed to generate invoice');
     }
   };
-  
+
   // Handle print invoice
   const handlePrintInvoice = () => {
     window.print();
@@ -140,7 +143,7 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
       </div>
     );
   }
-  
+
   if (error || !sale) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -170,9 +173,9 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
             <ArrowLeft size={18} className="mr-1" />
             Back to Sales
           </button>
-          
+
           <div className="flex gap-2">
-            <button 
+            <button
               className="bg-white p-2 rounded-md border border-gray-300"
               onClick={handlePrintInvoice}
             >
@@ -183,11 +186,11 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
             </button>
           </div>
         </div>
-        
+
         {/* Sale Details */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Sale Details</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-gray-500">Sale ID</p>
@@ -224,11 +227,11 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
             </div>
           </div>
         </div>
-        
+
         {/* Sale Items */}
         <div>
           <h3 className="text-xl font-bold mb-4">Items</h3>
-          
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -243,7 +246,13 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
                     Quantity
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Unit Price
+                    Original Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Discount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Final Price
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Subtotal
@@ -263,6 +272,16 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
                       {item.quantity}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {item.original_price ? formatCurrency(item.original_price) : formatCurrency(item.unit_price)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.discount_amount ? (
+                        item.discount_type === 'percentage'
+                          ? `${item.discount_amount}%`
+                          : formatCurrency(item.discount_amount)
+                      ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {formatCurrency(item.unit_price)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium">
@@ -271,7 +290,7 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
                   </tr>
                 ))}
                 <tr className="bg-gray-50">
-                  <td colSpan={4} className="px-6 py-4 text-right font-bold">
+                  <td colSpan={6} className="px-6 py-4 text-right font-bold">
                     Total
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap font-bold">
