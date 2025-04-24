@@ -213,35 +213,69 @@ router.get("/:id", (req, res) => {
       return res.status(404).json({ message: "Sale not found" });
     }
 
-    // Get sale items
-    const itemsSql = `
-      SELECT
-        si.sale_item_id,
-        si.item_id,
-        ji.product_title,
-        ji.category,
-        si.quantity,
-        si.unit_price,
-        si.subtotal
-      FROM
-        sale_items si
-      LEFT JOIN
-        jewellery_items ji ON si.item_id = ji.item_id
-      WHERE
-        si.sale_id = ?
-    `;
-
-    con.query(itemsSql, [saleId], (err, itemsResults) => {
+    // Check if the table has the new discount columns
+    con.query("SHOW COLUMNS FROM sale_items LIKE 'original_price'", (err, columns) => {
       if (err) {
-        console.error("Error fetching sale items:", err);
+        console.error("Error checking sale_items columns:", err);
         return res.status(500).json({ message: "Database error", error: err.message });
       }
 
-      // Combine sale and items
-      const sale = saleResults[0];
-      sale.items = itemsResults || [];
+      // Get sale items
+      let itemsSql;
 
-      res.json(sale);
+      if (columns.length > 0) {
+        // New schema with discount columns
+        itemsSql = `
+          SELECT
+            si.sale_item_id,
+            si.item_id,
+            ji.product_title,
+            ji.category,
+            si.quantity,
+            si.unit_price,
+            si.original_price,
+            si.discount_amount,
+            si.discount_type,
+            si.subtotal
+          FROM
+            sale_items si
+          LEFT JOIN
+            jewellery_items ji ON si.item_id = ji.item_id
+          WHERE
+            si.sale_id = ?
+        `;
+      } else {
+        // Old schema without discount columns
+        itemsSql = `
+          SELECT
+            si.sale_item_id,
+            si.item_id,
+            ji.product_title,
+            ji.category,
+            si.quantity,
+            si.unit_price,
+            si.subtotal
+          FROM
+            sale_items si
+          LEFT JOIN
+            jewellery_items ji ON si.item_id = ji.item_id
+          WHERE
+            si.sale_id = ?
+        `;
+      }
+
+      con.query(itemsSql, [saleId], (err, itemsResults) => {
+        if (err) {
+          console.error("Error fetching sale items:", err);
+          return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        // Combine sale and items
+        const sale = saleResults[0];
+        sale.items = itemsResults || [];
+
+        res.json(sale);
+      });
     });
   });
 });
@@ -318,26 +352,61 @@ router.post("/create", (req, res) => {
 
               console.log('Item found in database:', results[0]);
 
-              // Insert sale item
+              // Insert sale item with discount information
               const subtotal = item.quantity * item.unit_price;
-              const itemSql = "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)";
-              con.query(itemSql, [saleId, item.item_id, item.quantity, item.unit_price, subtotal], (err) => {
+
+              // Check if the table has the new discount columns
+              con.query("SHOW COLUMNS FROM sale_items LIKE 'original_price'", (err, columns) => {
                 if (err) {
                   return reject(err);
                 }
 
-                // Update inventory
-                const updateSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
-                con.query(updateSql, [item.quantity, item.item_id, item.quantity], (err, updateResult) => {
+                let itemSql;
+                let itemParams;
+
+                if (columns.length > 0) {
+                  // New schema with discount columns
+                  itemSql = `
+                    INSERT INTO sale_items (
+                      sale_id, item_id, quantity, unit_price, original_price,
+                      discount_amount, discount_type, subtotal
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  `;
+
+                  itemParams = [
+                    saleId,
+                    item.item_id,
+                    item.quantity,
+                    item.unit_price,
+                    item.original_price || item.unit_price,
+                    item.discount_amount || null,
+                    item.discount_type || null,
+                    subtotal
+                  ];
+                } else {
+                  // Old schema without discount columns
+                  itemSql = "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)";
+                  itemParams = [saleId, item.item_id, item.quantity, item.unit_price, subtotal];
+                }
+
+                con.query(itemSql, itemParams, (err) => {
                   if (err) {
                     return reject(err);
                   }
 
-                  if (updateResult.affectedRows === 0) {
-                    return reject(new Error('Insufficient stock for item ID ' + item.item_id));
-                  }
+                  // Update inventory
+                  const updateSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
+                  con.query(updateSql, [item.quantity, item.item_id, item.quantity], (err, updateResult) => {
+                    if (err) {
+                      return reject(err);
+                    }
 
-                  resolve();
+                    if (updateResult.affectedRows === 0) {
+                      return reject(new Error('Insufficient stock for item ID ' + item.item_id));
+                    }
+
+                    resolve();
+                  });
                 });
               });
             });
