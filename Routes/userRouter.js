@@ -27,6 +27,37 @@ router.get("/", (req, res) => {
     });
 });
 
+// Get a single user by ID
+router.get("/:id", (req, res) => {
+    const userId = req.params.id;
+    console.log(`GET /users/${userId} - Fetching user details`);
+
+    const sql = `
+        SELECT u.*, b.branch_name
+        FROM users u
+        LEFT JOIN branches b ON u.branch_id = b.branch_id
+        WHERE u.user_id = ?
+    `;
+
+    con.query(sql, [userId], (err, results) => {
+        if (err) {
+            console.error(`Error fetching user ${userId}:`, err);
+            return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Don't send password in response
+        const user = results[0];
+        delete user.password;
+
+        console.log(`Found user ${userId}`);
+        res.json(user);
+    });
+});
+
 // User Login Route
 router.post("/userlogin", (req, res) => {
     const { email, password } = req.body;
@@ -152,6 +183,79 @@ router.post("/userlogin", (req, res) => {
         } else {
             console.log("Invalid email or password for user:", email);
             return res.status(401).json({ loginStatus: false, Error: "Wrong email or password" });
+        }
+    });
+});
+
+// Reset user password
+router.post("/reset-password/:id", async (req, res) => {
+    const userId = req.params.id;
+    const { currentPassword, newPassword } = req.body;
+
+    console.log(`POST /users/reset-password/${userId} - Resetting password`);
+
+    // Validate request
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+    }
+
+    // Get user from database
+    const getUserSql = "SELECT * FROM users WHERE user_id = ?";
+
+    con.query(getUserSql, [userId], async (err, results) => {
+        if (err) {
+            console.error(`Error fetching user ${userId}:`, err);
+            return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const user = results[0];
+        let passwordMatch = false;
+
+        // Check if password is already hashed (starts with '$2b$' for bcrypt)
+        if (user.password.startsWith('$2b$')) {
+            // Compare with bcrypt
+            try {
+                passwordMatch = await bcrypt.compare(currentPassword, user.password);
+            } catch (compareErr) {
+                console.error("Error comparing passwords:", compareErr);
+                return res.status(500).json({ message: "Error verifying password" });
+            }
+        } else {
+            // Legacy plain text password, direct comparison
+            passwordMatch = (user.password === currentPassword);
+        }
+
+        if (!passwordMatch) {
+            return res.status(401).json({ message: "Current password is incorrect" });
+        }
+
+        // Hash the new password
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            // Update the password
+            const updateSql = "UPDATE users SET password = ? WHERE user_id = ?";
+
+            con.query(updateSql, [hashedPassword, userId], (updateErr, updateResult) => {
+                if (updateErr) {
+                    console.error(`Error updating password for user ${userId}:`, updateErr);
+                    return res.status(500).json({ message: "Error updating password" });
+                }
+
+                if (updateResult.affectedRows === 0) {
+                    return res.status(404).json({ message: "User not found or password not updated" });
+                }
+
+                console.log(`Password updated for user ${userId}`);
+                res.json({ message: "Password reset successfully" });
+            });
+        } catch (hashErr) {
+            console.error("Error hashing new password:", hashErr);
+            return res.status(500).json({ message: "Error hashing new password" });
         }
     });
 });
