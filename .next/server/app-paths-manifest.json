@@ -12,5 +12,6 @@
   "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
   "/DashView/orders/page": "app/DashView/orders/page.js",
   "/DashView/orders/add/page": "app/DashView/orders/add/page.js",
-  "/DashView/orders/view/page": "app/DashView/orders/view/page.js"
+  "/DashView/orders/view/page": "app/DashView/orders/view/page.js",
+  "/DashView/supplier-details/page": "app/DashView/supplier-details/page.js"
 }

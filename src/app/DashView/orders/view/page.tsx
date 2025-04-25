@@ -141,12 +141,19 @@ const ViewOrdersPage = () => {
           return order;
         });
 
-        setOrders(processedData);
+        // Ensure all supplier_ids are strings
+        const processedDataWithStringIds = processedData.map((order: Order) => ({
+          ...order,
+          supplier_id: order.supplier_id?.toString() || ''
+        }));
+
+        setOrders(processedDataWithStringIds);
 
         // Fetch supplier names for all unique supplier IDs
-        const uniqueSupplierIds = [...new Set(data.map((order: Order) => order.supplier_id))] as string[];
+        const uniqueSupplierIds = [...new Set(processedDataWithStringIds.map((order: Order) => order.supplier_id))] as string[];
+        console.log('Unique supplier IDs:', uniqueSupplierIds);
         fetchSupplierNames(uniqueSupplierIds);
-        
+
         // Fetch order creators
         fetchOrderCreators();
 
@@ -204,7 +211,7 @@ const ViewOrdersPage = () => {
           '003': 'Vaseem Akram',
           '004': 'Mohamad Sami'
         });
-        
+
         // Set dummy supplier phone numbers
         setSupplierPhones({
           '001': '+94 77 123 4567',
@@ -240,7 +247,7 @@ const ViewOrdersPage = () => {
           ]);
         }
       };
-      
+
       fetchBranches();
     }
   }, [userRole]);
@@ -248,19 +255,34 @@ const ViewOrdersPage = () => {
   // Fetch supplier information
   const fetchSupplierNames = async (supplierIds: string[]) => {
     try {
+      console.log('Fetching supplier information for IDs:', supplierIds);
       const response = await fetch('http://localhost:3002/suppliers');
       if (response.ok) {
         const suppliers = await response.json();
+        console.log('Received suppliers data:', suppliers);
+
         const namesMap: {[key: string]: string} = {};
         const phonesMap: {[key: string]: string} = {};
 
+        // First, initialize with the IDs we have to ensure all IDs have a value
+        supplierIds.forEach(id => {
+          namesMap[id] = `Supplier ${id}`;
+          phonesMap[id] = 'Not available';
+        });
+
+        // Then update with actual data where available
         suppliers.forEach((supplier: any) => {
-          if (supplierIds.includes(supplier.supplier_id)) {
-            namesMap[supplier.supplier_id] = supplier.name || 'Unknown';
-            phonesMap[supplier.supplier_id] = supplier.phone || 'Not available';
+          // Convert supplier_id to string for consistent comparison
+          const supplierId = supplier.supplier_id?.toString();
+
+          // Check if this supplier's ID is in our list of IDs
+          if (supplierId && supplierIds.includes(supplierId)) {
+            namesMap[supplierId] = supplier.name || `Supplier ${supplierId}`;
+            phonesMap[supplierId] = supplier.contact_no || supplier.phone || 'Not available';
           }
         });
 
+        console.log('Mapped supplier names:', namesMap);
         setSupplierNames(namesMap);
         setSupplierPhones(phonesMap);
       }
@@ -268,45 +290,50 @@ const ViewOrdersPage = () => {
       console.error('Error fetching supplier information:', err);
     }
   };
-  
+
   // Fetch order creators
   const fetchOrderCreators = async () => {
     try {
       // Set default values for testing
       const creatorsMap: {[key: number]: string} = {};
-      
+
       // For each order, set a default creator name based on branch
-      orders.forEach(order => {
+      orders.forEach((order: Order) => {
+        const orderId = order.order_id;
+
         if (order.branch_id === 1) {
-          creatorsMap[order.order_id] = 'Mahiyangana Manager';
+          creatorsMap[orderId] = 'Mahiyangana Manager';
         } else if (order.branch_id === 2) {
-          creatorsMap[order.order_id] = 'Mahaoya Manager';
+          creatorsMap[orderId] = 'Mahaoya Manager';
         } else {
-          creatorsMap[order.order_id] = 'System Admin';
+          creatorsMap[orderId] = 'System Admin';
         }
       });
-      
+
       // Try to fetch real data if available
       try {
         const response = await fetch('http://localhost:3002/users');
         if (response.ok) {
           const users = await response.json();
-          
+
           // Update with real data where possible
-          orders.forEach(order => {
+          orders.forEach((order: Order) => {
             // Skip if no created_by field
             if (!order.created_by) return;
-            
+
+            const orderId = order.order_id;
             const creator = users.find((user: any) => user.user_id === order.created_by);
+
             if (creator && creator.first_name && creator.last_name) {
-              creatorsMap[order.order_id] = `${creator.first_name} ${creator.last_name}`;
+              creatorsMap[orderId] = `${creator.first_name} ${creator.last_name}`;
             }
           });
         }
       } catch (innerErr) {
         console.log('Could not fetch real user data, using defaults');
       }
-      
+
+      console.log('Order creators map:', creatorsMap);
       setOrderCreators(creatorsMap);
     } catch (err) {
       console.error('Error in fetchOrderCreators:', err);
@@ -370,10 +397,10 @@ const ViewOrdersPage = () => {
       const orderDate = new Date(order.created_at);
       const filterStartDate = new Date(startDate);
       const filterEndDate = new Date(endDate);
-      
+
       // Set end date to end of day
       filterEndDate.setHours(23, 59, 59, 999);
-      
+
       if (orderDate < filterStartDate || orderDate > filterEndDate) {
         return false;
       }
@@ -509,7 +536,7 @@ const ViewOrdersPage = () => {
                 Reset
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Branch Filter */}
               <div>
@@ -527,7 +554,7 @@ const ViewOrdersPage = () => {
                   ))}
                 </select>
               </div>
-              
+
               {/* Start Date Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -538,7 +565,7 @@ const ViewOrdersPage = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              
+
               {/* End Date Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
@@ -550,7 +577,7 @@ const ViewOrdersPage = () => {
                 />
               </div>
             </div>
-            
+
             <div className="mt-4 flex justify-end">
               <button
                 onClick={applyFilters}
@@ -619,7 +646,7 @@ const ViewOrdersPage = () => {
                       {order.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {supplierNames[order.supplier_id] || order.supplier_id}
+                      {supplierNames[order.supplier_id] || `Supplier ${order.supplier_id}`}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {order.branch_name ||
@@ -693,7 +720,7 @@ const ViewOrdersPage = () => {
       {showOrderDetails && selectedOrder && (
         <OrderDetailsModal
           order={selectedOrder}
-          supplierName={supplierNames[selectedOrder.supplier_id] || selectedOrder.supplier_id}
+          supplierName={supplierNames[selectedOrder.supplier_id] || `Supplier ${selectedOrder.supplier_id}`}
           supplierPhone={supplierPhones[selectedOrder.supplier_id] || 'Not available'}
           createdByName={orderCreators[selectedOrder.order_id] || 'Not available'}
           onClose={handleCloseOrderDetails}

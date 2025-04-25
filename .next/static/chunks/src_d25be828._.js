@@ -806,13 +806,21 @@ const ViewOrdersPage = ()=>{
                                 return order;
                             }
                         }["ViewOrdersPage.useEffect.fetchOrders.processedData"]);
-                        setOrders(processedData);
+                        // Ensure all supplier_ids are strings
+                        const processedDataWithStringIds = processedData.map({
+                            "ViewOrdersPage.useEffect.fetchOrders.processedDataWithStringIds": (order)=>({
+                                    ...order,
+                                    supplier_id: order.supplier_id?.toString() || ''
+                                })
+                        }["ViewOrdersPage.useEffect.fetchOrders.processedDataWithStringIds"]);
+                        setOrders(processedDataWithStringIds);
                         // Fetch supplier names for all unique supplier IDs
                         const uniqueSupplierIds = [
-                            ...new Set(data.map({
+                            ...new Set(processedDataWithStringIds.map({
                                 "ViewOrdersPage.useEffect.fetchOrders": (order)=>order.supplier_id
                             }["ViewOrdersPage.useEffect.fetchOrders"]))
                         ];
+                        console.log('Unique supplier IDs:', uniqueSupplierIds);
                         fetchSupplierNames(uniqueSupplierIds);
                         // Fetch order creators
                         fetchOrderCreators();
@@ -934,17 +942,29 @@ const ViewOrdersPage = ()=>{
     // Fetch supplier information
     const fetchSupplierNames = async (supplierIds)=>{
         try {
+            console.log('Fetching supplier information for IDs:', supplierIds);
             const response = await fetch('http://localhost:3002/suppliers');
             if (response.ok) {
                 const suppliers = await response.json();
+                console.log('Received suppliers data:', suppliers);
                 const namesMap = {};
                 const phonesMap = {};
+                // First, initialize with the IDs we have to ensure all IDs have a value
+                supplierIds.forEach((id)=>{
+                    namesMap[id] = `Supplier ${id}`;
+                    phonesMap[id] = 'Not available';
+                });
+                // Then update with actual data where available
                 suppliers.forEach((supplier)=>{
-                    if (supplierIds.includes(supplier.supplier_id)) {
-                        namesMap[supplier.supplier_id] = supplier.name || 'Unknown';
-                        phonesMap[supplier.supplier_id] = supplier.phone || 'Not available';
+                    // Convert supplier_id to string for consistent comparison
+                    const supplierId = supplier.supplier_id?.toString();
+                    // Check if this supplier's ID is in our list of IDs
+                    if (supplierId && supplierIds.includes(supplierId)) {
+                        namesMap[supplierId] = supplier.name || `Supplier ${supplierId}`;
+                        phonesMap[supplierId] = supplier.contact_no || supplier.phone || 'Not available';
                     }
                 });
+                console.log('Mapped supplier names:', namesMap);
                 setSupplierNames(namesMap);
                 setSupplierPhones(phonesMap);
             }
@@ -959,12 +979,13 @@ const ViewOrdersPage = ()=>{
             const creatorsMap = {};
             // For each order, set a default creator name based on branch
             orders.forEach((order)=>{
+                const orderId = order.order_id;
                 if (order.branch_id === 1) {
-                    creatorsMap[order.order_id] = 'Mahiyangana Manager';
+                    creatorsMap[orderId] = 'Mahiyangana Manager';
                 } else if (order.branch_id === 2) {
-                    creatorsMap[order.order_id] = 'Mahaoya Manager';
+                    creatorsMap[orderId] = 'Mahaoya Manager';
                 } else {
-                    creatorsMap[order.order_id] = 'System Admin';
+                    creatorsMap[orderId] = 'System Admin';
                 }
             });
             // Try to fetch real data if available
@@ -976,15 +997,17 @@ const ViewOrdersPage = ()=>{
                     orders.forEach((order)=>{
                         // Skip if no created_by field
                         if (!order.created_by) return;
+                        const orderId = order.order_id;
                         const creator = users.find((user)=>user.user_id === order.created_by);
                         if (creator && creator.first_name && creator.last_name) {
-                            creatorsMap[order.order_id] = `${creator.first_name} ${creator.last_name}`;
+                            creatorsMap[orderId] = `${creator.first_name} ${creator.last_name}`;
                         }
                     });
                 }
             } catch (innerErr) {
                 console.log('Could not fetch real user data, using defaults');
             }
+            console.log('Order creators map:', creatorsMap);
             setOrderCreators(creatorsMap);
         } catch (err) {
             console.error('Error in fetchOrderCreators:', err);
@@ -1100,12 +1123,12 @@ const ViewOrdersPage = ()=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 443,
+                lineNumber: 470,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-            lineNumber: 442,
+            lineNumber: 469,
             columnNumber: 7
         }, this);
     }
@@ -1120,20 +1143,20 @@ const ViewOrdersPage = ()=>{
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                    lineNumber: 451,
+                    lineNumber: 478,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                     children: "Using sample data instead."
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                    lineNumber: 452,
+                    lineNumber: 479,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-            lineNumber: 450,
+            lineNumber: 477,
             columnNumber: 7
         }, this);
     }
@@ -1150,12 +1173,12 @@ const ViewOrdersPage = ()=>{
                             children: "View Orders"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                            lineNumber: 461,
+                            lineNumber: 488,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 460,
+                        lineNumber: 487,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1172,7 +1195,7 @@ const ViewOrdersPage = ()=>{
                                         onChange: (e)=>setSearchTerm(e.target.value)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 467,
+                                        lineNumber: 494,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$search$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Search$3e$__["Search"], {
@@ -1180,13 +1203,13 @@ const ViewOrdersPage = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 474,
+                                        lineNumber: 501,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 466,
+                                lineNumber: 493,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1202,7 +1225,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "All Statuses"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 483,
+                                                lineNumber: 510,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1210,7 +1233,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Pending"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 484,
+                                                lineNumber: 511,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1218,7 +1241,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Processing"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 485,
+                                                lineNumber: 512,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1226,7 +1249,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Completed"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 486,
+                                                lineNumber: 513,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1234,13 +1257,13 @@ const ViewOrdersPage = ()=>{
                                                 children: "Cancelled"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 487,
+                                                lineNumber: 514,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 478,
+                                        lineNumber: 505,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1252,24 +1275,24 @@ const ViewOrdersPage = ()=>{
                                             className: "text-gray-500"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 495,
+                                            lineNumber: 522,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 490,
+                                        lineNumber: 517,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 477,
+                                lineNumber: 504,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 465,
+                        lineNumber: 492,
                         columnNumber: 9
                     }, this),
                     showAdvancedFilters && userRole === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1283,7 +1306,7 @@ const ViewOrdersPage = ()=>{
                                         children: "Advanced Filters"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 504,
+                                        lineNumber: 531,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1292,13 +1315,13 @@ const ViewOrdersPage = ()=>{
                                         children: "Reset"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 505,
+                                        lineNumber: 532,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 503,
+                                lineNumber: 530,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1311,7 +1334,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Branch"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 516,
+                                                lineNumber: 543,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1324,7 +1347,7 @@ const ViewOrdersPage = ()=>{
                                                         children: "All Branches"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 522,
+                                                        lineNumber: 549,
                                                         columnNumber: 19
                                                     }, this),
                                                     branches.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1332,19 +1355,19 @@ const ViewOrdersPage = ()=>{
                                                             children: branch.branch_name
                                                         }, branch.branch_id, false, {
                                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                            lineNumber: 524,
+                                                            lineNumber: 551,
                                                             columnNumber: 21
                                                         }, this))
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 517,
+                                                lineNumber: 544,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 515,
+                                        lineNumber: 542,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1354,7 +1377,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Start Date"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 533,
+                                                lineNumber: 560,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1364,13 +1387,13 @@ const ViewOrdersPage = ()=>{
                                                 onChange: (e)=>setStartDate(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 534,
+                                                lineNumber: 561,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 532,
+                                        lineNumber: 559,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1380,7 +1403,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "End Date"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 544,
+                                                lineNumber: 571,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1390,19 +1413,19 @@ const ViewOrdersPage = ()=>{
                                                 onChange: (e)=>setEndDate(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 545,
+                                                lineNumber: 572,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 543,
+                                        lineNumber: 570,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 513,
+                                lineNumber: 540,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1413,18 +1436,18 @@ const ViewOrdersPage = ()=>{
                                     children: "Apply Filters"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 555,
+                                    lineNumber: 582,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 554,
+                                lineNumber: 581,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 502,
+                        lineNumber: 529,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1441,7 +1464,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Order ID"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 570,
+                                                lineNumber: 597,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1449,7 +1472,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Image"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 573,
+                                                lineNumber: 600,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1457,7 +1480,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 576,
+                                                lineNumber: 603,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1465,7 +1488,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Supplier"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 579,
+                                                lineNumber: 606,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1473,7 +1496,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Branch"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 582,
+                                                lineNumber: 609,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1481,7 +1504,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Quantity"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 585,
+                                                lineNumber: 612,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1489,7 +1512,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Status"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 588,
+                                                lineNumber: 615,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1497,7 +1520,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Created At"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 591,
+                                                lineNumber: 618,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1505,18 +1528,18 @@ const ViewOrdersPage = ()=>{
                                                 children: "Actions"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 594,
+                                                lineNumber: 621,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 569,
+                                        lineNumber: 596,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 568,
+                                    lineNumber: 595,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1528,12 +1551,12 @@ const ViewOrdersPage = ()=>{
                                             children: "No orders found"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 602,
+                                            lineNumber: 629,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 601,
+                                        lineNumber: 628,
                                         columnNumber: 17
                                     }, this) : filteredOrders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                             className: "hover:bg-gray-50",
@@ -1546,7 +1569,7 @@ const ViewOrdersPage = ()=>{
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 609,
+                                                    lineNumber: 636,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1556,12 +1579,12 @@ const ViewOrdersPage = ()=>{
                                                         orderId: order.order_id
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 613,
+                                                        lineNumber: 640,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 612,
+                                                    lineNumber: 639,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1569,15 +1592,15 @@ const ViewOrdersPage = ()=>{
                                                     children: order.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 618,
+                                                    lineNumber: 645,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                     className: "px-6 py-4 whitespace-nowrap",
-                                                    children: supplierNames[order.supplier_id] || order.supplier_id
+                                                    children: supplierNames[order.supplier_id] || `Supplier ${order.supplier_id}`
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 621,
+                                                    lineNumber: 648,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1585,7 +1608,7 @@ const ViewOrdersPage = ()=>{
                                                     children: order.branch_name || (order.branch_id === 1 ? 'Mahiyangana Branch' : order.branch_id === 2 ? 'Mahaoya Branch' : 'Not assigned')
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 624,
+                                                    lineNumber: 651,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1593,7 +1616,7 @@ const ViewOrdersPage = ()=>{
                                                     children: order.quantity
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 630,
+                                                    lineNumber: 657,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1603,12 +1626,12 @@ const ViewOrdersPage = ()=>{
                                                         children: order.status.charAt(0).toUpperCase() + order.status.slice(1)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 634,
+                                                        lineNumber: 661,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 633,
+                                                    lineNumber: 660,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1616,7 +1639,7 @@ const ViewOrdersPage = ()=>{
                                                     children: formatDate(order.created_at)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 638,
+                                                    lineNumber: 665,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1632,12 +1655,12 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 648,
+                                                                    lineNumber: 675,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 643,
+                                                                lineNumber: 670,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1648,12 +1671,12 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 655,
+                                                                    lineNumber: 682,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 650,
+                                                                lineNumber: 677,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1664,45 +1687,45 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 662,
+                                                                    lineNumber: 689,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 657,
+                                                                lineNumber: 684,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 642,
+                                                        lineNumber: 669,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 641,
+                                                    lineNumber: 668,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, order.order_id, true, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 608,
+                                            lineNumber: 635,
                                             columnNumber: 19
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 599,
+                                    lineNumber: 626,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                            lineNumber: 567,
+                            lineNumber: 594,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 566,
+                        lineNumber: 593,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1719,7 +1742,7 @@ const ViewOrdersPage = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 675,
+                                lineNumber: 702,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1730,7 +1753,7 @@ const ViewOrdersPage = ()=>{
                                         children: "Previous"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 679,
+                                        lineNumber: 706,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1738,7 +1761,7 @@ const ViewOrdersPage = ()=>{
                                         children: "1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 682,
+                                        lineNumber: 709,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1746,42 +1769,42 @@ const ViewOrdersPage = ()=>{
                                         children: "Next"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 685,
+                                        lineNumber: 712,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 678,
+                                lineNumber: 705,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 674,
+                        lineNumber: 701,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 459,
+                lineNumber: 486,
                 columnNumber: 7
             }, this),
             showOrderDetails && selectedOrder && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$OrderDetailsModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                 order: selectedOrder,
-                supplierName: supplierNames[selectedOrder.supplier_id] || selectedOrder.supplier_id,
+                supplierName: supplierNames[selectedOrder.supplier_id] || `Supplier ${selectedOrder.supplier_id}`,
                 supplierPhone: supplierPhones[selectedOrder.supplier_id] || 'Not available',
                 createdByName: orderCreators[selectedOrder.order_id] || 'Not available',
                 onClose: handleCloseOrderDetails
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 694,
+                lineNumber: 721,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-        lineNumber: 458,
+        lineNumber: 485,
         columnNumber: 5
     }, this);
 };
