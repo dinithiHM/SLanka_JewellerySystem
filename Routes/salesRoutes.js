@@ -467,6 +467,177 @@ router.get("/test", (_req, res) => {
   return res.json({ message: 'Sales router is working!' });
 });
 
+// Generate invoice for a sale
+router.get("/invoice/:id", (req, res) => {
+  const saleId = req.params.id;
+  console.log(`GET /sales/invoice/${saleId} - Generating invoice`);
+
+  // Get sale details with items
+  const saleSql = `
+    SELECT
+      s.sale_id,
+      s.customer_name,
+      s.total_amount,
+      s.payment_method,
+      s.sale_date,
+      i.invoice_number,
+      s.user_id,
+      u.first_name AS cashier_first_name,
+      u.last_name AS cashier_last_name,
+      s.branch_id,
+      b.branch_name
+    FROM
+      sales s
+    LEFT JOIN
+      invoices i ON s.sale_id = i.sale_id
+    LEFT JOIN
+      users u ON s.user_id = u.user_id
+    LEFT JOIN
+      branches b ON s.branch_id = b.branch_id
+    WHERE
+      s.sale_id = ?
+  `;
+
+  con.query(saleSql, [saleId], (err, saleResults) => {
+    if (err) {
+      console.error("Error fetching sale for invoice:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    if (saleResults.length === 0) {
+      return res.status(404).json({ message: "Sale not found" });
+    }
+
+    const sale = saleResults[0];
+
+    // Check if invoice exists, if not create one
+    if (!sale.invoice_number) {
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${saleId.toString().padStart(4, '0')}`;
+      const invoiceSql = "INSERT INTO invoices (sale_id, invoice_number) VALUES (?, ?)";
+
+      con.query(invoiceSql, [saleId, invoiceNumber], (err) => {
+        if (err) {
+          console.error("Error creating invoice:", err);
+          return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        sale.invoice_number = invoiceNumber;
+
+        // Continue with fetching items and branch details
+        fetchItemsAndBranchDetails(sale);
+      });
+    } else {
+      // Continue with fetching items and branch details
+      fetchItemsAndBranchDetails(sale);
+    }
+
+    function fetchItemsAndBranchDetails(sale) {
+      // Check if the table has the new discount columns
+      con.query("SHOW COLUMNS FROM sale_items LIKE 'original_price'", (err, columns) => {
+        if (err) {
+          console.error("Error checking sale_items columns:", err);
+          return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        // Get sale items
+        let itemsSql;
+
+        if (columns.length > 0) {
+          // New schema with discount columns
+          itemsSql = `
+            SELECT
+              si.sale_item_id,
+              si.item_id,
+              ji.product_title,
+              ji.category,
+              si.quantity,
+              si.unit_price,
+              si.original_price,
+              si.discount_amount,
+              si.discount_type,
+              si.subtotal
+            FROM
+              sale_items si
+            LEFT JOIN
+              jewellery_items ji ON si.item_id = ji.item_id
+            WHERE
+              si.sale_id = ?
+          `;
+        } else {
+          // Old schema without discount columns
+          itemsSql = `
+            SELECT
+              si.sale_item_id,
+              si.item_id,
+              ji.product_title,
+              ji.category,
+              si.quantity,
+              si.unit_price,
+              si.subtotal
+            FROM
+              sale_items si
+            LEFT JOIN
+              jewellery_items ji ON si.item_id = ji.item_id
+            WHERE
+              si.sale_id = ?
+          `;
+        }
+
+        con.query(itemsSql, [saleId], (err, itemsResults) => {
+          if (err) {
+            console.error("Error fetching sale items for invoice:", err);
+            return res.status(500).json({ message: "Database error", error: err.message });
+          }
+
+          // Add items to sale
+          sale.items = itemsResults || [];
+
+          // Get branch details
+          const branchId = sale.branch_id;
+
+          if (branchId) {
+            const branchSql = `
+              SELECT
+                branch_id,
+                branch_name,
+                location,
+                contact_number
+              FROM
+                branches
+              WHERE
+                branch_id = ?
+            `;
+
+            con.query(branchSql, [branchId], (err, branchResults) => {
+              if (err) {
+                console.error("Error fetching branch details:", err);
+                // Continue without branch details
+                return res.json({
+                  sale: sale,
+                  branchDetails: null
+                });
+              }
+
+              const branchDetails = branchResults.length > 0 ? branchResults[0] : null;
+
+              res.json({
+                sale: sale,
+                branchDetails: branchDetails
+              });
+            });
+          } else {
+            // No branch ID, return without branch details
+            res.json({
+              sale: sale,
+              branchDetails: null
+            });
+          }
+        });
+      });
+    }
+  });
+});
+
 // Get recent sales by date (for calendar view)
 router.get("/recent", (req, res) => {
   console.log('GET /sales/recent - Fetching recent sales');
