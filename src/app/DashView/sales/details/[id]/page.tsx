@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Printer, Download } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
+import { generateInvoicePDF } from '@/utils/invoiceGenerator';
 
 interface SaleItem {
   sale_item_id: number;
@@ -36,6 +37,7 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   // Fetch sale details
   useEffect(() => {
@@ -103,37 +105,72 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
     router.push('/DashView/sales/view');
   };
 
-  // Handle generate invoice
-  const handleGenerateInvoice = async () => {
-    if (!sale) return;
-
-    try {
-      const response = await fetch(`http://localhost:3002/sales/generate-invoice/${sale.sale_id}`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate invoice');
-      }
-
-      const result = await response.json();
-      alert(`Invoice generated: ${result.invoice_number}`);
-
-      // Refresh sale data
-      const saleResponse = await fetch(`http://localhost:3002/sales/${saleId}`);
-      if (saleResponse.ok) {
-        const data = await saleResponse.json();
-        setSale(data);
-      }
-    } catch (err) {
-      console.error('Error generating invoice:', err);
-      alert('Failed to generate invoice');
-    }
-  };
-
   // Handle print invoice
   const handlePrintInvoice = () => {
     window.print();
+  };
+
+  // Handle download invoice
+  const handleDownloadInvoice = async () => {
+    if (!sale) return;
+
+    try {
+      console.log('Starting invoice download process for sale ID:', sale.sale_id);
+      setGeneratingInvoice(true);
+
+      // Fetch invoice data from the server
+      console.log('Fetching invoice data from:', `http://localhost:3002/sales/invoice/${sale.sale_id}`);
+      const response = await fetch(`http://localhost:3002/sales/invoice/${sale.sale_id}`);
+
+      if (!response.ok) {
+        console.error('Server response not OK:', response.status, response.statusText);
+        throw new Error('Failed to fetch invoice data');
+      }
+
+      const data = await response.json();
+      console.log('Received invoice data:', data);
+
+      // Generate PDF
+      console.log('Generating PDF with sale data and branch details');
+      try {
+        const pdfBlob = await generateInvoicePDF(data.sale, data.branchDetails);
+        console.log('PDF generated successfully');
+
+        // Create download link
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fileName = `Invoice_${data.sale.invoice_number || sale.sale_id}.pdf`;
+        console.log('Setting download filename to:', fileName);
+        link.download = fileName;
+        document.body.appendChild(link);
+        console.log('Triggering download');
+        link.click();
+
+        // Clean up
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          console.log('Cleanup completed');
+        }, 100);
+      } catch (pdfError) {
+        console.error('Error in PDF generation:', pdfError);
+        alert('Error generating PDF: ' + pdfError.message);
+      }
+
+      // If the invoice was just created, refresh the sale data
+      if (!sale.invoice_number && data.sale.invoice_number) {
+        setSale({
+          ...sale,
+          invoice_number: data.sale.invoice_number
+        });
+      }
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      alert('Failed to download invoice');
+    } finally {
+      setGeneratingInvoice(false);
+    }
   };
 
   if (loading) {
@@ -178,11 +215,17 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
             <button
               className="bg-white p-2 rounded-md border border-gray-300"
               onClick={handlePrintInvoice}
+              title="Print page"
             >
               <Printer size={20} className="text-gray-700" />
             </button>
-            <button className="bg-white p-2 rounded-md border border-gray-300">
-              <Download size={20} className="text-gray-700" />
+            <button
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 px-4 rounded-md flex items-center"
+              onClick={handleDownloadInvoice}
+              disabled={generatingInvoice}
+            >
+              <Download size={20} className="mr-2" />
+              {generatingInvoice ? 'Generating...' : 'Download Invoice'}
             </button>
           </div>
         </div>
@@ -213,10 +256,11 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
               <p className="font-medium">
                 {sale.invoice_number || (
                   <button
-                    className="text-blue-600 hover:text-blue-900 text-sm"
-                    onClick={handleGenerateInvoice}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 px-4 rounded-full"
+                    onClick={handleDownloadInvoice}
+                    disabled={generatingInvoice}
                   >
-                    Generate Invoice
+                    {generatingInvoice ? 'Generating...' : 'Generate Invoice'}
                   </button>
                 )}
               </p>
@@ -302,6 +346,17 @@ const SaleDetailsPage = ({ params }: { params: { id: string } }) => {
           </div>
         </div>
       </div>
+
+      {/* Floating action button for download */}
+      <button
+        className="fixed bottom-8 right-8 bg-yellow-400 hover:bg-yellow-500 text-black font-bold p-4 rounded-full shadow-lg flex items-center"
+        onClick={handleDownloadInvoice}
+        disabled={generatingInvoice}
+        title="Download Invoice"
+      >
+        <Download size={24} className="mr-2" />
+        {generatingInvoice ? 'Generating...' : 'Download Invoice'}
+      </button>
     </div>
   );
 };
