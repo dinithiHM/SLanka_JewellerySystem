@@ -1,17 +1,12 @@
 {
   "/page": "app/page.js",
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/login/page": "app/login/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/DashView/sales/manage/page": "app/DashView/sales/manage/page.js",
-  "/DashView/sales/add/page": "app/DashView/sales/add/page.js",
-  "/DashView/sales/view/page": "app/DashView/sales/view/page.js",
-  "/DashView/sales/details/[id]/page": "app/DashView/sales/details/[id]/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
+  "/profile/page": "app/profile/page.js",
   "/DashView/orders/page": "app/DashView/orders/page.js",
   "/DashView/orders/add/page": "app/DashView/orders/add/page.js",
-  "/DashView/orders/view/page": "app/DashView/orders/view/page.js",
-  "/DashView/supplier-details/page": "app/DashView/supplier-details/page.js"
+  "/DashView/orders/view/page": "app/DashView/orders/view/page.js"
 }
