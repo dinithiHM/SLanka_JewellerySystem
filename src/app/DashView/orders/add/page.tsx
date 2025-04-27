@@ -58,6 +58,12 @@ const AddOrderPage = () => {
   const [isLoadingGoldPrice, setIsLoadingGoldPrice] = useState(false);
   const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string | null>(null);
 
+  // Supplier payment states
+  const [advancePaymentAmount, setAdvancePaymentAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [minAdvancePayment, setMinAdvancePayment] = useState(0); // 25% of total
+
   // User info state
   const [userRole, setUserRole] = useState<string>('');
   const [userBranchId, setUserBranchId] = useState<number | null>(null);
@@ -216,8 +222,18 @@ const AddOrderPage = () => {
 
     // Calculate total amount
     const pricePerUnit = useCustomPrice ? customPrice : estimatedPrice;
-    setTotalAmount(pricePerUnit * quantity);
-  }, [goldPricePerGram, weightInGrams, makingCharges, useCustomPrice, customPrice, quantity, estimatedPrice]);
+    const total = pricePerUnit * quantity;
+    setTotalAmount(total);
+
+    // Calculate minimum advance payment (25% of total)
+    const minPayment = total * 0.25;
+    setMinAdvancePayment(minPayment);
+
+    // Set default advance payment to the minimum required
+    if (advancePaymentAmount < minPayment) {
+      setAdvancePaymentAmount(minPayment);
+    }
+  }, [goldPricePerGram, weightInGrams, makingCharges, useCustomPrice, customPrice, quantity, estimatedPrice, advancePaymentAmount]);
 
   // Handle image upload with compression
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,6 +288,12 @@ const AddOrderPage = () => {
     e.preventDefault();
 
     try {
+      // Validate advance payment
+      if (totalAmount > 0 && advancePaymentAmount < minAdvancePayment) {
+        alert(`Advance payment must be at least ${minAdvancePayment.toFixed(2)} Rs. (25% of total amount)`);
+        return;
+      }
+
       // Prepare the data to be sent
       const orderData = {
         category,
@@ -290,11 +312,19 @@ const AddOrderPage = () => {
         weightInGrams,
         makingCharges,
         estimatedPrice: useCustomPrice ? customPrice : estimatedPrice,
-        totalAmount
+        totalAmount,
+        // Payment information
+        advance_payment_amount: advancePaymentAmount,
+        total_payment_amount: totalAmount,
+        payment_status: 'Partial', // Initial status is Partial since we're making an advance payment
+        payment_info: {
+          amount_paid: advancePaymentAmount,
+          payment_method: paymentMethod,
+          notes: paymentNotes
+        }
       };
 
       console.log('Including branch_id:', userBranchId);
-
       console.log('Order data:', orderData);
 
       // Send the data to the backend
@@ -310,6 +340,37 @@ const AddOrderPage = () => {
 
       if (!response.ok) {
         throw new Error(result.message || 'Failed to create order');
+      }
+
+      // If order was created successfully, create the supplier payment record
+      if (result.success && result.orderId) {
+        try {
+          const paymentData = {
+            order_id: result.orderId,
+            amount_paid: advancePaymentAmount,
+            payment_method: paymentMethod,
+            notes: paymentNotes,
+            created_by: localStorage.getItem('userId') || null
+          };
+
+          const paymentResponse = await fetch('http://localhost:3002/supplier-payments/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(paymentData),
+          });
+
+          const paymentResult = await paymentResponse.json();
+
+          if (!paymentResponse.ok) {
+            console.error('Payment record creation failed:', paymentResult.message);
+            // We don't throw an error here since the order was already created
+          }
+        } catch (paymentError) {
+          console.error('Error creating payment record:', paymentError);
+          // We don't throw an error here since the order was already created
+        }
       }
 
       alert('Order submitted successfully!');
@@ -658,16 +719,91 @@ const AddOrderPage = () => {
             </div>
           </div>
 
-          {/* Add More Button */}
-          <div className="flex justify-center mb-4">
-            <button
-              type="button"
-              className="bg-yellow-400 text-black px-6 py-2 rounded-full font-medium"
-              onClick={() => alert('Add more functionality will be implemented later')}
-            >
-              ADD MORE
-            </button>
-          </div>
+          {/* Supplier Payment Section - Only show if total amount is calculated */}
+          {totalAmount > 0 && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4">Supplier Payment</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Advance Payment Amount */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Advance Payment Amount (Rs.)
+                    <span className="text-red-500 ml-1">*</span>
+                    <span className="text-xs text-gray-500 ml-2">(Min: {minAdvancePayment.toFixed(2).toLocaleString()} Rs.)</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={advancePaymentAmount}
+                    onChange={(e) => setAdvancePaymentAmount(Number(e.target.value))}
+                    min={minAdvancePayment}
+                    step="0.01"
+                    required
+                  />
+                  {advancePaymentAmount < minAdvancePayment && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Advance payment must be at least 25% of the total amount
+                    </p>
+                  )}
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Payment Method</label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Check">Check</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Payment Notes */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Payment Notes</label>
+                  <textarea
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Add any notes about the payment"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total Amount</label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md">
+                    Rs. {totalAmount.toFixed(2).toLocaleString()}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Advance Payment</label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md">
+                    Rs. {advancePaymentAmount.toFixed(2).toLocaleString()}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Remaining Balance</label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md font-semibold text-red-600">
+                    Rs. {(totalAmount - advancePaymentAmount).toFixed(2).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
 
           {/* Submit and Cancel Buttons */}
           <div className="flex justify-between">
