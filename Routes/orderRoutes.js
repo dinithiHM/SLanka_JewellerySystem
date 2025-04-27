@@ -355,6 +355,11 @@ router.post("/create", (req, res) => {
       const estimatedPrice = req.body.estimatedPrice || null;
       const totalAmount = req.body.totalAmount || null;
 
+      // Extract payment fields from request
+      const advancePaymentAmount = req.body.advance_payment_amount || null;
+      const totalPaymentAmount = req.body.total_payment_amount || totalAmount;
+      const paymentStatus = req.body.payment_status || 'Pending';
+
       if (priceColumnsExist) {
         // Include price calculation fields if the columns exist
         if (branchColumnExists && branch_id) {
@@ -375,8 +380,11 @@ router.post("/create", (req, res) => {
               making_charges,
               estimated_price,
               total_amount,
+              advance_payment_amount,
+              total_payment_amount,
+              payment_status,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -393,7 +401,10 @@ router.post("/create", (req, res) => {
             weightInGrams,
             makingCharges,
             estimatedPrice,
-            totalAmount
+            totalAmount,
+            advancePaymentAmount,
+            totalPaymentAmount,
+            paymentStatus
           ];
       } else {
           // Include price fields without branch_id
@@ -412,8 +423,11 @@ router.post("/create", (req, res) => {
               making_charges,
               estimated_price,
               total_amount,
+              advance_payment_amount,
+              total_payment_amount,
+              payment_status,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -429,7 +443,10 @@ router.post("/create", (req, res) => {
             weightInGrams,
             makingCharges,
             estimatedPrice,
-            totalAmount
+            totalAmount,
+            advancePaymentAmount,
+            totalPaymentAmount,
+            paymentStatus
           ];
       }
       } else {
@@ -515,6 +532,7 @@ router.post("/create", (req, res) => {
                 }
 
                 res.status(201).json({
+                  success: true,
                   message: "Order created successfully with image",
                   orderId: orderId,
                   imagePath: imagePath
@@ -523,6 +541,7 @@ router.post("/create", (req, res) => {
             } else {
               // Return success even if image saving failed
               res.status(201).json({
+                success: true,
                 message: "Order created successfully, but image could not be saved",
                 orderId: orderId
               });
@@ -530,6 +549,7 @@ router.post("/create", (req, res) => {
           } catch (imageErr) {
             console.error("Error saving image:", imageErr);
             res.status(201).json({
+              success: true,
               message: "Order created successfully, but image could not be saved",
               orderId: orderId,
               imageError: imageErr.message
@@ -538,6 +558,7 @@ router.post("/create", (req, res) => {
         } else {
           // No image to save
           res.status(201).json({
+            success: true,
             message: "Order created successfully",
             orderId: orderId
           });

@@ -32,6 +32,7 @@ import branchesRouter from "./Routes/branchesRoutes.js"; // ✅ Import Branches 
 import { assayReportRouter } from "./Routes/assayReportRoutes.new.js"; // ✅ Import Assay Report Routes
 import { authRouter } from "./Routes/authRoute.js"; // ✅ Import Auth Routes
 import { goldPriceRouter } from "./Routes/goldPriceRoutes.js"; // ✅ Import Gold Price Routes
+import { supplierPaymentsRouter } from "./Routes/supplierPaymentsRoutes.js"; // ✅ Import Supplier Payments Routes
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use("/maintenance", fixPaymentStatusDirectlyRouter); // ✅ Add fix payment 
 app.use("/branches", branchesRouter); // ✅ Add branches routes
 app.use("/assay-reports", assayReportRouter); // ✅ Add assay report routes
 app.use("/gold-prices", goldPriceRouter); // ✅ Add gold price routes
+app.use("/supplier-payments", supplierPaymentsRouter); // ✅ Add supplier payments routes
 
 // ✅ Start the server
 const PORT = 3002;
