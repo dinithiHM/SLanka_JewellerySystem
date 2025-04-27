@@ -302,7 +302,7 @@ router.post("/create", (req, res) => {
   const karatsJson = JSON.stringify(selectedKarats || []);
   const karatValuesJson = JSON.stringify(karatValues || {});
 
-  // Check if branch_id column exists in orders table
+  // Check if required columns exist in orders table
   con.query("SHOW COLUMNS FROM orders LIKE 'branch_id'", (columnErr, columnResults) => {
     if (columnErr) {
       console.error("Error checking for branch_id column:", columnErr);
@@ -312,117 +312,237 @@ router.post("/create", (req, res) => {
     const branchColumnExists = columnResults.length > 0;
     console.log(`Branch column exists: ${branchColumnExists}`);
 
-    // First insert the order without the image
-    let sql;
-    let values;
-
-    if (branchColumnExists && branch_id) {
-      // Include branch_id in the query if the column exists and branch_id is provided
-      sql = `
-        INSERT INTO orders (
-          category,
-          supplier_id,
-          quantity,
-          offer_gold,
-          selected_karats,
-          karat_values,
-          design_image,
-          status,
-          branch_id,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `;
-
-      values = [
-        category,
-        supplier,
-        quantity,
-        offerGold === 'yes' ? 1 : 0,
-        karatsJson,
-        karatValuesJson,
-        null, // Initially set image to null
-        'pending', // Default status
-        branch_id
-      ];
-    } else {
-      // Use the original query if branch_id column doesn't exist or branch_id is not provided
-      sql = `
-        INSERT INTO orders (
-          category,
-          supplier_id,
-          quantity,
-          offer_gold,
-          selected_karats,
-          karat_values,
-          design_image,
-          status,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `;
-
-      values = [
-        category,
-        supplier,
-        quantity,
-        offerGold === 'yes' ? 1 : 0,
-        karatsJson,
-        karatValuesJson,
-        null, // Initially set image to null
-        'pending' // Default status
-      ];
-    }
-
-    con.query(sql, values, (err, result) => {
-      if (err) {
-        console.error("Error creating order:", err);
-        return res.status(500).json({ message: "Database error", error: err.message });
+    // Check if price calculation columns exist
+    con.query("SHOW COLUMNS FROM orders LIKE 'estimated_price'", (priceColumnErr, priceColumnResults) => {
+      if (priceColumnErr) {
+        console.error("Error checking for price columns:", priceColumnErr);
+        return res.status(500).json({ message: "Database error", error: priceColumnErr.message });
       }
 
-      const orderId = result.insertId;
-      console.log(`Order created with ID: ${orderId}`);
+      const priceColumnsExist = priceColumnResults.length > 0;
+      console.log(`Price columns exist: ${priceColumnsExist}`);
 
-      // If there's an image, save it and update the order
-      if (image) {
-        try {
-          const imagePath = saveBase64Image(image, orderId);
+      // If price columns don't exist, add them
+      if (!priceColumnsExist) {
+        const alterTableSql = `
+          ALTER TABLE orders
+          ADD COLUMN gold_price_per_gram DECIMAL(10,2) NULL,
+          ADD COLUMN weight_in_grams DECIMAL(10,2) NULL,
+          ADD COLUMN making_charges DECIMAL(10,2) NULL,
+          ADD COLUMN estimated_price DECIMAL(10,2) NULL,
+          ADD COLUMN total_amount DECIMAL(10,2) NULL
+        `;
 
-          if (imagePath) {
-            // Update the order with the image path
-            const updateSql = "UPDATE orders SET design_image = ? WHERE order_id = ?";
-            con.query(updateSql, [imagePath, orderId], (updateErr) => {
-              if (updateErr) {
-                console.error("Error updating order with image:", updateErr);
-                // Still return success, just log the error
-              }
-
-              res.status(201).json({
-                message: "Order created successfully with image",
-                orderId: orderId,
-                imagePath: imagePath
-              });
-            });
+        con.query(alterTableSql, (alterErr) => {
+          if (alterErr) {
+            console.error("Error adding price columns to orders table:", alterErr);
+            // Continue with order creation even if column addition fails
+            console.log("Continuing with order creation without price columns");
           } else {
-            // Return success even if image saving failed
-            res.status(201).json({
-              message: "Order created successfully, but image could not be saved",
-              orderId: orderId
-            });
+            console.log("Added price columns to orders table");
           }
-        } catch (imageErr) {
-          console.error("Error saving image:", imageErr);
-          res.status(201).json({
-            message: "Order created successfully, but image could not be saved",
-            orderId: orderId,
-            imageError: imageErr.message
-          });
-        }
-      } else {
-        // No image to save
-        res.status(201).json({
-          message: "Order created successfully",
-          orderId: orderId
         });
       }
+
+      // First insert the order without the image
+      let sql;
+      let values;
+
+      // Extract price calculation fields from request
+      const goldPricePerGram = req.body.goldPricePerGram || null;
+      const weightInGrams = req.body.weightInGrams || null;
+      const makingCharges = req.body.makingCharges || null;
+      const estimatedPrice = req.body.estimatedPrice || null;
+      const totalAmount = req.body.totalAmount || null;
+
+      if (priceColumnsExist) {
+        // Include price calculation fields if the columns exist
+        if (branchColumnExists && branch_id) {
+          // Include branch_id and price fields
+          sql = `
+            INSERT INTO orders (
+              category,
+              supplier_id,
+              quantity,
+              offer_gold,
+              selected_karats,
+              karat_values,
+              design_image,
+              status,
+              branch_id,
+              gold_price_per_gram,
+              weight_in_grams,
+              making_charges,
+              estimated_price,
+              total_amount,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `;
+
+          values = [
+            category,
+            supplier,
+            quantity,
+            offerGold === 'yes' ? 1 : 0,
+            karatsJson,
+            karatValuesJson,
+            null, // Initially set image to null
+            'pending', // Default status
+            branch_id,
+            goldPricePerGram,
+            weightInGrams,
+            makingCharges,
+            estimatedPrice,
+            totalAmount
+          ];
+      } else {
+          // Include price fields without branch_id
+          sql = `
+            INSERT INTO orders (
+              category,
+              supplier_id,
+              quantity,
+              offer_gold,
+              selected_karats,
+              karat_values,
+              design_image,
+              status,
+              gold_price_per_gram,
+              weight_in_grams,
+              making_charges,
+              estimated_price,
+              total_amount,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `;
+
+          values = [
+            category,
+            supplier,
+            quantity,
+            offerGold === 'yes' ? 1 : 0,
+            karatsJson,
+            karatValuesJson,
+            null, // Initially set image to null
+            'pending', // Default status
+            goldPricePerGram,
+            weightInGrams,
+            makingCharges,
+            estimatedPrice,
+            totalAmount
+          ];
+      }
+      } else {
+        // Use the original queries without price fields
+        if (branchColumnExists && branch_id) {
+          // Include branch_id in the query if the column exists and branch_id is provided
+          sql = `
+            INSERT INTO orders (
+              category,
+              supplier_id,
+              quantity,
+              offer_gold,
+              selected_karats,
+              karat_values,
+              design_image,
+              status,
+              branch_id,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `;
+
+          values = [
+            category,
+            supplier,
+            quantity,
+            offerGold === 'yes' ? 1 : 0,
+            karatsJson,
+            karatValuesJson,
+            null, // Initially set image to null
+            'pending', // Default status
+            branch_id
+          ];
+      } else {
+          // Use the original query if branch_id column doesn't exist or branch_id is not provided
+          sql = `
+            INSERT INTO orders (
+              category,
+              supplier_id,
+              quantity,
+              offer_gold,
+              selected_karats,
+              karat_values,
+              design_image,
+              status,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `;
+
+          values = [
+            category,
+            supplier,
+            quantity,
+            offerGold === 'yes' ? 1 : 0,
+            karatsJson,
+            karatValuesJson,
+            null, // Initially set image to null
+            'pending' // Default status
+          ];
+        }
+      }
+
+      con.query(sql, values, (err, result) => {
+        if (err) {
+          console.error("Error creating order:", err);
+          return res.status(500).json({ message: "Database error", error: err.message });
+        }
+
+        const orderId = result.insertId;
+        console.log(`Order created with ID: ${orderId}`);
+
+        // If there's an image, save it and update the order
+        if (image) {
+          try {
+            const imagePath = saveBase64Image(image, orderId);
+
+            if (imagePath) {
+              // Update the order with the image path
+              const updateSql = "UPDATE orders SET design_image = ? WHERE order_id = ?";
+              con.query(updateSql, [imagePath, orderId], (updateErr) => {
+                if (updateErr) {
+                  console.error("Error updating order with image:", updateErr);
+                  // Still return success, just log the error
+                }
+
+                res.status(201).json({
+                  message: "Order created successfully with image",
+                  orderId: orderId,
+                  imagePath: imagePath
+                });
+              });
+            } else {
+              // Return success even if image saving failed
+              res.status(201).json({
+                message: "Order created successfully, but image could not be saved",
+                orderId: orderId
+              });
+            }
+          } catch (imageErr) {
+            console.error("Error saving image:", imageErr);
+            res.status(201).json({
+              message: "Order created successfully, but image could not be saved",
+              orderId: orderId,
+              imageError: imageErr.message
+            });
+          }
+        } else {
+          // No image to save
+          res.status(201).json({
+            message: "Order created successfully",
+            orderId: orderId
+          });
+        }
+      });
     });
   });
 });

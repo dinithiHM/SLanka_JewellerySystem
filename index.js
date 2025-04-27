@@ -31,6 +31,7 @@ import { fixPaymentStatusDirectlyRouter } from "./Routes/fixPaymentStatusDirectl
 import branchesRouter from "./Routes/branchesRoutes.js"; // ✅ Import Branches Routes
 import { assayReportRouter } from "./Routes/assayReportRoutes.new.js"; // ✅ Import Assay Report Routes
 import { authRouter } from "./Routes/authRoute.js"; // ✅ Import Auth Routes
+import { goldPriceRouter } from "./Routes/goldPriceRoutes.js"; // ✅ Import Gold Price Routes
 
 const app = express();
 
@@ -103,6 +104,7 @@ app.use("/maintenance", fixAllAdvancePaymentsRouter); // ✅ Add fix all advance
 app.use("/maintenance", fixPaymentStatusDirectlyRouter); // ✅ Add fix payment status directly routes
 app.use("/branches", branchesRouter); // ✅ Add branches routes
 app.use("/assay-reports", assayReportRouter); // ✅ Add assay report routes
+app.use("/gold-prices", goldPriceRouter); // ✅ Add gold price routes
 
 // ✅ Start the server
 const PORT = 3002;
