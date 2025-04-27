@@ -28,15 +28,35 @@ const AddOrderPage = () => {
   const [imagePreview, setImagePreview] = useState<string | 'loading' | null>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
+  // Gold karat purity mapping
+  type KaratKey = '24K' | '23K' | '22K' | '21K' | '20K' | '19K' | '18K' | '16K' | '14K' | '10K';
+
+  const karatPurityMap: Record<KaratKey, { purity: number; label: string }> = {
+    '24K': { purity: 1.0000, label: '24-Karat Gold (99.99% Pure)' },
+    '23K': { purity: 0.9583, label: '23-Karat Gold (96% Pure)' },
+    '22K': { purity: 0.9167, label: '22-Karat Gold (92% Pure)' },
+    '21K': { purity: 0.8750, label: '21-Karat Gold (88% Pure)' },
+    '20K': { purity: 0.8333, label: '20-Karat Gold (83% Pure)' },
+    '19K': { purity: 0.7917, label: '19-Karat Gold (79% Pure)' },
+    '18K': { purity: 0.7500, label: '18-Karat Gold (75% Pure)' },
+    '16K': { purity: 0.6667, label: '16-Karat Gold (67% Pure)' },
+    '14K': { purity: 0.5833, label: '14-Karat Gold (58% Pure)' },
+    '10K': { purity: 0.4167, label: '10-Karat Gold (42% Pure)' },
+  };
+
   // Price calculation states
   const [showPriceCalculation, setShowPriceCalculation] = useState(false);
   const [goldPricePerGram, setGoldPricePerGram] = useState(0);
+  const [baseGoldPrice, setBaseGoldPrice] = useState(0); // 24K price from API
+  const [selectedKarat, setSelectedKarat] = useState<KaratKey>('24K');
   const [weightInGrams, setWeightInGrams] = useState(0);
   const [makingCharges, setMakingCharges] = useState(0);
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState(0);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [isLoadingGoldPrice, setIsLoadingGoldPrice] = useState(false);
+  const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string | null>(null);
 
   // User info state
   const [userRole, setUserRole] = useState<string>('');
@@ -139,6 +159,52 @@ const AddOrderPage = () => {
     });
   };
 
+  // Function to fetch current gold price
+  const fetchGoldPrice = async () => {
+    try {
+      setIsLoadingGoldPrice(true);
+      const response = await fetch('http://localhost:3002/gold-prices/current-price');
+      const data = await response.json();
+
+      if (data.success) {
+        // Store the 24K base price
+        setBaseGoldPrice(data.price);
+
+        // Calculate the price based on selected karat purity
+        const purity = karatPurityMap[selectedKarat].purity;
+        const adjustedPrice = data.price * purity;
+        setGoldPricePerGram(adjustedPrice);
+
+        // Format the timestamp
+        const date = new Date(data.timestamp);
+        setGoldPriceLastUpdated(date.toLocaleString());
+      } else {
+        console.error('Failed to fetch gold price:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching gold price:', error);
+    } finally {
+      setIsLoadingGoldPrice(false);
+    }
+  };
+
+  // Function to update gold price when karat changes
+  const updateGoldPriceForKarat = (karat: KaratKey) => {
+    setSelectedKarat(karat);
+    if (baseGoldPrice > 0) {
+      const purity = karatPurityMap[karat].purity;
+      const adjustedPrice = baseGoldPrice * purity;
+      setGoldPricePerGram(adjustedPrice);
+    }
+  };
+
+  // Fetch gold price when price calculator is shown
+  useEffect(() => {
+    if (showPriceCalculation) {
+      fetchGoldPrice();
+    }
+  }, [showPriceCalculation]);
+
   // Calculate estimated price
   useEffect(() => {
     if (!useCustomPrice) {
@@ -219,6 +285,8 @@ const AddOrderPage = () => {
         image: imagePreview,
         branch_id: userBranchId, // Include branch_id from user info
         goldPricePerGram,
+        selectedKarat, // Include the selected karat from price calculator
+        goldPurity: karatPurityMap[selectedKarat].purity, // Include the purity percentage
         weightInGrams,
         makingCharges,
         estimatedPrice: useCustomPrice ? customPrice : estimatedPrice,
@@ -419,18 +487,55 @@ const AddOrderPage = () => {
               <h3 className="text-lg font-semibold mb-4">Price Calculation</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Gold Karat Selection */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gold Karat</label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={selectedKarat}
+                    onChange={(e) => updateGoldPriceForKarat(e.target.value as KaratKey)}
+                    disabled={useCustomPrice}
+                  >
+                    {Object.entries(karatPurityMap).map(([karat, { label }]) => (
+                      <option key={karat} value={karat}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Gold Price Per Gram */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Gold Price (Rs./g)</label>
-                  <input
-                    type="number"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={goldPricePerGram}
-                    onChange={(e) => setGoldPricePerGram(Number(e.target.value))}
-                    disabled={useCustomPrice}
-                    min="0"
-                    placeholder="Enter gold price per gram"
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium">Gold Price (Rs./g)</label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                      onClick={fetchGoldPrice}
+                      disabled={isLoadingGoldPrice}
+                    >
+                      {isLoadingGoldPrice ? 'Loading...' : 'Refresh'}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      className={`w-full p-2 border border-gray-300 rounded-md ${isLoadingGoldPrice ? 'bg-gray-100' : ''}`}
+                      value={goldPricePerGram.toFixed(2)}
+                      onChange={(e) => setGoldPricePerGram(Number(e.target.value))}
+                      disabled={useCustomPrice || isLoadingGoldPrice}
+                      min="0"
+                      placeholder="Enter gold price per gram"
+                    />
+                    {isLoadingGoldPrice && (
+                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  {goldPriceLastUpdated && (
+                    <p className="text-xs text-gray-500 mt-1">Last updated: {goldPriceLastUpdated}</p>
+                  )}
                 </div>
 
                 {/* Weight in Grams */}
@@ -495,14 +600,14 @@ const AddOrderPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Estimate Price (per unit)</label>
                   <div className="p-2 bg-white border border-gray-300 rounded-md">
-                    Rs. {useCustomPrice ? customPrice.toLocaleString() : estimatedPrice.toLocaleString()}
+                    Rs. {useCustomPrice ? customPrice.toFixed(2).toLocaleString() : estimatedPrice.toFixed(2).toLocaleString()}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">Total Amount</label>
                   <div className="p-2 bg-white border border-gray-300 rounded-md font-semibold text-yellow-700">
-                    Rs. {totalAmount.toLocaleString()}
+                    Rs. {totalAmount.toFixed(2).toLocaleString()}
                   </div>
                 </div>
               </div>
