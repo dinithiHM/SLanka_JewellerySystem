@@ -229,8 +229,8 @@ const AddOrderPage = () => {
     const minPayment = total * 0.25;
     setMinAdvancePayment(minPayment);
 
-    // Set default advance payment to the minimum required
-    if (advancePaymentAmount < minPayment) {
+    // Only set default advance payment if it's the first calculation or currently zero
+    if (advancePaymentAmount === 0) {
       setAdvancePaymentAmount(minPayment);
     }
   }, [goldPricePerGram, weightInGrams, makingCharges, useCustomPrice, customPrice, quantity, estimatedPrice, advancePaymentAmount]);
@@ -290,7 +290,14 @@ const AddOrderPage = () => {
     try {
       // Validate advance payment
       if (totalAmount > 0 && advancePaymentAmount < minAdvancePayment) {
-        alert(`Advance payment must be at least ${minAdvancePayment.toFixed(2)} Rs. (25% of total amount)`);
+        // Scroll to the payment section
+        const paymentSection = document.getElementById('supplier-payment-section');
+        if (paymentSection) {
+          paymentSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Show alert with formatted amount
+        alert(`Advance payment must be at least ${minAdvancePayment.toFixed(2).toLocaleString()} Rs. (25% of total amount)`);
         return;
       }
 
@@ -467,8 +474,23 @@ const AddOrderPage = () => {
               type="number"
               className="w-full p-2 border border-gray-300 rounded-md"
               value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
+              onChange={(e) => {
+                // Parse as integer to avoid floating point issues
+                const newValue = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
+                // Ensure it's a valid number
+                if (!isNaN(newValue)) {
+                  setQuantity(newValue);
+                }
+              }}
+              onBlur={(e) => {
+                // Ensure minimum value of 1 on blur
+                const currentValue = parseInt(e.target.value, 10);
+                if (isNaN(currentValue) || currentValue < 1) {
+                  setQuantity(1);
+                }
+              }}
               min="1"
+              step="1" // Ensure only whole numbers
               required
             />
           </div>
@@ -606,10 +628,15 @@ const AddOrderPage = () => {
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={weightInGrams}
-                    onChange={(e) => setWeightInGrams(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newValue = e.target.value === '' ? 0 : parseFloat(parseFloat(e.target.value).toFixed(3));
+                      if (!isNaN(newValue)) {
+                        setWeightInGrams(newValue);
+                      }
+                    }}
                     disabled={useCustomPrice}
                     min="0"
-                    step="0.1"
+                    step="any" // Allow any decimal input
                     placeholder="Enter weight in grams"
                   />
                 </div>
@@ -621,9 +648,15 @@ const AddOrderPage = () => {
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={makingCharges}
-                    onChange={(e) => setMakingCharges(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newValue = e.target.value === '' ? 0 : parseFloat(parseFloat(e.target.value).toFixed(2));
+                      if (!isNaN(newValue)) {
+                        setMakingCharges(newValue);
+                      }
+                    }}
                     disabled={useCustomPrice}
                     min="0"
+                    step="any" // Allow any decimal input
                     placeholder="Enter making charges"
                   />
                 </div>
@@ -649,8 +682,14 @@ const AddOrderPage = () => {
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={customPrice}
-                    onChange={(e) => setCustomPrice(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newValue = e.target.value === '' ? 0 : parseFloat(parseFloat(e.target.value).toFixed(2));
+                      if (!isNaN(newValue)) {
+                        setCustomPrice(newValue);
+                      }
+                    }}
                     min="0"
+                    step="any" // Allow any decimal input
                     placeholder="Enter custom price"
                   />
                 </div>
@@ -721,7 +760,7 @@ const AddOrderPage = () => {
 
           {/* Supplier Payment Section - Only show if total amount is calculated */}
           {totalAmount > 0 && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div id="supplier-payment-section" className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h3 className="text-lg font-semibold mb-4">Supplier Payment</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -732,18 +771,54 @@ const AddOrderPage = () => {
                     <span className="text-red-500 ml-1">*</span>
                     <span className="text-xs text-gray-500 ml-2">(Min: {minAdvancePayment.toFixed(2).toLocaleString()} Rs.)</span>
                   </label>
-                  <input
-                    type="number"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={advancePaymentAmount}
-                    onChange={(e) => setAdvancePaymentAmount(Number(e.target.value))}
-                    min={minAdvancePayment}
-                    step="0.01"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      id="advance-payment-input"
+                      type="text"
+                      className={`w-full p-2 border ${advancePaymentAmount < minAdvancePayment ? 'border-red-300' : 'border-gray-300'} rounded-md`}
+                      defaultValue={advancePaymentAmount.toString()}
+                      onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                        const target = e.target as HTMLInputElement;
+                        // Allow direct typing of any value
+                        let inputValue = target.value.replace(/[^\d.]/g, ''); // Remove non-numeric characters except decimal
+
+                        // Ensure only one decimal point
+                        const decimalCount = (inputValue.match(/\./g) || []).length;
+                        if (decimalCount > 1) {
+                          const parts = inputValue.split('.');
+                          inputValue = parts[0] + '.' + parts.slice(1).join('');
+                        }
+
+                        // Update the input value directly
+                        target.value = inputValue;
+
+                        // Update React state
+                        const newValue = inputValue === '' ? 0 : parseFloat(inputValue);
+                        if (!isNaN(newValue)) {
+                          setAdvancePaymentAmount(newValue);
+                        }
+                      }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs bg-blue-500 text-white px-2 py-1 rounded"
+                      onClick={() => {
+                        setAdvancePaymentAmount(minAdvancePayment);
+                        // Also update the input field directly
+                        const inputElement = document.querySelector('#advance-payment-input') as HTMLInputElement;
+                        if (inputElement) {
+                          inputElement.value = minAdvancePayment.toString();
+                        }
+                      }}
+                      title="Set to minimum required amount"
+                    >
+                      Set Min
+                    </button>
+                  </div>
                   {advancePaymentAmount < minAdvancePayment && (
                     <p className="text-red-500 text-xs mt-1">
-                      Advance payment must be at least 25% of the total amount
+                      Advance payment must be at least {minAdvancePayment.toFixed(2).toLocaleString()} Rs. (25% of total)
                     </p>
                   )}
                 </div>
