@@ -28,6 +28,16 @@ const AddOrderPage = () => {
   const [imagePreview, setImagePreview] = useState<string | 'loading' | null>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
+  // Price calculation states
+  const [showPriceCalculation, setShowPriceCalculation] = useState(false);
+  const [goldPricePerGram, setGoldPricePerGram] = useState(0);
+  const [weightInGrams, setWeightInGrams] = useState(0);
+  const [makingCharges, setMakingCharges] = useState(0);
+  const [useCustomPrice, setUseCustomPrice] = useState(false);
+  const [customPrice, setCustomPrice] = useState(0);
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
+
   // User info state
   const [userRole, setUserRole] = useState<string>('');
   const [userBranchId, setUserBranchId] = useState<number | null>(null);
@@ -129,6 +139,20 @@ const AddOrderPage = () => {
     });
   };
 
+  // Calculate estimated price
+  useEffect(() => {
+    if (!useCustomPrice) {
+      // Calculate based on gold price, weight, and making charges
+      const calculatedPrice = (goldPricePerGram * weightInGrams) + makingCharges;
+      setEstimatedPrice(calculatedPrice);
+      setCustomPrice(calculatedPrice); // Keep custom price in sync
+    }
+
+    // Calculate total amount
+    const pricePerUnit = useCustomPrice ? customPrice : estimatedPrice;
+    setTotalAmount(pricePerUnit * quantity);
+  }, [goldPricePerGram, weightInGrams, makingCharges, useCustomPrice, customPrice, quantity, estimatedPrice]);
+
   // Handle image upload with compression
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,7 +217,12 @@ const AddOrderPage = () => {
           Object.entries(karatValues).filter(([k]) => selectedKarats[k as keyof typeof selectedKarats])
         ),
         image: imagePreview,
-        branch_id: userBranchId // Include branch_id from user info
+        branch_id: userBranchId, // Include branch_id from user info
+        goldPricePerGram,
+        weightInGrams,
+        makingCharges,
+        estimatedPrice: useCustomPrice ? customPrice : estimatedPrice,
+        totalAmount
       };
 
       console.log('Including branch_id:', userBranchId);
@@ -237,6 +266,16 @@ const AddOrderPage = () => {
         '16KT': 50,
       });
       setImagePreview(null);
+
+      // Reset price calculation fields
+      setShowPriceCalculation(false);
+      setGoldPricePerGram(0);
+      setWeightInGrams(0);
+      setMakingCharges(0);
+      setUseCustomPrice(false);
+      setCustomPrice(0);
+      setEstimatedPrice(0);
+      setTotalAmount(0);
 
     } catch (error) {
       console.error('Error submitting order:', error);
@@ -358,6 +397,113 @@ const AddOrderPage = () => {
                       />
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Price Calculation Button */}
+          <div className="mb-4">
+            <button
+              type="button"
+              className="px-4 py-2 bg-yellow-400 text-black rounded-md hover:bg-yellow-500 transition-colors"
+              onClick={() => setShowPriceCalculation(!showPriceCalculation)}
+            >
+              {showPriceCalculation ? 'Hide Price Calculator' : 'Show Price Calculator'}
+            </button>
+          </div>
+
+          {/* Price Calculation Section - Only show when button is clicked */}
+          {showPriceCalculation && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4">Price Calculation</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Gold Price Per Gram */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gold Price (Rs./g)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={goldPricePerGram}
+                    onChange={(e) => setGoldPricePerGram(Number(e.target.value))}
+                    disabled={useCustomPrice}
+                    min="0"
+                    placeholder="Enter gold price per gram"
+                  />
+                </div>
+
+                {/* Weight in Grams */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Weight (g)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={weightInGrams}
+                    onChange={(e) => setWeightInGrams(Number(e.target.value))}
+                    disabled={useCustomPrice}
+                    min="0"
+                    step="0.1"
+                    placeholder="Enter weight in grams"
+                  />
+                </div>
+
+                {/* Making Charges */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Making Charges (Rs.)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={makingCharges}
+                    onChange={(e) => setMakingCharges(Number(e.target.value))}
+                    disabled={useCustomPrice}
+                    min="0"
+                    placeholder="Enter making charges"
+                  />
+                </div>
+
+                {/* Custom Price Checkbox */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="useCustomPrice"
+                    checked={useCustomPrice}
+                    onChange={() => setUseCustomPrice(!useCustomPrice)}
+                    className="mr-2"
+                  />
+                  <label htmlFor="useCustomPrice" className="text-sm font-medium">Use custom estimate price</label>
+                </div>
+              </div>
+
+              {/* Custom Price Input - Only show if useCustomPrice is true */}
+              {useCustomPrice && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Custom Estimate Price (per unit)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={customPrice}
+                    onChange={(e) => setCustomPrice(Number(e.target.value))}
+                    min="0"
+                    placeholder="Enter custom price"
+                  />
+                </div>
+              )}
+
+              {/* Calculated Prices */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estimate Price (per unit)</label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md">
+                    Rs. {useCustomPrice ? customPrice.toLocaleString() : estimatedPrice.toLocaleString()}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total Amount</label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md font-semibold text-yellow-700">
+                    Rs. {totalAmount.toLocaleString()}
+                  </div>
                 </div>
               </div>
             </div>
