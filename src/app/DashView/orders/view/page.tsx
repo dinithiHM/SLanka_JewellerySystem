@@ -21,6 +21,25 @@ interface Order {
   branch_name?: string;
   created_by?: number;
   store_manager_name?: string;
+
+  // Gold and pricing details
+  gold_price_per_gram?: number;
+  selectedKarat?: string;
+  goldPurity?: number;
+  weight_in_grams?: number;
+  making_charges?: number;
+  additional_materials_charges?: number;
+  base_estimated_price?: number;
+  estimated_price?: number;
+  total_amount?: number;
+  useCustomPrice?: boolean;
+
+  // Payment details
+  advance_payment_amount?: number;
+  total_payment_amount?: number;
+  payment_status?: string;
+  payment_method?: string;
+  payment_notes?: string;
 }
 
 const ViewOrdersPage = () => {
@@ -174,7 +193,23 @@ const ViewOrdersPage = () => {
             design_image: 'images/sample_wedding_set.jpg',
             design_image_url: 'http://localhost:3002/uploads/images/sample_wedding_set.jpg',
             status: 'pending',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            // Gold and pricing details
+            gold_price_per_gram: 31771.17,
+            selectedKarat: '24KT',
+            goldPurity: 0.999,
+            weight_in_grams: 15.5,
+            making_charges: 25000,
+            additional_materials_charges: 8500,
+            base_estimated_price: 492453.14, // gold_price_per_gram * weight_in_grams
+            estimated_price: 525953.14, // base_estimated_price + making_charges + additional_materials_charges
+            total_amount: 5259531.40, // estimated_price * quantity
+            // Payment details
+            advance_payment_amount: 1500000,
+            total_payment_amount: 5259531.40,
+            payment_status: 'Partial',
+            payment_method: 'Bank Transfer',
+            payment_notes: 'Remaining payment due on delivery'
           },
           {
             order_id: 2,
@@ -187,7 +222,22 @@ const ViewOrdersPage = () => {
             design_image: 'images/sample_ring.jpg',
             design_image_url: 'http://localhost:3002/uploads/images/sample_ring.jpg',
             status: 'completed',
-            created_at: new Date(Date.now() - 86400000).toISOString() // Yesterday
+            created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+            // Gold and pricing details
+            gold_price_per_gram: 29125.24,
+            selectedKarat: '22KT',
+            goldPurity: 0.916,
+            weight_in_grams: 8.2,
+            making_charges: 12000,
+            additional_materials_charges: 3500,
+            base_estimated_price: 238826.97, // gold_price_per_gram * weight_in_grams
+            estimated_price: 254326.97, // base_estimated_price + making_charges + additional_materials_charges
+            total_amount: 5086539.40, // estimated_price * quantity
+            // Payment details
+            advance_payment_amount: 5086539.40,
+            total_payment_amount: 5086539.40,
+            payment_status: 'Paid',
+            payment_method: 'Cash'
           },
           {
             order_id: 3,
@@ -200,7 +250,23 @@ const ViewOrdersPage = () => {
             design_image: 'images/sample_necklace.jpg',
             design_image_url: 'http://localhost:3002/uploads/images/sample_necklace.jpg',
             status: 'cancelled',
-            created_at: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+            created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+            // Gold and pricing details
+            gold_price_per_gram: 30125.50,
+            selectedKarat: '21KT',
+            goldPurity: 0.875,
+            weight_in_grams: 25.8,
+            making_charges: 35000,
+            additional_materials_charges: 12500,
+            base_estimated_price: 777237.90, // gold_price_per_gram * weight_in_grams
+            estimated_price: 824737.90, // base_estimated_price + making_charges + additional_materials_charges
+            total_amount: 4123689.50, // estimated_price * quantity
+            useCustomPrice: true,
+            // Payment details
+            advance_payment_amount: 1030922.38,
+            total_payment_amount: 4123689.50,
+            payment_status: 'Partial',
+            payment_method: 'Credit Card'
           }
         ]);
 
