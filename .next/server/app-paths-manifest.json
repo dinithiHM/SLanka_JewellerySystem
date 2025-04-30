@@ -4,7 +4,8 @@
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/login/page": "app/login/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/DashView/orders/page": "app/DashView/orders/page.js",
   "/DashView/orders/add/page": "app/DashView/orders/add/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
+  "/DashView/orders/view/page": "app/DashView/orders/view/page.js"
 }
