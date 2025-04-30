@@ -329,6 +329,8 @@ router.post("/create", (req, res) => {
           ADD COLUMN gold_price_per_gram DECIMAL(10,2) NULL,
           ADD COLUMN weight_in_grams DECIMAL(10,2) NULL,
           ADD COLUMN making_charges DECIMAL(10,2) NULL,
+          ADD COLUMN additional_materials_charges DECIMAL(10,2) NULL,
+          ADD COLUMN base_estimated_price DECIMAL(10,2) NULL,
           ADD COLUMN estimated_price DECIMAL(10,2) NULL,
           ADD COLUMN total_amount DECIMAL(10,2) NULL
         `;
@@ -342,6 +344,28 @@ router.post("/create", (req, res) => {
             console.log("Added price columns to orders table");
           }
         });
+      } else {
+        // Check if additional materials charges column exists
+        con.query("SHOW COLUMNS FROM orders LIKE 'additional_materials_charges'", (additionalColumnErr, additionalColumnResults) => {
+          if (additionalColumnErr) {
+            console.error("Error checking for additional materials charges column:", additionalColumnErr);
+          } else if (additionalColumnResults.length === 0) {
+            // Add the additional columns if they don't exist
+            const alterTableSql = `
+              ALTER TABLE orders
+              ADD COLUMN additional_materials_charges DECIMAL(10,2) NULL,
+              ADD COLUMN base_estimated_price DECIMAL(10,2) NULL
+            `;
+
+            con.query(alterTableSql, (alterErr) => {
+              if (alterErr) {
+                console.error("Error adding additional materials charges column:", alterErr);
+              } else {
+                console.log("Added additional materials charges column to orders table");
+              }
+            });
+          }
+        });
       }
 
       // First insert the order without the image
@@ -352,7 +376,9 @@ router.post("/create", (req, res) => {
       const goldPricePerGram = req.body.goldPricePerGram || null;
       const weightInGrams = req.body.weightInGrams || null;
       const makingCharges = req.body.makingCharges || null;
-      const estimatedPrice = req.body.estimatedPrice || null;
+      const additionalMaterialsCharges = req.body.additionalMaterialsCharges || null;
+      const baseEstimatedPrice = req.body.baseEstimatedPrice || null; // Base gold price (gold * weight)
+      const estimatedPrice = req.body.estimatedPrice || null; // Total estimate with all charges
       const totalAmount = req.body.totalAmount || null;
 
       // Extract payment fields from request
@@ -378,13 +404,15 @@ router.post("/create", (req, res) => {
               gold_price_per_gram,
               weight_in_grams,
               making_charges,
+              additional_materials_charges,
+              base_estimated_price,
               estimated_price,
               total_amount,
               advance_payment_amount,
               total_payment_amount,
               payment_status,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -400,6 +428,8 @@ router.post("/create", (req, res) => {
             goldPricePerGram,
             weightInGrams,
             makingCharges,
+            additionalMaterialsCharges,
+            baseEstimatedPrice,
             estimatedPrice,
             totalAmount,
             advancePaymentAmount,
@@ -421,13 +451,15 @@ router.post("/create", (req, res) => {
               gold_price_per_gram,
               weight_in_grams,
               making_charges,
+              additional_materials_charges,
+              base_estimated_price,
               estimated_price,
               total_amount,
               advance_payment_amount,
               total_payment_amount,
               payment_status,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -442,6 +474,8 @@ router.post("/create", (req, res) => {
             goldPricePerGram,
             weightInGrams,
             makingCharges,
+            additionalMaterialsCharges,
+            baseEstimatedPrice,
             estimatedPrice,
             totalAmount,
             advancePaymentAmount,
