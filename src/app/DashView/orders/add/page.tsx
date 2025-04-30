@@ -51,9 +51,11 @@ const AddOrderPage = () => {
   const [selectedKarat, setSelectedKarat] = useState<KaratKey>('24K');
   const [weightInGrams, setWeightInGrams] = useState(0);
   const [makingCharges, setMakingCharges] = useState(0);
+  const [additionalMaterialsCharges, setAdditionalMaterialsCharges] = useState(0); // For copper and other metals
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState(0);
-  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [estimatedPrice, setEstimatedPrice] = useState(0); // Base estimate (gold + weight)
+  const [totalEstimatedPrice, setTotalEstimatedPrice] = useState(0); // Total estimate including all charges
   const [totalAmount, setTotalAmount] = useState(0);
   const [isLoadingGoldPrice, setIsLoadingGoldPrice] = useState(false);
   const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string | null>(null);
@@ -214,14 +216,20 @@ const AddOrderPage = () => {
   // Calculate estimated price
   useEffect(() => {
     if (!useCustomPrice) {
-      // Calculate based on gold price, weight, and making charges
-      const calculatedPrice = (goldPricePerGram * weightInGrams) + makingCharges;
-      setEstimatedPrice(calculatedPrice);
-      setCustomPrice(calculatedPrice); // Keep custom price in sync
+      // Calculate base estimate (gold price * weight)
+      const baseEstimate = goldPricePerGram * weightInGrams;
+      setEstimatedPrice(baseEstimate);
+
+      // Calculate total estimate including all charges
+      const totalEstimate = baseEstimate + makingCharges + additionalMaterialsCharges;
+      setTotalEstimatedPrice(totalEstimate);
+
+      // Keep custom price in sync with total estimate
+      setCustomPrice(totalEstimate);
     }
 
     // Calculate total amount
-    const pricePerUnit = useCustomPrice ? customPrice : estimatedPrice;
+    const pricePerUnit = useCustomPrice ? customPrice : totalEstimatedPrice;
     const total = pricePerUnit * quantity;
     setTotalAmount(total);
 
@@ -233,7 +241,7 @@ const AddOrderPage = () => {
     if (advancePaymentAmount === 0) {
       setAdvancePaymentAmount(minPayment);
     }
-  }, [goldPricePerGram, weightInGrams, makingCharges, useCustomPrice, customPrice, quantity, estimatedPrice, advancePaymentAmount]);
+  }, [goldPricePerGram, weightInGrams, makingCharges, additionalMaterialsCharges, useCustomPrice, customPrice, quantity, estimatedPrice, totalEstimatedPrice, advancePaymentAmount]);
 
   // Handle image upload with compression
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,7 +326,9 @@ const AddOrderPage = () => {
         goldPurity: karatPurityMap[selectedKarat].purity, // Include the purity percentage
         weightInGrams,
         makingCharges,
-        estimatedPrice: useCustomPrice ? customPrice : estimatedPrice,
+        additionalMaterialsCharges,
+        baseEstimatedPrice: estimatedPrice, // Base estimate (gold * weight)
+        estimatedPrice: useCustomPrice ? customPrice : totalEstimatedPrice, // Total estimate with all charges
         totalAmount,
         // Payment information
         advance_payment_amount: advancePaymentAmount,
@@ -408,9 +418,11 @@ const AddOrderPage = () => {
       setGoldPricePerGram(0);
       setWeightInGrams(0);
       setMakingCharges(0);
+      setAdditionalMaterialsCharges(0);
       setUseCustomPrice(false);
       setCustomPrice(0);
       setEstimatedPrice(0);
+      setTotalEstimatedPrice(0);
       setTotalAmount(0);
 
     } catch (error) {
@@ -661,6 +673,31 @@ const AddOrderPage = () => {
                   />
                 </div>
 
+                {/* Additional Materials Charges */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Additional Materials Charges (Rs.)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={additionalMaterialsCharges}
+                      onChange={(e) => {
+                        const newValue = e.target.value === '' ? 0 : parseFloat(parseFloat(e.target.value).toFixed(2));
+                        if (!isNaN(newValue)) {
+                          setAdditionalMaterialsCharges(newValue);
+                        }
+                      }}
+                      disabled={useCustomPrice}
+                      min="0"
+                      step="any" // Allow any decimal input
+                      placeholder="Enter charges for copper, other metals, etc."
+                    />
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                      <span className="text-xs text-gray-500">For Cu, other metals</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Custom Price Checkbox */}
                 <div className="flex items-center">
                   <input
@@ -676,8 +713,18 @@ const AddOrderPage = () => {
 
               {/* Custom Price Input - Only show if useCustomPrice is true */}
               {useCustomPrice && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Custom Estimate Price (per unit)</label>
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium">Custom Estimate Price (per unit)</label>
+                    <button
+                      type="button"
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                      onClick={() => setCustomPrice(totalEstimatedPrice)}
+                      title="Reset to calculated estimate"
+                    >
+                      Reset to calculated price
+                    </button>
+                  </div>
                   <input
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
@@ -692,22 +739,60 @@ const AddOrderPage = () => {
                     step="any" // Allow any decimal input
                     placeholder="Enter custom price"
                   />
+                  <p className="text-xs text-gray-600 mt-1">
+                    Enter the final price including all charges, profit margin, and any negotiated adjustments.
+                    <br />
+                    Calculated estimate: Rs. {totalEstimatedPrice.toFixed(2).toLocaleString()}
+                  </p>
                 </div>
               )}
 
               {/* Calculated Prices */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+                {/* Base Estimate (Gold * Weight) */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Estimate Price (per unit)</label>
+                  <label className="block text-sm font-medium mb-1">Base Gold Price (per unit)</label>
                   <div className="p-2 bg-white border border-gray-300 rounded-md">
-                    Rs. {useCustomPrice ? customPrice.toFixed(2).toLocaleString() : estimatedPrice.toFixed(2).toLocaleString()}
+                    Rs. {estimatedPrice.toFixed(2).toLocaleString()}
+                    <span className="text-xs text-gray-500 block">Gold price × weight</span>
                   </div>
                 </div>
 
+                {/* Total Estimate with All Charges */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Total Amount</label>
+                  <label className="block text-sm font-medium mb-1">
+                    {useCustomPrice ? "Custom Estimate Price (per unit)" : "Total Estimate Price (per unit)"}
+                  </label>
+                  <div className="p-2 bg-white border border-gray-300 rounded-md">
+                    Rs. {useCustomPrice ? customPrice.toFixed(2).toLocaleString() : totalEstimatedPrice.toFixed(2).toLocaleString()}
+                    <span className="text-xs text-gray-500 block">
+                      {useCustomPrice ? "Custom price" : "Gold + making + additional materials"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Breakdown of Charges */}
+                {!useCustomPrice && (
+                  <div className="md:col-span-2">
+                    <div className="p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>Gold Cost: Rs. {estimatedPrice.toFixed(2).toLocaleString()}</div>
+                        <div>Making Charges: Rs. {makingCharges.toFixed(2).toLocaleString()}</div>
+                        <div>Additional Materials: Rs. {additionalMaterialsCharges.toFixed(2).toLocaleString()}</div>
+                        <div className="font-semibold">Total: Rs. {totalEstimatedPrice.toFixed(2).toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Total Amount */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Total Order Amount</label>
                   <div className="p-2 bg-white border border-gray-300 rounded-md font-semibold text-yellow-700">
                     Rs. {totalAmount.toFixed(2).toLocaleString()}
+                    <span className="text-xs text-gray-500 block">
+                      {quantity} {quantity === 1 ? 'unit' : 'units'} × Rs. {(useCustomPrice ? customPrice : totalEstimatedPrice).toFixed(2).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
