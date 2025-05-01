@@ -456,17 +456,42 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/image.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$imageCompression$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/imageCompression.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$SupplierCategoryChart$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/SupplierCategoryChart.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/navigation.js [app-ssr] (ecmascript)");
 "use client";
 ;
 ;
 ;
 ;
 ;
+;
 const AddOrderPage = ()=>{
+    const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useSearchParams"])();
+    // Get query parameters
+    const orderIdFromQuery = searchParams.get('order_id');
+    const categoryFromQuery = searchParams.get('category');
+    const supplierIdFromQuery = searchParams.get('supplier_id');
+    const quantityFromQuery = searchParams.get('quantity');
+    const offerGoldFromQuery = searchParams.get('offer_gold');
+    const selectedKaratsFromQuery = searchParams.get('selected_karats');
+    const karatValuesFromQuery = searchParams.get('karat_values');
+    // Gold and pricing details
+    const goldPricePerGramFromQuery = searchParams.get('gold_price_per_gram');
+    const selectedKaratFromQuery = searchParams.get('selected_karat');
+    const goldPurityFromQuery = searchParams.get('gold_purity');
+    const weightInGramsFromQuery = searchParams.get('weight_in_grams');
+    const makingChargesFromQuery = searchParams.get('making_charges');
+    const additionalMaterialsChargesFromQuery = searchParams.get('additional_materials_charges');
+    const baseEstimatedPriceFromQuery = searchParams.get('base_estimated_price');
+    const estimatedPriceFromQuery = searchParams.get('estimated_price');
+    const totalAmountFromQuery = searchParams.get('total_amount');
+    // Payment information
+    const advancePaymentFromQuery = searchParams.get('advance_payment');
+    const remainingBalanceFromQuery = searchParams.get('remaining_balance');
+    const paymentStatusFromQuery = searchParams.get('payment_status');
     // State for form fields
-    const [category, setCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
-    const [supplier, setSupplier] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
-    const [quantity, setQuantity] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(20);
+    const [category, setCategory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(categoryFromQuery || '');
+    const [supplier, setSupplier] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(supplierIdFromQuery || '');
+    const [quantity, setQuantity] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(quantityFromQuery ? parseInt(quantityFromQuery, 10) : 20);
     const [offerGold, setOfferGold] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('yes');
     const [selectedKarats, setSelectedKarats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({
         '24KT': false,
@@ -542,10 +567,12 @@ const AddOrderPage = ()=>{
     const [isLoadingGoldPrice, setIsLoadingGoldPrice] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [goldPriceLastUpdated, setGoldPriceLastUpdated] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     // Supplier payment states
-    const [advancePaymentAmount, setAdvancePaymentAmount] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
+    const [advancePaymentAmount, setAdvancePaymentAmount] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(advancePaymentFromQuery ? parseFloat(advancePaymentFromQuery) : 0);
     const [paymentMethod, setPaymentMethod] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('Cash');
     const [paymentNotes, setPaymentNotes] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [minAdvancePayment, setMinAdvancePayment] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0); // 25% of total
+    // Set initial total amount if provided in query
+    const [initialTotalAmount] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(totalAmountFromQuery ? parseFloat(totalAmountFromQuery) : 0);
     // User info state
     const [userRole, setUserRole] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [userBranchId, setUserBranchId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -723,6 +750,51 @@ const AddOrderPage = ()=>{
     }, [
         showPriceCalculation
     ]);
+    // Set total amount and show price calculation if we have query parameters
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (totalAmountFromQuery) {
+            setShowPriceCalculation(true);
+            setTotalAmount(parseFloat(totalAmountFromQuery));
+            // If we have a total amount but no advance payment, set a default advance payment
+            if (!advancePaymentFromQuery) {
+                const minPayment = parseFloat(totalAmountFromQuery) * 0.25;
+                setAdvancePaymentAmount(minPayment);
+            }
+            // Set gold karat if provided
+            if (selectedKaratFromQuery) {
+                // Convert from "24KT" format to "24K" format if needed
+                const formattedKarat = selectedKaratFromQuery.endsWith('KT') ? selectedKaratFromQuery.replace('KT', 'K') : selectedKaratFromQuery;
+                // Make sure it's a valid karat key
+                if (Object.keys(karatPurityMap).includes(formattedKarat)) {
+                    setSelectedKarat(formattedKarat);
+                }
+            }
+            // Set weight if provided
+            if (weightInGramsFromQuery) {
+                setWeightInGrams(parseFloat(weightInGramsFromQuery));
+            }
+            // Set making charges if provided
+            if (makingChargesFromQuery) {
+                setMakingCharges(parseFloat(makingChargesFromQuery));
+            }
+            // Set additional materials charges if provided
+            if (additionalMaterialsChargesFromQuery) {
+                setAdditionalMaterialsCharges(parseFloat(additionalMaterialsChargesFromQuery));
+            }
+            // Set gold price per gram if provided
+            if (goldPricePerGramFromQuery) {
+                setGoldPricePerGram(parseFloat(goldPricePerGramFromQuery));
+            }
+        }
+    }, [
+        totalAmountFromQuery,
+        advancePaymentFromQuery,
+        selectedKaratFromQuery,
+        weightInGramsFromQuery,
+        makingChargesFromQuery,
+        additionalMaterialsChargesFromQuery,
+        goldPricePerGramFromQuery
+    ]);
     // Calculate estimated price
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (!useCustomPrice) {
@@ -845,7 +917,10 @@ const AddOrderPage = ()=>{
                     amount_paid: advancePaymentAmount,
                     payment_method: paymentMethod,
                     notes: paymentNotes
-                }
+                },
+                // Additional fields for database storage
+                selectedKarat_db: selectedKarat,
+                goldPurity_db: karatPurityMap[selectedKarat].purity // Store the purity explicitly
             };
             console.log('Including branch_id:', userBranchId);
             console.log('Order data:', orderData);
@@ -936,7 +1011,7 @@ const AddOrderPage = ()=>{
                         children: "Add New Order"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                        lineNumber: 437,
+                        lineNumber: 530,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -950,7 +1025,7 @@ const AddOrderPage = ()=>{
                                         children: "Item Category"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 442,
+                                        lineNumber: 535,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -970,7 +1045,7 @@ const AddOrderPage = ()=>{
                                                 children: "Select Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 455,
+                                                lineNumber: 548,
                                                 columnNumber: 15
                                             }, this),
                                             categories.map((cat)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -978,19 +1053,19 @@ const AddOrderPage = ()=>{
                                                     children: cat.category_name
                                                 }, cat.category_id, false, {
                                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                    lineNumber: 457,
+                                                    lineNumber: 550,
                                                     columnNumber: 17
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 443,
+                                        lineNumber: 536,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 441,
+                                lineNumber: 534,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1001,7 +1076,7 @@ const AddOrderPage = ()=>{
                                         children: "Select Supplier"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 464,
+                                        lineNumber: 557,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1015,7 +1090,7 @@ const AddOrderPage = ()=>{
                                                 children: "Select Supplier"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 471,
+                                                lineNumber: 564,
                                                 columnNumber: 15
                                             }, this),
                                             suppliers.filter((sup)=>!category || sup.category === category).map((sup)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1029,19 +1104,19 @@ const AddOrderPage = ()=>{
                                                     ]
                                                 }, sup.supplier_id, true, {
                                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                    lineNumber: 475,
+                                                    lineNumber: 568,
                                                     columnNumber: 19
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 465,
+                                        lineNumber: 558,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 463,
+                                lineNumber: 556,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1052,7 +1127,7 @@ const AddOrderPage = ()=>{
                                         children: "Quantity"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 484,
+                                        lineNumber: 577,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1080,13 +1155,13 @@ const AddOrderPage = ()=>{
                                         required: true
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 485,
+                                        lineNumber: 578,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 483,
+                                lineNumber: 576,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1097,7 +1172,7 @@ const AddOrderPage = ()=>{
                                         children: "Do You Offer Gold Material?"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 512,
+                                        lineNumber: 605,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1115,14 +1190,14 @@ const AddOrderPage = ()=>{
                                                         className: "mr-2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 515,
+                                                        lineNumber: 608,
                                                         columnNumber: 17
                                                     }, this),
                                                     "Yes"
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 514,
+                                                lineNumber: 607,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -1137,26 +1212,26 @@ const AddOrderPage = ()=>{
                                                         className: "mr-2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 526,
+                                                        lineNumber: 619,
                                                         columnNumber: 17
                                                     }, this),
                                                     "No"
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 525,
+                                                lineNumber: 618,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 513,
+                                        lineNumber: 606,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 511,
+                                lineNumber: 604,
                                 columnNumber: 11
                             }, this),
                             offerGold === 'yes' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1175,7 +1250,7 @@ const AddOrderPage = ()=>{
                                                         className: "mr-2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 546,
+                                                        lineNumber: 639,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -1184,7 +1259,7 @@ const AddOrderPage = ()=>{
                                                         children: karat
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 553,
+                                                        lineNumber: 646,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1195,28 +1270,28 @@ const AddOrderPage = ()=>{
                                                         disabled: !selectedKarats[karat]
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 554,
+                                                        lineNumber: 647,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, karat, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 545,
+                                                lineNumber: 638,
                                                 columnNumber: 21
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 543,
+                                        lineNumber: 636,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                    lineNumber: 542,
+                                    lineNumber: 635,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 541,
+                                lineNumber: 634,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1228,12 +1303,12 @@ const AddOrderPage = ()=>{
                                     children: showPriceCalculation ? 'Hide Price Calculator' : 'Show Price Calculator'
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                    lineNumber: 570,
+                                    lineNumber: 663,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 569,
+                                lineNumber: 662,
                                 columnNumber: 11
                             }, this),
                             showPriceCalculation && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1244,7 +1319,7 @@ const AddOrderPage = ()=>{
                                         children: "Price Calculation"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 582,
+                                        lineNumber: 675,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1257,7 +1332,7 @@ const AddOrderPage = ()=>{
                                                         children: "Gold Karat"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 587,
+                                                        lineNumber: 680,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1270,18 +1345,18 @@ const AddOrderPage = ()=>{
                                                                 children: label
                                                             }, karat, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 595,
+                                                                lineNumber: 688,
                                                                 columnNumber: 23
                                                             }, this))
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 588,
+                                                        lineNumber: 681,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 586,
+                                                lineNumber: 679,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1294,7 +1369,7 @@ const AddOrderPage = ()=>{
                                                                 children: "Gold Price (Rs./g)"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 605,
+                                                                lineNumber: 698,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1305,13 +1380,13 @@ const AddOrderPage = ()=>{
                                                                 children: isLoadingGoldPrice ? 'Loading...' : 'Refresh'
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 606,
+                                                                lineNumber: 699,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 604,
+                                                        lineNumber: 697,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1327,7 +1402,7 @@ const AddOrderPage = ()=>{
                                                                 placeholder: "Enter gold price per gram"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 616,
+                                                                lineNumber: 709,
                                                                 columnNumber: 21
                                                             }, this),
                                                             isLoadingGoldPrice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1336,18 +1411,18 @@ const AddOrderPage = ()=>{
                                                                     className: "w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                    lineNumber: 627,
+                                                                    lineNumber: 720,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 626,
+                                                                lineNumber: 719,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 615,
+                                                        lineNumber: 708,
                                                         columnNumber: 19
                                                     }, this),
                                                     goldPriceLastUpdated && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1358,13 +1433,13 @@ const AddOrderPage = ()=>{
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 632,
+                                                        lineNumber: 725,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 603,
+                                                lineNumber: 696,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1374,7 +1449,7 @@ const AddOrderPage = ()=>{
                                                         children: "Weight (g)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 638,
+                                                        lineNumber: 731,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1394,13 +1469,13 @@ const AddOrderPage = ()=>{
                                                         placeholder: "Enter weight in grams"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 639,
+                                                        lineNumber: 732,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 637,
+                                                lineNumber: 730,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1410,7 +1485,7 @@ const AddOrderPage = ()=>{
                                                         children: "Making Charges (Rs.)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 658,
+                                                        lineNumber: 751,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1430,13 +1505,13 @@ const AddOrderPage = ()=>{
                                                         placeholder: "Enter making charges"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 659,
+                                                        lineNumber: 752,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 657,
+                                                lineNumber: 750,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1446,7 +1521,7 @@ const AddOrderPage = ()=>{
                                                         children: "Additional Materials Charges (Rs.)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 678,
+                                                        lineNumber: 771,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1469,7 +1544,7 @@ const AddOrderPage = ()=>{
                                                                 placeholder: "Enter charges for copper, other metals, etc."
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 680,
+                                                                lineNumber: 773,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1479,24 +1554,24 @@ const AddOrderPage = ()=>{
                                                                     children: "For Cu, other metals"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                    lineNumber: 696,
+                                                                    lineNumber: 789,
                                                                     columnNumber: 23
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 695,
+                                                                lineNumber: 788,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 679,
+                                                        lineNumber: 772,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 677,
+                                                lineNumber: 770,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1510,7 +1585,7 @@ const AddOrderPage = ()=>{
                                                         className: "mr-2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 703,
+                                                        lineNumber: 796,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -1519,19 +1594,19 @@ const AddOrderPage = ()=>{
                                                         children: "Use custom estimate price"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 710,
+                                                        lineNumber: 803,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 702,
+                                                lineNumber: 795,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 584,
+                                        lineNumber: 677,
                                         columnNumber: 15
                                     }, this),
                                     useCustomPrice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1545,7 +1620,7 @@ const AddOrderPage = ()=>{
                                                         children: "Custom Estimate Price (per unit)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 718,
+                                                        lineNumber: 811,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1556,13 +1631,13 @@ const AddOrderPage = ()=>{
                                                         children: "Reset to calculated price"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 719,
+                                                        lineNumber: 812,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 717,
+                                                lineNumber: 810,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1581,7 +1656,7 @@ const AddOrderPage = ()=>{
                                                 placeholder: "Enter custom price"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 728,
+                                                lineNumber: 821,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1590,7 +1665,7 @@ const AddOrderPage = ()=>{
                                                     "Enter the final price including all charges, profit margin, and any negotiated adjustments.",
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 744,
+                                                        lineNumber: 837,
                                                         columnNumber: 21
                                                     }, this),
                                                     "Calculated estimate: Rs. ",
@@ -1598,13 +1673,13 @@ const AddOrderPage = ()=>{
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 742,
+                                                lineNumber: 835,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 716,
+                                        lineNumber: 809,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1617,7 +1692,7 @@ const AddOrderPage = ()=>{
                                                         children: "Base Gold Price (per unit)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 754,
+                                                        lineNumber: 847,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1630,19 +1705,19 @@ const AddOrderPage = ()=>{
                                                                 children: "Gold price × weight"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 757,
+                                                                lineNumber: 850,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 755,
+                                                        lineNumber: 848,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 753,
+                                                lineNumber: 846,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1652,7 +1727,7 @@ const AddOrderPage = ()=>{
                                                         children: useCustomPrice ? "Custom Estimate Price (per unit)" : "Total Estimate Price (per unit)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 763,
+                                                        lineNumber: 856,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1665,19 +1740,19 @@ const AddOrderPage = ()=>{
                                                                 children: useCustomPrice ? "Custom price" : "Gold + making + additional materials"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 768,
+                                                                lineNumber: 861,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 766,
+                                                        lineNumber: 859,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 762,
+                                                lineNumber: 855,
                                                 columnNumber: 17
                                             }, this),
                                             !useCustomPrice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1694,7 +1769,7 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 779,
+                                                                lineNumber: 872,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1704,7 +1779,7 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 780,
+                                                                lineNumber: 873,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1714,7 +1789,7 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 781,
+                                                                lineNumber: 874,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1725,23 +1800,23 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 782,
+                                                                lineNumber: 875,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 778,
+                                                        lineNumber: 871,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                    lineNumber: 777,
+                                                    lineNumber: 870,
                                                     columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 776,
+                                                lineNumber: 869,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1752,7 +1827,7 @@ const AddOrderPage = ()=>{
                                                         children: "Total Order Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 790,
+                                                        lineNumber: 883,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1771,31 +1846,31 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 793,
+                                                                lineNumber: 886,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 791,
+                                                        lineNumber: 884,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 789,
+                                                lineNumber: 882,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 751,
+                                        lineNumber: 844,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 581,
+                                lineNumber: 674,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1808,7 +1883,7 @@ const AddOrderPage = ()=>{
                                             children: "Add a image of Design"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                            lineNumber: 805,
+                                            lineNumber: 898,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1820,7 +1895,7 @@ const AddOrderPage = ()=>{
                                                         className: "w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-2"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 811,
+                                                        lineNumber: 904,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1828,13 +1903,13 @@ const AddOrderPage = ()=>{
                                                         children: "Compressing image..."
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 812,
+                                                        lineNumber: 905,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 810,
+                                                lineNumber: 903,
                                                 columnNumber: 19
                                             }, this) : imagePreview ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                 className: "relative w-full h-full",
@@ -1848,7 +1923,7 @@ const AddOrderPage = ()=>{
                                                         }
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 816,
+                                                        lineNumber: 909,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1859,13 +1934,13 @@ const AddOrderPage = ()=>{
                                                         children: "×"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 822,
+                                                        lineNumber: 915,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 815,
+                                                lineNumber: 908,
                                                 columnNumber: 19
                                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
                                                 className: "cursor-pointer text-center",
@@ -1875,7 +1950,7 @@ const AddOrderPage = ()=>{
                                                         children: "Click to upload"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 833,
+                                                        lineNumber: 926,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1885,29 +1960,29 @@ const AddOrderPage = ()=>{
                                                         onChange: handleImageUpload
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 834,
+                                                        lineNumber: 927,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 832,
+                                                lineNumber: 925,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                            lineNumber: 808,
+                                            lineNumber: 901,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                    lineNumber: 804,
+                                    lineNumber: 897,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 803,
+                                lineNumber: 896,
                                 columnNumber: 11
                             }, this),
                             totalAmount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1919,7 +1994,7 @@ const AddOrderPage = ()=>{
                                         children: "Supplier Payment"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 849,
+                                        lineNumber: 942,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1936,7 +2011,7 @@ const AddOrderPage = ()=>{
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 856,
+                                                                lineNumber: 949,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1948,13 +2023,13 @@ const AddOrderPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 857,
+                                                                lineNumber: 950,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 854,
+                                                        lineNumber: 947,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1986,7 +2061,7 @@ const AddOrderPage = ()=>{
                                                                 required: true
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 860,
+                                                                lineNumber: 953,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2004,13 +2079,13 @@ const AddOrderPage = ()=>{
                                                                 children: "Set Min"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 888,
+                                                                lineNumber: 981,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 859,
+                                                        lineNumber: 952,
                                                         columnNumber: 19
                                                     }, this),
                                                     advancePaymentAmount < minAdvancePayment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2022,13 +2097,13 @@ const AddOrderPage = ()=>{
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 905,
+                                                        lineNumber: 998,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 853,
+                                                lineNumber: 946,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2038,7 +2113,7 @@ const AddOrderPage = ()=>{
                                                         children: "Payment Method"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 913,
+                                                        lineNumber: 1006,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -2051,7 +2126,7 @@ const AddOrderPage = ()=>{
                                                                 children: "Cash"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 919,
+                                                                lineNumber: 1012,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -2059,7 +2134,7 @@ const AddOrderPage = ()=>{
                                                                 children: "Bank Transfer"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 920,
+                                                                lineNumber: 1013,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -2067,7 +2142,7 @@ const AddOrderPage = ()=>{
                                                                 children: "Check"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 921,
+                                                                lineNumber: 1014,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -2075,7 +2150,7 @@ const AddOrderPage = ()=>{
                                                                 children: "Credit Card"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 922,
+                                                                lineNumber: 1015,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -2083,19 +2158,19 @@ const AddOrderPage = ()=>{
                                                                 children: "Other"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                                lineNumber: 923,
+                                                                lineNumber: 1016,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 914,
+                                                        lineNumber: 1007,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 912,
+                                                lineNumber: 1005,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2106,7 +2181,7 @@ const AddOrderPage = ()=>{
                                                         children: "Payment Notes"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 929,
+                                                        lineNumber: 1022,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -2117,19 +2192,19 @@ const AddOrderPage = ()=>{
                                                         placeholder: "Add any notes about the payment"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 930,
+                                                        lineNumber: 1023,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 928,
+                                                lineNumber: 1021,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 851,
+                                        lineNumber: 944,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2142,7 +2217,7 @@ const AddOrderPage = ()=>{
                                                         children: "Total Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 943,
+                                                        lineNumber: 1036,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2153,13 +2228,13 @@ const AddOrderPage = ()=>{
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 944,
+                                                        lineNumber: 1037,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 942,
+                                                lineNumber: 1035,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2169,7 +2244,7 @@ const AddOrderPage = ()=>{
                                                         children: "Advance Payment"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 950,
+                                                        lineNumber: 1043,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2180,13 +2255,13 @@ const AddOrderPage = ()=>{
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 951,
+                                                        lineNumber: 1044,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 949,
+                                                lineNumber: 1042,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2196,7 +2271,7 @@ const AddOrderPage = ()=>{
                                                         children: "Remaining Balance"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 957,
+                                                        lineNumber: 1050,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2207,25 +2282,25 @@ const AddOrderPage = ()=>{
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                        lineNumber: 958,
+                                                        lineNumber: 1051,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                                lineNumber: 956,
+                                                lineNumber: 1049,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 941,
+                                        lineNumber: 1034,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 848,
+                                lineNumber: 941,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2237,7 +2312,7 @@ const AddOrderPage = ()=>{
                                         children: "Submit"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 970,
+                                        lineNumber: 1063,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2247,25 +2322,25 @@ const AddOrderPage = ()=>{
                                         children: "Cancel"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                        lineNumber: 976,
+                                        lineNumber: 1069,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 969,
+                                lineNumber: 1062,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                        lineNumber: 439,
+                        lineNumber: 532,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                lineNumber: 436,
+                lineNumber: 529,
                 columnNumber: 7
             }, this),
             category && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2276,7 +2351,7 @@ const AddOrderPage = ()=>{
                         children: "Leading Supplier Expert in the Field"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                        lineNumber: 990,
+                        lineNumber: 1083,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2288,33 +2363,33 @@ const AddOrderPage = ()=>{
                                 children: category
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                                lineNumber: 992,
+                                lineNumber: 1085,
                                 columnNumber: 66
                             }, this),
                             " category"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                        lineNumber: 991,
+                        lineNumber: 1084,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$SupplierCategoryChart$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
                         selectedCategory: category
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                        lineNumber: 994,
+                        lineNumber: 1087,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-                lineNumber: 989,
+                lineNumber: 1082,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/orders/add/page.tsx",
-        lineNumber: 435,
+        lineNumber: 528,
         columnNumber: 5
     }, this);
 };

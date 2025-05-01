@@ -4,12 +4,40 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { compressImage } from '@/utils/imageCompression';
 import SupplierCategoryChart from '@/components/SupplierCategoryChart';
+import { useSearchParams } from 'next/navigation';
 
 const AddOrderPage = () => {
+  const searchParams = useSearchParams();
+
+  // Get query parameters
+  const orderIdFromQuery = searchParams.get('order_id');
+  const categoryFromQuery = searchParams.get('category');
+  const supplierIdFromQuery = searchParams.get('supplier_id');
+  const quantityFromQuery = searchParams.get('quantity');
+  const offerGoldFromQuery = searchParams.get('offer_gold');
+  const selectedKaratsFromQuery = searchParams.get('selected_karats');
+  const karatValuesFromQuery = searchParams.get('karat_values');
+
+  // Gold and pricing details
+  const goldPricePerGramFromQuery = searchParams.get('gold_price_per_gram');
+  const selectedKaratFromQuery = searchParams.get('selected_karat');
+  const goldPurityFromQuery = searchParams.get('gold_purity');
+  const weightInGramsFromQuery = searchParams.get('weight_in_grams');
+  const makingChargesFromQuery = searchParams.get('making_charges');
+  const additionalMaterialsChargesFromQuery = searchParams.get('additional_materials_charges');
+  const baseEstimatedPriceFromQuery = searchParams.get('base_estimated_price');
+  const estimatedPriceFromQuery = searchParams.get('estimated_price');
+  const totalAmountFromQuery = searchParams.get('total_amount');
+
+  // Payment information
+  const advancePaymentFromQuery = searchParams.get('advance_payment');
+  const remainingBalanceFromQuery = searchParams.get('remaining_balance');
+  const paymentStatusFromQuery = searchParams.get('payment_status');
+
   // State for form fields
-  const [category, setCategory] = useState('');
-  const [supplier, setSupplier] = useState('');
-  const [quantity, setQuantity] = useState(20);
+  const [category, setCategory] = useState(categoryFromQuery || '');
+  const [supplier, setSupplier] = useState(supplierIdFromQuery || '');
+  const [quantity, setQuantity] = useState(quantityFromQuery ? parseInt(quantityFromQuery, 10) : 20);
   const [offerGold, setOfferGold] = useState('yes');
   const [selectedKarats, setSelectedKarats] = useState({
     '24KT': false,
@@ -61,10 +89,17 @@ const AddOrderPage = () => {
   const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string | null>(null);
 
   // Supplier payment states
-  const [advancePaymentAmount, setAdvancePaymentAmount] = useState(0);
+  const [advancePaymentAmount, setAdvancePaymentAmount] = useState(
+    advancePaymentFromQuery ? parseFloat(advancePaymentFromQuery) : 0
+  );
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [minAdvancePayment, setMinAdvancePayment] = useState(0); // 25% of total
+
+  // Set initial total amount if provided in query
+  const [initialTotalAmount] = useState(
+    totalAmountFromQuery ? parseFloat(totalAmountFromQuery) : 0
+  );
 
   // User info state
   const [userRole, setUserRole] = useState<string>('');
@@ -213,6 +248,61 @@ const AddOrderPage = () => {
     }
   }, [showPriceCalculation]);
 
+  // Set total amount and show price calculation if we have query parameters
+  useEffect(() => {
+    if (totalAmountFromQuery) {
+      setShowPriceCalculation(true);
+      setTotalAmount(parseFloat(totalAmountFromQuery));
+
+      // If we have a total amount but no advance payment, set a default advance payment
+      if (!advancePaymentFromQuery) {
+        const minPayment = parseFloat(totalAmountFromQuery) * 0.25;
+        setAdvancePaymentAmount(minPayment);
+      }
+
+      // Set gold karat if provided
+      if (selectedKaratFromQuery) {
+        // Convert from "24KT" format to "24K" format if needed
+        const formattedKarat = selectedKaratFromQuery.endsWith('KT')
+          ? selectedKaratFromQuery.replace('KT', 'K')
+          : selectedKaratFromQuery;
+
+        // Make sure it's a valid karat key
+        if (Object.keys(karatPurityMap).includes(formattedKarat as KaratKey)) {
+          setSelectedKarat(formattedKarat as KaratKey);
+        }
+      }
+
+      // Set weight if provided
+      if (weightInGramsFromQuery) {
+        setWeightInGrams(parseFloat(weightInGramsFromQuery));
+      }
+
+      // Set making charges if provided
+      if (makingChargesFromQuery) {
+        setMakingCharges(parseFloat(makingChargesFromQuery));
+      }
+
+      // Set additional materials charges if provided
+      if (additionalMaterialsChargesFromQuery) {
+        setAdditionalMaterialsCharges(parseFloat(additionalMaterialsChargesFromQuery));
+      }
+
+      // Set gold price per gram if provided
+      if (goldPricePerGramFromQuery) {
+        setGoldPricePerGram(parseFloat(goldPricePerGramFromQuery));
+      }
+    }
+  }, [
+    totalAmountFromQuery,
+    advancePaymentFromQuery,
+    selectedKaratFromQuery,
+    weightInGramsFromQuery,
+    makingChargesFromQuery,
+    additionalMaterialsChargesFromQuery,
+    goldPricePerGramFromQuery
+  ]);
+
   // Calculate estimated price
   useEffect(() => {
     if (!useCustomPrice) {
@@ -338,7 +428,10 @@ const AddOrderPage = () => {
           amount_paid: advancePaymentAmount,
           payment_method: paymentMethod,
           notes: paymentNotes
-        }
+        },
+        // Additional fields for database storage
+        selectedKarat_db: selectedKarat, // Store the selected karat explicitly
+        goldPurity_db: karatPurityMap[selectedKarat].purity // Store the purity explicitly
       };
 
       console.log('Including branch_id:', userBranchId);

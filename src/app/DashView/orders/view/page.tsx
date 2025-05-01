@@ -146,8 +146,9 @@ const ViewOrdersPage = () => {
 
         const data = await response.json();
 
-        // Process image URLs
+        // Process image URLs and extract gold karat/purity information
         const processedData = data.map((order: Order) => {
+          // Process image URL
           if (order.design_image) {
             // Construct the full URL for the image
             // Make sure we don't duplicate the /uploads/ part
@@ -157,6 +158,34 @@ const ViewOrdersPage = () => {
 
             order.design_image_url = `http://localhost:3002/${imagePath}`;
           }
+
+          // Process gold karat information
+          if (order.selected_karats && typeof order.selected_karats === 'string') {
+            try {
+              const selectedKarats = JSON.parse(order.selected_karats);
+              if (selectedKarats && selectedKarats.length > 0) {
+                // Use the first karat as the selectedKarat if not already set
+                if (!order.selectedKarat) {
+                  // Convert from "24KT" format to "24K" format if needed
+                  const karat = selectedKarats[0];
+                  order.selectedKarat = karat.endsWith('KT') ? karat.replace('KT', 'K') : karat;
+
+                  // Set goldPurity based on karat if not already set
+                  if (!order.goldPurity) {
+                    // Extract the number part from the karat (e.g., "24" from "24KT")
+                    const karatNumber = parseInt(karat.replace(/[^\d]/g, ''), 10);
+                    if (!isNaN(karatNumber)) {
+                      // Calculate purity (24K = 0.999, 22K = 0.916, etc.)
+                      order.goldPurity = karatNumber / 24;
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing selected_karats:', e);
+            }
+          }
+
           return order;
         });
 

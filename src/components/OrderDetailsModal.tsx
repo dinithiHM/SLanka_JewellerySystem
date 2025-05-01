@@ -3,6 +3,7 @@
 import { X } from 'lucide-react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 
 // Use dynamic import to avoid SSR issues with Image component
 const DynamicImage = dynamic(() => Promise.resolve(Image), { ssr: false });
@@ -16,6 +17,8 @@ interface OrderDetailsModalProps {
 }
 
 const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available', createdByName = 'Not available', onClose }: OrderDetailsModalProps) => {
+  const router = useRouter();
+
   // Parse JSON strings if needed
   const selectedKarats = order.selected_karats ?
     (typeof order.selected_karats === 'string' ?
@@ -34,6 +37,47 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+
+  // Handle proceed to payment
+  const handleProceedToPayment = () => {
+    // Parse selected karats if needed
+    const selectedKaratsArray = selectedKarats.length > 0 ? selectedKarats : [];
+
+    // Create query parameters with order details
+    const queryParams = new URLSearchParams({
+      order_id: order.order_id.toString(),
+      category: order.category,
+      supplier_id: order.supplier_id,
+      quantity: order.quantity.toString(),
+      offer_gold: order.offer_gold ? '1' : '0',
+      selected_karats: JSON.stringify(selectedKaratsArray),
+      karat_values: JSON.stringify(karatValues),
+
+      // Gold and pricing details
+      gold_price_per_gram: order.gold_price_per_gram ? order.gold_price_per_gram.toString() : '0',
+      selected_karat: order.selectedKarat || '24K',
+      gold_purity: order.goldPurity ? order.goldPurity.toString() : '0.999',
+      weight_in_grams: order.weight_in_grams ? order.weight_in_grams.toString() : '0',
+      making_charges: order.making_charges ? order.making_charges.toString() : '0',
+      additional_materials_charges: order.additional_materials_charges ? order.additional_materials_charges.toString() : '0',
+      base_estimated_price: order.base_estimated_price ? order.base_estimated_price.toString() : '0',
+      estimated_price: order.estimated_price ? order.estimated_price.toString() : '0',
+      total_amount: order.total_amount ? order.total_amount.toString() : '0',
+
+      // Payment information
+      advance_payment: order.advance_payment_amount ? order.advance_payment_amount.toString() : '0',
+      remaining_balance: order.total_amount && order.advance_payment_amount
+        ? (Number(order.total_amount) - Number(order.advance_payment_amount)).toString()
+        : '0',
+      payment_status: order.payment_status || 'Partial',
+
+      // Design image URL if available
+      design_image_url: order.design_image_url || ''
+    }).toString();
+
+    // Navigate to the dedicated payment page with query parameters
+    router.push(`/DashView/orders/pay?${queryParams}`);
   };
 
   return (
@@ -155,13 +199,21 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Gold Karat</p>
-                    <p className="font-medium">{order.selectedKarat || 'N/A'}</p>
+                    <p className="font-medium">
+                      {order.selectedKarat || (order.selected_karats && typeof order.selected_karats === 'string' &&
+                        JSON.parse(order.selected_karats).length > 0 ?
+                        JSON.parse(order.selected_karats)[0].replace('KT', 'K') : 'N/A')}
+                    </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500">Gold Purity</p>
                     <p className="font-medium">
-                      {order.goldPurity ? `${(order.goldPurity * 100).toFixed(2)}%` : 'N/A'}
+                      {order.goldPurity ?
+                        `${(order.goldPurity * 100).toFixed(2)}%` :
+                        (order.selectedKarat ?
+                          `${(parseInt(order.selectedKarat.replace(/[^\d]/g, ''), 10) / 24 * 100).toFixed(2)}%` :
+                          'N/A')}
                     </p>
                   </div>
 
@@ -224,11 +276,14 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
 
                   <div>
                     <p className="text-sm text-gray-500">
-                      {order.useCustomPrice ? 'Custom Estimate Price' : 'Total Estimate Price'}
+                      {order.use_custom_estimate ? 'Custom Estimate Price' : 'Total Estimate Price'}
                     </p>
                     <p className="font-medium">
                       {order.estimated_price ? `Rs. ${Number(order.estimated_price).toLocaleString()}` : 'N/A'}
                     </p>
+                    {order.use_custom_estimate && (
+                      <p className="text-xs text-green-600">(Custom price set by staff)</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
@@ -314,7 +369,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-6 border-t">
+        <div className="flex justify-between p-6 border-t">
+          <button
+            onClick={handleProceedToPayment}
+            className="px-4 py-2 bg-yellow-400 text-black rounded-md hover:bg-yellow-500 font-medium"
+          >
+            Proceed to Payment
+          </button>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
