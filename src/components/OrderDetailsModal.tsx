@@ -4,9 +4,20 @@ import { X } from 'lucide-react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 // Use dynamic import to avoid SSR issues with Image component
 const DynamicImage = dynamic(() => Promise.resolve(Image), { ssr: false });
+
+interface PaymentRecord {
+  payment_id: number;
+  order_id: number;
+  amount_paid: number;
+  payment_date: string;
+  payment_method: string;
+  notes?: string;
+  created_by?: number;
+}
 
 interface OrderDetailsModalProps {
   order: any;
@@ -18,6 +29,9 @@ interface OrderDetailsModalProps {
 
 const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available', createdByName = 'Not available', onClose }: OrderDetailsModalProps) => {
   const router = useRouter();
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Parse JSON strings if needed
   const selectedKarats = order.selected_karats ?
@@ -31,6 +45,42 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
       JSON.parse(order.karat_values) :
       order.karat_values) :
     {};
+
+  // Fetch payment history when modal opens
+  useEffect(() => {
+    const fetchPaymentHistory = async () => {
+      if (!order.order_id) return;
+
+      setLoadingPayments(true);
+      setPaymentError(null);
+
+      try {
+        const response = await fetch(`http://localhost:3002/supplier-payments/order/${order.order_id}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch payment history: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setPaymentHistory(data.data);
+        } else {
+          // If the API returns a different structure, try to adapt
+          setPaymentHistory(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error('Error fetching payment history:', err);
+        setPaymentError(err instanceof Error ? err.message : 'An unknown error occurred');
+        // Set empty array to avoid undefined errors
+        setPaymentHistory([]);
+      } finally {
+        setLoadingPayments(false);
+      }
+    };
+
+    fetchPaymentHistory();
+  }, [order.order_id]);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -347,6 +397,73 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Payment History Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-4">Payment History</h3>
+
+            {loadingPayments ? (
+              <div className="flex justify-center items-center py-4">
+                <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : paymentError ? (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                <p>Error loading payment history: {paymentError}</p>
+              </div>
+            ) : paymentHistory.length === 0 ? (
+              <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
+                No payment records found for this order.
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment ID</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paymentHistory.map((payment) => (
+                        <tr key={payment.payment_id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #{payment.payment_id}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                            Rs. {Number(payment.amount_paid).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(payment.payment_date)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {payment.payment_method || 'Cash'}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-500">
+                            {payment.notes || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50">
+                      <tr>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                          Total
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm font-bold text-gray-900">
+                          Rs. {paymentHistory.reduce((sum, payment) => sum + Number(payment.amount_paid), 0).toLocaleString()}
+                        </td>
+                        <td colSpan={3}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Design Image */}

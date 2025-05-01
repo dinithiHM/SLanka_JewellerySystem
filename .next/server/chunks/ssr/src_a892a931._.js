@@ -124,7 +124,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/image.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$shared$2f$lib$2f$app$2d$dynamic$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/shared/lib/app-dynamic.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/navigation.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 ;
@@ -136,9 +138,43 @@ const DynamicImage = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
 });
 const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available', createdByName = 'Not available', onClose })=>{
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRouter"])();
+    const [paymentHistory, setPaymentHistory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [loadingPayments, setLoadingPayments] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [paymentError, setPaymentError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     // Parse JSON strings if needed
     const selectedKarats = order.selected_karats ? typeof order.selected_karats === 'string' ? JSON.parse(order.selected_karats) : order.selected_karats : [];
     const karatValues = order.karat_values ? typeof order.karat_values === 'string' ? JSON.parse(order.karat_values) : order.karat_values : {};
+    // Fetch payment history when modal opens
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        const fetchPaymentHistory = async ()=>{
+            if (!order.order_id) return;
+            setLoadingPayments(true);
+            setPaymentError(null);
+            try {
+                const response = await fetch(`http://localhost:3002/supplier-payments/order/${order.order_id}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch payment history: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success && data.data) {
+                    setPaymentHistory(data.data);
+                } else {
+                    // If the API returns a different structure, try to adapt
+                    setPaymentHistory(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                console.error('Error fetching payment history:', err);
+                setPaymentError(err instanceof Error ? err.message : 'An unknown error occurred');
+                // Set empty array to avoid undefined errors
+                setPaymentHistory([]);
+            } finally{
+                setLoadingPayments(false);
+            }
+        };
+        fetchPaymentHistory();
+    }, [
+        order.order_id
+    ]);
     // Format date
     const formatDate = (dateString)=>{
         if (!dateString) return 'N/A';
@@ -194,7 +230,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 88,
+                            lineNumber: 138,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -204,18 +240,18 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                 size: 24
                             }, void 0, false, {
                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                lineNumber: 93,
+                                lineNumber: 143,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 89,
+                            lineNumber: 139,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                    lineNumber: 87,
+                    lineNumber: 137,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -231,7 +267,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                             children: "Order Information"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 103,
+                                            lineNumber: 153,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -244,7 +280,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                             children: "Order ID"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 107,
+                                                            lineNumber: 157,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -254,211 +290,6 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                 order.order_id
                                                             ]
                                                         }, void 0, true, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 108,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 106,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Category"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 112,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: order.category
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 113,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 111,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Quantity"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 117,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: order.quantity
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 118,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 116,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Status"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 122,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                            className: `px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
-                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`,
-                                                            children: order.status.charAt(0).toUpperCase() + order.status.slice(1)
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 123,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 121,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Created At"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 134,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: formatDate(order.created_at)
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 135,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 133,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Last Updated"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 139,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: order.updated_at ? formatDate(order.updated_at) : 'Not updated'
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 140,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 138,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 105,
-                                            columnNumber: 15
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 102,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                            className: "text-lg font-semibold mb-4",
-                                            children: "Supplier Details"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 147,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "space-y-3",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Supplier"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 151,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: supplierName
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 152,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-xs text-gray-500 mt-1",
-                                                            children: [
-                                                                "ID: ",
-                                                                order.supplier_id
-                                                            ]
-                                                        }, void 0, true, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 153,
-                                                            columnNumber: 19
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 150,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-sm text-gray-500",
-                                                            children: "Supplier Phone"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 157,
-                                                            columnNumber: 19
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: supplierPhone
-                                                        }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
                                                             lineNumber: 158,
                                                             columnNumber: 19
@@ -473,7 +304,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                             className: "text-sm text-gray-500",
-                                                            children: "Branch"
+                                                            children: "Category"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
                                                             lineNumber: 162,
@@ -481,7 +312,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                             className: "font-medium",
-                                                            children: order.branch_name || (order.branch_id === 1 ? 'Mahiyangana Branch' : order.branch_id === 2 ? 'Mahaoya Branch' : 'Not assigned')
+                                                            children: order.category
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
                                                             lineNumber: 163,
@@ -497,15 +328,40 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                             className: "text-sm text-gray-500",
-                                                            children: "Gold Provided"
+                                                            children: "Quantity"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 167,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: order.quantity
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 168,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 166,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Status"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
                                                             lineNumber: 172,
                                                             columnNumber: 19
                                                         }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "font-medium",
-                                                            children: order.offer_gold ? 'Yes' : 'No'
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                            className: `px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`,
+                                                            children: order.status.charAt(0).toUpperCase() + order.status.slice(1)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
                                                             lineNumber: 173,
@@ -521,10 +377,190 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                             className: "text-sm text-gray-500",
+                                                            children: "Created At"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 184,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: formatDate(order.created_at)
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 185,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 183,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Last Updated"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 189,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: order.updated_at ? formatDate(order.updated_at) : 'Not updated'
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 190,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 188,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                            lineNumber: 155,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 152,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                            className: "text-lg font-semibold mb-4",
+                                            children: "Supplier Details"
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                            lineNumber: 197,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "space-y-3",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Supplier"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 201,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: supplierName
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 202,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-xs text-gray-500 mt-1",
+                                                            children: [
+                                                                "ID: ",
+                                                                order.supplier_id
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 203,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 200,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Supplier Phone"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 207,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: supplierPhone
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 208,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 206,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Branch"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 212,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: order.branch_name || (order.branch_id === 1 ? 'Mahiyangana Branch' : order.branch_id === 2 ? 'Mahaoya Branch' : 'Not assigned')
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 213,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 211,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
+                                                            children: "Gold Provided"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 222,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-medium",
+                                                            children: order.offer_gold ? 'Yes' : 'No'
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 223,
+                                                            columnNumber: 19
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 221,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm text-gray-500",
                                                             children: "Created By"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 177,
+                                                            lineNumber: 227,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -532,13 +568,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                             children: createdByName
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 178,
+                                                            lineNumber: 228,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 176,
+                                                    lineNumber: 226,
                                                     columnNumber: 17
                                                 }, this),
                                                 order.store_manager_name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -548,7 +584,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                             children: "Store Manager"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 183,
+                                                            lineNumber: 233,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -556,31 +592,31 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                             children: order.store_manager_name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 184,
+                                                            lineNumber: 234,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 182,
+                                                    lineNumber: 232,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 149,
+                                            lineNumber: 199,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 146,
+                                    lineNumber: 196,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 100,
+                            lineNumber: 150,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -591,7 +627,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                     children: "Gold & Pricing Details"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 193,
+                                    lineNumber: 243,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -605,7 +641,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: "Gold Specifications"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 198,
+                                                    lineNumber: 248,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -618,7 +654,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Gold Karat"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 201,
+                                                                    lineNumber: 251,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -626,13 +662,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.selectedKarat || (order.selected_karats && typeof order.selected_karats === 'string' && JSON.parse(order.selected_karats).length > 0 ? JSON.parse(order.selected_karats)[0].replace('KT', 'K') : 'N/A')
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 202,
+                                                                    lineNumber: 252,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 200,
+                                                            lineNumber: 250,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -642,7 +678,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Gold Purity"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 210,
+                                                                    lineNumber: 260,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -650,13 +686,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.goldPurity ? `${(order.goldPurity * 100).toFixed(2)}%` : order.selectedKarat ? `${(parseInt(order.selectedKarat.replace(/[^\d]/g, ''), 10) / 24 * 100).toFixed(2)}%` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 211,
+                                                                    lineNumber: 261,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 209,
+                                                            lineNumber: 259,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -666,7 +702,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Gold Price (per gram)"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 221,
+                                                                    lineNumber: 271,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -674,13 +710,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.gold_price_per_gram ? `Rs. ${Number(order.gold_price_per_gram).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 222,
+                                                                    lineNumber: 272,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 220,
+                                                            lineNumber: 270,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -690,7 +726,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Weight (g)"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 228,
+                                                                    lineNumber: 278,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -698,25 +734,25 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.weight_in_grams ? `${Number(order.weight_in_grams).toLocaleString()} g` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 229,
+                                                                    lineNumber: 279,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 227,
+                                                            lineNumber: 277,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 199,
+                                                    lineNumber: 249,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 197,
+                                            lineNumber: 247,
                                             columnNumber: 15
                                         }, this),
                                         order.offer_gold === 1 && selectedKarats.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -727,7 +763,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: "Selected Karats"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 239,
+                                                    lineNumber: 289,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -742,18 +778,18 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                             ]
                                                         }, index, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 242,
+                                                            lineNumber: 292,
                                                             columnNumber: 23
                                                         }, this))
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 240,
+                                                    lineNumber: 290,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 238,
+                                            lineNumber: 288,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -763,7 +799,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                     children: "Price Breakdown"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 252,
+                                                    lineNumber: 302,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -776,7 +812,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Base Gold Price"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 255,
+                                                                    lineNumber: 305,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -784,7 +820,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.base_estimated_price ? `Rs. ${Number(order.base_estimated_price).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 256,
+                                                                    lineNumber: 306,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -792,13 +828,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Gold price × weight"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 259,
+                                                                    lineNumber: 309,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 254,
+                                                            lineNumber: 304,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -808,7 +844,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Making Charges"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 263,
+                                                                    lineNumber: 313,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -816,13 +852,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.making_charges ? `Rs. ${Number(order.making_charges).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 264,
+                                                                    lineNumber: 314,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 262,
+                                                            lineNumber: 312,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -832,7 +868,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Additional Materials Charges"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 270,
+                                                                    lineNumber: 320,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -840,7 +876,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.additional_materials_charges ? `Rs. ${Number(order.additional_materials_charges).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 271,
+                                                                    lineNumber: 321,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -848,13 +884,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "For copper, other metals"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 274,
+                                                                    lineNumber: 324,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 269,
+                                                            lineNumber: 319,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -864,7 +900,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.use_custom_estimate ? 'Custom Estimate Price' : 'Total Estimate Price'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 278,
+                                                                    lineNumber: 328,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -872,7 +908,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.estimated_price ? `Rs. ${Number(order.estimated_price).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 281,
+                                                                    lineNumber: 331,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 order.use_custom_estimate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -880,13 +916,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "(Custom price set by staff)"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 285,
+                                                                    lineNumber: 335,
                                                                     columnNumber: 23
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 277,
+                                                            lineNumber: 327,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -897,7 +933,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: "Total Order Amount"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 290,
+                                                                    lineNumber: 340,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -905,7 +941,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     children: order.total_amount ? `Rs. ${Number(order.total_amount).toLocaleString()}` : 'N/A'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 291,
+                                                                    lineNumber: 341,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -919,37 +955,37 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                                    lineNumber: 294,
+                                                                    lineNumber: 344,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                            lineNumber: 289,
+                                                            lineNumber: 339,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                    lineNumber: 253,
+                                                    lineNumber: 303,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 251,
+                                            lineNumber: 301,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 195,
+                                    lineNumber: 245,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 192,
+                            lineNumber: 242,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -960,7 +996,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                     children: "Supplier Payment Details"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 306,
+                                    lineNumber: 356,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -975,7 +1011,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: "Advance Payment Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 311,
+                                                        lineNumber: 361,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -983,13 +1019,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: order.advance_payment_amount ? `Rs. ${Number(order.advance_payment_amount).toLocaleString()}` : 'N/A'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 312,
+                                                        lineNumber: 362,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                lineNumber: 310,
+                                                lineNumber: 360,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -999,7 +1035,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: "Payment Method"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 318,
+                                                        lineNumber: 368,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1007,13 +1043,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: order.payment_method || 'Cash'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 319,
+                                                        lineNumber: 369,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                lineNumber: 317,
+                                                lineNumber: 367,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1023,7 +1059,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: "Payment Status"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 323,
+                                                        lineNumber: 373,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1032,13 +1068,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: order.payment_status || 'Pending'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 324,
+                                                        lineNumber: 374,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                lineNumber: 322,
+                                                lineNumber: 372,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1048,7 +1084,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: "Remaining Balance"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 334,
+                                                        lineNumber: 384,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1056,13 +1092,13 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: order.total_amount && order.advance_payment_amount ? `Rs. ${(Number(order.total_amount) - Number(order.advance_payment_amount)).toLocaleString()}` : 'N/A'
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 335,
+                                                        lineNumber: 385,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                lineNumber: 333,
+                                                lineNumber: 383,
                                                 columnNumber: 17
                                             }, this),
                                             order.payment_notes && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1073,7 +1109,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: "Payment Notes"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 344,
+                                                        lineNumber: 394,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1081,30 +1117,264 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                                         children: order.payment_notes
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                        lineNumber: 345,
+                                                        lineNumber: 395,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                                lineNumber: 343,
+                                                lineNumber: 393,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                        lineNumber: 309,
+                                        lineNumber: 359,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 308,
+                                    lineNumber: 358,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 305,
+                            lineNumber: 355,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "mb-6",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                    className: "text-lg font-semibold mb-4",
+                                    children: "Payment History"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 404,
+                                    columnNumber: 13
+                                }, this),
+                                loadingPayments ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex justify-center items-center py-4",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                        lineNumber: 408,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 407,
+                                    columnNumber: 15
+                                }, this) : paymentError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        children: [
+                                            "Error loading payment history: ",
+                                            paymentError
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                        lineNumber: 412,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 411,
+                                    columnNumber: 15
+                                }, this) : paymentHistory.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "bg-gray-50 rounded-lg p-4 text-center text-gray-500",
+                                    children: "No payment records found for this order."
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 415,
+                                    columnNumber: 15
+                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "bg-gray-50 rounded-lg p-4",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "overflow-x-auto",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
+                                            className: "min-w-full divide-y divide-gray-200",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
+                                                    className: "bg-gray-100",
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                                className: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                                children: "Payment ID"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 424,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                                className: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                                children: "Amount"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 425,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                                className: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                                children: "Date"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 426,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                                className: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                                children: "Method"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 427,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                                className: "px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                                children: "Notes"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 428,
+                                                                columnNumber: 25
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                        lineNumber: 423,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 422,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
+                                                    className: "bg-white divide-y divide-gray-200",
+                                                    children: paymentHistory.map((payment)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                                            className: "hover:bg-gray-50",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                    className: "px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900",
+                                                                    children: [
+                                                                        "#",
+                                                                        payment.payment_id
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                    lineNumber: 434,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                    className: "px-4 py-2 whitespace-nowrap text-sm text-gray-900",
+                                                                    children: [
+                                                                        "Rs. ",
+                                                                        Number(payment.amount_paid).toLocaleString()
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                    lineNumber: 437,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                    className: "px-4 py-2 whitespace-nowrap text-sm text-gray-500",
+                                                                    children: formatDate(payment.payment_date)
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                    lineNumber: 440,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                    className: "px-4 py-2 whitespace-nowrap text-sm text-gray-500",
+                                                                    children: payment.payment_method || 'Cash'
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                    lineNumber: 443,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                    className: "px-4 py-2 text-sm text-gray-500",
+                                                                    children: payment.notes || '-'
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                    lineNumber: 446,
+                                                                    columnNumber: 27
+                                                                }, this)
+                                                            ]
+                                                        }, payment.payment_id, true, {
+                                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                            lineNumber: 433,
+                                                            columnNumber: 25
+                                                        }, this))
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 431,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tfoot", {
+                                                    className: "bg-gray-50",
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                className: "px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900",
+                                                                children: "Total"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 454,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                className: "px-4 py-2 whitespace-nowrap text-sm font-bold text-gray-900",
+                                                                children: [
+                                                                    "Rs. ",
+                                                                    paymentHistory.reduce((sum, payment)=>sum + Number(payment.amount_paid), 0).toLocaleString()
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 457,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                                colSpan: 3
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                                lineNumber: 460,
+                                                                columnNumber: 25
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                        lineNumber: 453,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                                    lineNumber: 452,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                            lineNumber: 421,
+                                            columnNumber: 19
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                        lineNumber: 420,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                                    lineNumber: 419,
+                                    columnNumber: 15
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/OrderDetailsModal.tsx",
+                            lineNumber: 403,
                             columnNumber: 11
                         }, this),
                         order.design_image_url && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1115,7 +1385,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                     children: "Design Image"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 355,
+                                    lineNumber: 472,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1132,29 +1402,29 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                                             className: "p-2"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                            lineNumber: 358,
+                                            lineNumber: 475,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                        lineNumber: 357,
+                                        lineNumber: 474,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                                    lineNumber: 356,
+                                    lineNumber: 473,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 354,
+                            lineNumber: 471,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                    lineNumber: 98,
+                    lineNumber: 148,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1166,7 +1436,7 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                             children: "Proceed to Payment"
                         }, void 0, false, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 373,
+                            lineNumber: 490,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1175,24 +1445,24 @@ const OrderDetailsModal = ({ order, supplierName, supplierPhone = 'Not available
                             children: "Close"
                         }, void 0, false, {
                             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                            lineNumber: 379,
+                            lineNumber: 496,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/OrderDetailsModal.tsx",
-                    lineNumber: 372,
+                    lineNumber: 489,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/OrderDetailsModal.tsx",
-            lineNumber: 85,
+            lineNumber: 135,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/components/OrderDetailsModal.tsx",
-        lineNumber: 84,
+        lineNumber: 134,
         columnNumber: 5
     }, this);
 };
@@ -1669,12 +1939,12 @@ const ViewOrdersPage = ()=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 565,
+                lineNumber: 578,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-            lineNumber: 564,
+            lineNumber: 577,
             columnNumber: 7
         }, this);
     }
@@ -1689,20 +1959,20 @@ const ViewOrdersPage = ()=>{
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                    lineNumber: 573,
+                    lineNumber: 586,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                     children: "Using sample data instead."
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                    lineNumber: 574,
+                    lineNumber: 587,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-            lineNumber: 572,
+            lineNumber: 585,
             columnNumber: 7
         }, this);
     }
@@ -1719,12 +1989,12 @@ const ViewOrdersPage = ()=>{
                             children: "View Orders"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                            lineNumber: 583,
+                            lineNumber: 596,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 582,
+                        lineNumber: 595,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1741,7 +2011,7 @@ const ViewOrdersPage = ()=>{
                                         onChange: (e)=>setSearchTerm(e.target.value)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 589,
+                                        lineNumber: 602,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$search$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Search$3e$__["Search"], {
@@ -1749,13 +2019,13 @@ const ViewOrdersPage = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 596,
+                                        lineNumber: 609,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 588,
+                                lineNumber: 601,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1771,7 +2041,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "All Statuses"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 605,
+                                                lineNumber: 618,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1779,7 +2049,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Pending"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 606,
+                                                lineNumber: 619,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1787,7 +2057,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Processing"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 607,
+                                                lineNumber: 620,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1795,7 +2065,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Completed"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 608,
+                                                lineNumber: 621,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1803,13 +2073,13 @@ const ViewOrdersPage = ()=>{
                                                 children: "Cancelled"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 609,
+                                                lineNumber: 622,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 600,
+                                        lineNumber: 613,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1821,24 +2091,24 @@ const ViewOrdersPage = ()=>{
                                             className: "text-gray-500"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 617,
+                                            lineNumber: 630,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 612,
+                                        lineNumber: 625,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 599,
+                                lineNumber: 612,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 587,
+                        lineNumber: 600,
                         columnNumber: 9
                     }, this),
                     showAdvancedFilters && userRole === 'admin' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1852,7 +2122,7 @@ const ViewOrdersPage = ()=>{
                                         children: "Advanced Filters"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 626,
+                                        lineNumber: 639,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1861,13 +2131,13 @@ const ViewOrdersPage = ()=>{
                                         children: "Reset"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 627,
+                                        lineNumber: 640,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 625,
+                                lineNumber: 638,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1880,7 +2150,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Branch"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 638,
+                                                lineNumber: 651,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1893,7 +2163,7 @@ const ViewOrdersPage = ()=>{
                                                         children: "All Branches"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 644,
+                                                        lineNumber: 657,
                                                         columnNumber: 19
                                                     }, this),
                                                     branches.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1901,19 +2171,19 @@ const ViewOrdersPage = ()=>{
                                                             children: branch.branch_name
                                                         }, branch.branch_id, false, {
                                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                            lineNumber: 646,
+                                                            lineNumber: 659,
                                                             columnNumber: 21
                                                         }, this))
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 639,
+                                                lineNumber: 652,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 637,
+                                        lineNumber: 650,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1923,7 +2193,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Start Date"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 655,
+                                                lineNumber: 668,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1933,13 +2203,13 @@ const ViewOrdersPage = ()=>{
                                                 onChange: (e)=>setStartDate(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 656,
+                                                lineNumber: 669,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 654,
+                                        lineNumber: 667,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1949,7 +2219,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "End Date"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 666,
+                                                lineNumber: 679,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1959,19 +2229,19 @@ const ViewOrdersPage = ()=>{
                                                 onChange: (e)=>setEndDate(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 667,
+                                                lineNumber: 680,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 665,
+                                        lineNumber: 678,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 635,
+                                lineNumber: 648,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1982,18 +2252,18 @@ const ViewOrdersPage = ()=>{
                                     children: "Apply Filters"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 677,
+                                    lineNumber: 690,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 676,
+                                lineNumber: 689,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 624,
+                        lineNumber: 637,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2010,7 +2280,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Order ID"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 692,
+                                                lineNumber: 705,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2018,7 +2288,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Image"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 695,
+                                                lineNumber: 708,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2026,7 +2296,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 698,
+                                                lineNumber: 711,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2034,7 +2304,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Supplier"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 701,
+                                                lineNumber: 714,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2042,7 +2312,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Branch"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 704,
+                                                lineNumber: 717,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2050,7 +2320,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Quantity"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 707,
+                                                lineNumber: 720,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2058,7 +2328,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Status"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 710,
+                                                lineNumber: 723,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2066,7 +2336,7 @@ const ViewOrdersPage = ()=>{
                                                 children: "Created At"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 713,
+                                                lineNumber: 726,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2074,18 +2344,18 @@ const ViewOrdersPage = ()=>{
                                                 children: "Actions"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                lineNumber: 716,
+                                                lineNumber: 729,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 691,
+                                        lineNumber: 704,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 690,
+                                    lineNumber: 703,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -2097,12 +2367,12 @@ const ViewOrdersPage = ()=>{
                                             children: "No orders found"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 724,
+                                            lineNumber: 737,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 723,
+                                        lineNumber: 736,
                                         columnNumber: 17
                                     }, this) : filteredOrders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                             className: "hover:bg-gray-50",
@@ -2115,7 +2385,7 @@ const ViewOrdersPage = ()=>{
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 731,
+                                                    lineNumber: 744,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2125,12 +2395,12 @@ const ViewOrdersPage = ()=>{
                                                         orderId: order.order_id
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 735,
+                                                        lineNumber: 748,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 734,
+                                                    lineNumber: 747,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2138,7 +2408,7 @@ const ViewOrdersPage = ()=>{
                                                     children: order.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 740,
+                                                    lineNumber: 753,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2146,7 +2416,7 @@ const ViewOrdersPage = ()=>{
                                                     children: supplierNames[order.supplier_id] || `Supplier ${order.supplier_id}`
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 743,
+                                                    lineNumber: 756,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2154,7 +2424,7 @@ const ViewOrdersPage = ()=>{
                                                     children: order.branch_name || (order.branch_id === 1 ? 'Mahiyangana Branch' : order.branch_id === 2 ? 'Mahaoya Branch' : 'Not assigned')
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 746,
+                                                    lineNumber: 759,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2162,7 +2432,7 @@ const ViewOrdersPage = ()=>{
                                                     children: order.quantity
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 752,
+                                                    lineNumber: 765,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2172,12 +2442,12 @@ const ViewOrdersPage = ()=>{
                                                         children: order.status.charAt(0).toUpperCase() + order.status.slice(1)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 756,
+                                                        lineNumber: 769,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 755,
+                                                    lineNumber: 768,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2185,7 +2455,7 @@ const ViewOrdersPage = ()=>{
                                                     children: formatDate(order.created_at)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 760,
+                                                    lineNumber: 773,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2201,12 +2471,12 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 770,
+                                                                    lineNumber: 783,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 765,
+                                                                lineNumber: 778,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2217,12 +2487,12 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 777,
+                                                                    lineNumber: 790,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 772,
+                                                                lineNumber: 785,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2233,45 +2503,45 @@ const ViewOrdersPage = ()=>{
                                                                     size: 18
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                    lineNumber: 784,
+                                                                    lineNumber: 797,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                                lineNumber: 779,
+                                                                lineNumber: 792,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                        lineNumber: 764,
+                                                        lineNumber: 777,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                                    lineNumber: 763,
+                                                    lineNumber: 776,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, order.order_id, true, {
                                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                            lineNumber: 730,
+                                            lineNumber: 743,
                                             columnNumber: 19
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                    lineNumber: 721,
+                                    lineNumber: 734,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                            lineNumber: 689,
+                            lineNumber: 702,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 688,
+                        lineNumber: 701,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2288,7 +2558,7 @@ const ViewOrdersPage = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 797,
+                                lineNumber: 810,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2299,7 +2569,7 @@ const ViewOrdersPage = ()=>{
                                         children: "Previous"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 801,
+                                        lineNumber: 814,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2307,7 +2577,7 @@ const ViewOrdersPage = ()=>{
                                         children: "1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 804,
+                                        lineNumber: 817,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2315,25 +2585,25 @@ const ViewOrdersPage = ()=>{
                                         children: "Next"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                        lineNumber: 807,
+                                        lineNumber: 820,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                                lineNumber: 800,
+                                lineNumber: 813,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                        lineNumber: 796,
+                        lineNumber: 809,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 581,
+                lineNumber: 594,
                 columnNumber: 7
             }, this),
             showOrderDetails && selectedOrder && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$OrderDetailsModal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"], {
@@ -2344,13 +2614,13 @@ const ViewOrdersPage = ()=>{
                 onClose: handleCloseOrderDetails
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-                lineNumber: 816,
+                lineNumber: 829,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/orders/view/page.tsx",
-        lineNumber: 580,
+        lineNumber: 593,
         columnNumber: 5
     }, this);
 };

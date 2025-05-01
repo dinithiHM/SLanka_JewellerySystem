@@ -207,6 +207,20 @@ const OrderPaymentPage = () => {
       // Calculate remaining balance for display purposes
       const remainingBalanceAfterPayment = totalAmount - totalAdvance;
 
+      // Calculate the exact remaining balance
+      const exactRemainingBalance = totalAmount - existingAdvancePayment;
+
+      // Check if this payment is close to the remaining balance (within 1% or 100 rupees, whichever is smaller)
+      const tolerance = Math.min(exactRemainingBalance * 0.01, 100);
+      const isCloseToRemainingBalance = Math.abs(currentPaymentAmount - exactRemainingBalance) < tolerance;
+
+      // If this payment is close to the remaining balance, adjust it to exactly match
+      if (isCloseToRemainingBalance) {
+        console.log(`Adjusting payment to exact remaining balance: ${currentPaymentAmount} -> ${exactRemainingBalance}`);
+        // Use the exact remaining balance to avoid floating point issues
+        setCurrentPaymentAmount(exactRemainingBalance);
+      }
+
       // Validate current payment but allow to proceed with a confirmation
       if (currentPaymentAmount < minAdvancePayment) {
         // For first payment, minimum is 25% of total
@@ -226,6 +240,25 @@ const OrderPaymentPage = () => {
         }
       }
 
+      // Recalculate total advance after possible adjustment
+      const finalTotalAdvance = existingAdvancePayment + currentPaymentAmount;
+
+      // Check if this is a final payment (paying off the exact remaining balance)
+      // We already calculated exactRemainingBalance above
+      // Consider it a final payment if it's within 1% of the remaining balance or within 100 rupees
+      const finalPaymentTolerance = Math.min(exactRemainingBalance * 0.01, 100);
+      const isFinalPayment = Math.abs(currentPaymentAmount - exactRemainingBalance) < finalPaymentTolerance;
+
+      // Log detailed payment information for debugging
+      console.log('DEBUG - Payment details:');
+      console.log(`- Total order amount: ${totalAmount}`);
+      console.log(`- Existing advance payment: ${existingAdvancePayment}`);
+      console.log(`- Current payment amount: ${currentPaymentAmount}`);
+      console.log(`- Exact remaining balance: ${exactRemainingBalance}`);
+      console.log(`- Final total advance: ${finalTotalAdvance}`);
+      console.log(`- Is final payment: ${isFinalPayment ? 'Yes' : 'No'}`);
+      console.log(`- Difference: ${Math.abs(currentPaymentAmount - exactRemainingBalance)}`);
+
       // Prepare the data to be sent
       const paymentData = {
         order_id: orderId,
@@ -235,12 +268,13 @@ const OrderPaymentPage = () => {
         total_amount: totalAmount,
         amount_paid: currentPaymentAmount, // Only the current payment amount
         existing_payment: existingAdvancePayment, // Previously paid amount
-        total_advance_payment: totalAdvance, // Total of all payments
+        total_advance_payment: finalTotalAdvance, // Total of all payments
         total_payment_amount: totalAmount,
-        payment_status: totalAdvance >= totalAmount ? 'Completed' : 'Partial',
+        payment_status: isFinalPayment ? 'Completed' : 'Partial',
         payment_method: paymentMethod,
         payment_notes: paymentNotes,
-        use_custom_estimate: useCustomEstimate
+        use_custom_estimate: useCustomEstimate,
+        is_final_payment: isFinalPayment
       };
 
       // Send the data to the backend

@@ -212,6 +212,17 @@ const OrderPaymentPage = ()=>{
             const totalAdvance = existingAdvancePayment + currentPaymentAmount;
             // Calculate remaining balance for display purposes
             const remainingBalanceAfterPayment = totalAmount - totalAdvance;
+            // Calculate the exact remaining balance
+            const exactRemainingBalance = totalAmount - existingAdvancePayment;
+            // Check if this payment is close to the remaining balance (within 1% or 100 rupees, whichever is smaller)
+            const tolerance = Math.min(exactRemainingBalance * 0.01, 100);
+            const isCloseToRemainingBalance = Math.abs(currentPaymentAmount - exactRemainingBalance) < tolerance;
+            // If this payment is close to the remaining balance, adjust it to exactly match
+            if (isCloseToRemainingBalance) {
+                console.log(`Adjusting payment to exact remaining balance: ${currentPaymentAmount} -> ${exactRemainingBalance}`);
+                // Use the exact remaining balance to avoid floating point issues
+                setCurrentPaymentAmount(exactRemainingBalance);
+            }
             // Validate current payment but allow to proceed with a confirmation
             if (currentPaymentAmount < minAdvancePayment) {
                 // For first payment, minimum is 25% of total
@@ -224,6 +235,22 @@ const OrderPaymentPage = ()=>{
                     return;
                 }
             }
+            // Recalculate total advance after possible adjustment
+            const finalTotalAdvance = existingAdvancePayment + currentPaymentAmount;
+            // Check if this is a final payment (paying off the exact remaining balance)
+            // We already calculated exactRemainingBalance above
+            // Consider it a final payment if it's within 1% of the remaining balance or within 100 rupees
+            const finalPaymentTolerance = Math.min(exactRemainingBalance * 0.01, 100);
+            const isFinalPayment = Math.abs(currentPaymentAmount - exactRemainingBalance) < finalPaymentTolerance;
+            // Log detailed payment information for debugging
+            console.log('DEBUG - Payment details:');
+            console.log(`- Total order amount: ${totalAmount}`);
+            console.log(`- Existing advance payment: ${existingAdvancePayment}`);
+            console.log(`- Current payment amount: ${currentPaymentAmount}`);
+            console.log(`- Exact remaining balance: ${exactRemainingBalance}`);
+            console.log(`- Final total advance: ${finalTotalAdvance}`);
+            console.log(`- Is final payment: ${isFinalPayment ? 'Yes' : 'No'}`);
+            console.log(`- Difference: ${Math.abs(currentPaymentAmount - exactRemainingBalance)}`);
             // Prepare the data to be sent
             const paymentData = {
                 order_id: orderId,
@@ -233,12 +260,13 @@ const OrderPaymentPage = ()=>{
                 total_amount: totalAmount,
                 amount_paid: currentPaymentAmount,
                 existing_payment: existingAdvancePayment,
-                total_advance_payment: totalAdvance,
+                total_advance_payment: finalTotalAdvance,
                 total_payment_amount: totalAmount,
-                payment_status: totalAdvance >= totalAmount ? 'Completed' : 'Partial',
+                payment_status: isFinalPayment ? 'Completed' : 'Partial',
                 payment_method: paymentMethod,
                 payment_notes: paymentNotes,
-                use_custom_estimate: useCustomEstimate
+                use_custom_estimate: useCustomEstimate,
+                is_final_payment: isFinalPayment
             };
             // Send the data to the backend
             const response = await fetch('http://localhost:3002/supplier-payments/create', {
@@ -277,7 +305,7 @@ const OrderPaymentPage = ()=>{
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                    lineNumber: 279,
+                    lineNumber: 313,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -291,7 +319,7 @@ const OrderPaymentPage = ()=>{
                                     children: "Order Information"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 284,
+                                    lineNumber: 318,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -304,7 +332,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Category"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 288,
+                                                    lineNumber: 322,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -312,13 +340,13 @@ const OrderPaymentPage = ()=>{
                                                     children: category
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 289,
+                                                    lineNumber: 323,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 287,
+                                            lineNumber: 321,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -328,138 +356,12 @@ const OrderPaymentPage = ()=>{
                                                     children: "Supplier"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 293,
+                                                    lineNumber: 327,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                     className: "font-medium",
                                                     children: supplierName
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 294,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 292,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "text-sm text-gray-500",
-                                                    children: "Quantity"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 298,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "font-medium",
-                                                    children: quantity
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 299,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 297,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "text-sm text-gray-500",
-                                                    children: "Gold Karat"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 303,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "font-medium",
-                                                    children: selectedKarat
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 304,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 302,
-                                            columnNumber: 15
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 286,
-                                    columnNumber: 13
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 283,
-                            columnNumber: 11
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                    className: "text-lg font-semibold mb-4",
-                                    children: "Price Calculation"
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 311,
-                                    columnNumber: 13
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                    className: "block text-sm font-medium mb-1",
-                                                    children: "Gold Price (Rs./g)"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 316,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                    type: "text",
-                                                    className: "w-full p-2 border border-gray-300 rounded-md bg-gray-100",
-                                                    value: goldPricePerGram.toFixed(2),
-                                                    disabled: true
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 317,
-                                                    columnNumber: 17
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 315,
-                                            columnNumber: 15
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                    className: "block text-sm font-medium mb-1",
-                                                    children: "Weight (g)"
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 327,
-                                                    columnNumber: 17
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                    type: "text",
-                                                    className: "w-full p-2 border border-gray-300 rounded-md bg-gray-100",
-                                                    value: weightInGrams.toFixed(3),
-                                                    disabled: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
                                                     lineNumber: 328,
@@ -473,12 +375,138 @@ const OrderPaymentPage = ()=>{
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "text-sm text-gray-500",
+                                                    children: "Quantity"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 332,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "font-medium",
+                                                    children: quantity
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 333,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                            lineNumber: 331,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "text-sm text-gray-500",
+                                                    children: "Gold Karat"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 337,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "font-medium",
+                                                    children: selectedKarat
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 338,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                            lineNumber: 336,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                    lineNumber: 320,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                            lineNumber: 317,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                    className: "text-lg font-semibold mb-4",
+                                    children: "Price Calculation"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                    lineNumber: 345,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                    className: "block text-sm font-medium mb-1",
+                                                    children: "Gold Price (Rs./g)"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 350,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                    type: "text",
+                                                    className: "w-full p-2 border border-gray-300 rounded-md bg-gray-100",
+                                                    value: goldPricePerGram.toFixed(2),
+                                                    disabled: true
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 351,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                            lineNumber: 349,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                    className: "block text-sm font-medium mb-1",
+                                                    children: "Weight (g)"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 361,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                    type: "text",
+                                                    className: "w-full p-2 border border-gray-300 rounded-md bg-gray-100",
+                                                    value: weightInGrams.toFixed(3),
+                                                    disabled: true
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                                    lineNumber: 362,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
+                                            lineNumber: 360,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
                                                     className: "block text-sm font-medium mb-1",
                                                     children: "Making Charges (Rs.)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 338,
+                                                    lineNumber: 372,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -495,13 +523,13 @@ const OrderPaymentPage = ()=>{
                                                     step: "any"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 339,
+                                                    lineNumber: 373,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 337,
+                                            lineNumber: 371,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -511,7 +539,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Additional Materials Charges (Rs.)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 356,
+                                                    lineNumber: 390,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -521,19 +549,19 @@ const OrderPaymentPage = ()=>{
                                                     disabled: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 357,
+                                                    lineNumber: 391,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 355,
+                                            lineNumber: 389,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 313,
+                                    lineNumber: 347,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -546,7 +574,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Base Gold Price (per unit)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 370,
+                                                    lineNumber: 404,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -559,19 +587,19 @@ const OrderPaymentPage = ()=>{
                                                             children: "Gold price × weight"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 373,
+                                                            lineNumber: 407,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 371,
+                                                    lineNumber: 405,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 369,
+                                            lineNumber: 403,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -588,7 +616,7 @@ const OrderPaymentPage = ()=>{
                                                             className: "mr-2"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 380,
+                                                            lineNumber: 414,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -597,13 +625,13 @@ const OrderPaymentPage = ()=>{
                                                             children: "Use custom estimate price (recommended)"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 387,
+                                                            lineNumber: 421,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 379,
+                                                    lineNumber: 413,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -611,13 +639,13 @@ const OrderPaymentPage = ()=>{
                                                     children: "Using custom estimate ensures the shop doesn't lose money on the order."
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 391,
+                                                    lineNumber: 425,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 378,
+                                            lineNumber: 412,
                                             columnNumber: 15
                                         }, this),
                                         useCustomEstimate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -628,7 +656,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Custom Estimate Price (per unit)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 399,
+                                                    lineNumber: 433,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -645,7 +673,7 @@ const OrderPaymentPage = ()=>{
                                                     step: "any"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 400,
+                                                    lineNumber: 434,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -653,13 +681,13 @@ const OrderPaymentPage = ()=>{
                                                     children: "This is the final price per unit including all charges and profit margin."
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 413,
+                                                    lineNumber: 447,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 398,
+                                            lineNumber: 432,
                                             columnNumber: 17
                                         }, this),
                                         !useCustomEstimate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -669,7 +697,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Calculated Estimate Price (per unit)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 422,
+                                                    lineNumber: 456,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -682,19 +710,19 @@ const OrderPaymentPage = ()=>{
                                                             children: "Gold + making + additional materials"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 425,
+                                                            lineNumber: 459,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 423,
+                                                    lineNumber: 457,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 421,
+                                            lineNumber: 455,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -705,7 +733,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Price Breakdown"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 432,
+                                                    lineNumber: 466,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -720,7 +748,7 @@ const OrderPaymentPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                lineNumber: 435,
+                                                                lineNumber: 469,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -730,7 +758,7 @@ const OrderPaymentPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                lineNumber: 436,
+                                                                lineNumber: 470,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -740,7 +768,7 @@ const OrderPaymentPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                lineNumber: 437,
+                                                                lineNumber: 471,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -751,7 +779,7 @@ const OrderPaymentPage = ()=>{
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                lineNumber: 438,
+                                                                lineNumber: 472,
                                                                 columnNumber: 21
                                                             }, this),
                                                             useCustomEstimate && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -768,7 +796,7 @@ const OrderPaymentPage = ()=>{
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                        lineNumber: 443,
+                                                                        lineNumber: 477,
                                                                         columnNumber: 27
                                                                     }, this) : customEstimatePrice < estimatedPrice ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                         className: "text-xs text-red-600 ml-2",
@@ -779,30 +807,30 @@ const OrderPaymentPage = ()=>{
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                        lineNumber: 447,
+                                                                        lineNumber: 481,
                                                                         columnNumber: 27
                                                                     }, this) : null
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                lineNumber: 440,
+                                                                lineNumber: 474,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                        lineNumber: 434,
+                                                        lineNumber: 468,
                                                         columnNumber: 19
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 433,
+                                                    lineNumber: 467,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 431,
+                                            lineNumber: 465,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -813,7 +841,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Total Order Amount"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 459,
+                                                    lineNumber: 493,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -832,31 +860,31 @@ const OrderPaymentPage = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 462,
+                                                            lineNumber: 496,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 460,
+                                                    lineNumber: 494,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 458,
+                                            lineNumber: 492,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 367,
+                                    lineNumber: 401,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 310,
+                            lineNumber: 344,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -868,7 +896,7 @@ const OrderPaymentPage = ()=>{
                                     children: "Supplier Payment"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 472,
+                                    lineNumber: 506,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -881,7 +909,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Existing Advance Payment (Rs.)"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 477,
+                                                    lineNumber: 511,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -891,7 +919,7 @@ const OrderPaymentPage = ()=>{
                                                     disabled: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 480,
+                                                    lineNumber: 514,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -899,13 +927,13 @@ const OrderPaymentPage = ()=>{
                                                     children: "Previously paid amount"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 486,
+                                                    lineNumber: 520,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 476,
+                                            lineNumber: 510,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -919,7 +947,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "*"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 495,
+                                                            lineNumber: 529,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -931,13 +959,13 @@ const OrderPaymentPage = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 496,
+                                                            lineNumber: 530,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 493,
+                                                    lineNumber: 527,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -966,7 +994,7 @@ const OrderPaymentPage = ()=>{
                                                             required: true
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 501,
+                                                            lineNumber: 535,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -977,13 +1005,13 @@ const OrderPaymentPage = ()=>{
                                                             children: "Set Min"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 525,
+                                                            lineNumber: 559,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 500,
+                                                    lineNumber: 534,
                                                     columnNumber: 17
                                                 }, this),
                                                 currentPaymentAmount < minAdvancePayment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -994,7 +1022,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "Warning:"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 536,
+                                                            lineNumber: 570,
                                                             columnNumber: 21
                                                         }, this),
                                                         " ",
@@ -1002,13 +1030,13 @@ const OrderPaymentPage = ()=>{
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 535,
+                                                    lineNumber: 569,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 492,
+                                            lineNumber: 526,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1018,7 +1046,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Payment Method"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 546,
+                                                    lineNumber: 580,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1031,7 +1059,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "Cash"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 552,
+                                                            lineNumber: 586,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1039,7 +1067,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "Bank Transfer"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 553,
+                                                            lineNumber: 587,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1047,7 +1075,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "Check"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 554,
+                                                            lineNumber: 588,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1055,7 +1083,7 @@ const OrderPaymentPage = ()=>{
                                                             children: "Credit Card"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 555,
+                                                            lineNumber: 589,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1063,19 +1091,19 @@ const OrderPaymentPage = ()=>{
                                                             children: "Other"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 556,
+                                                            lineNumber: 590,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 547,
+                                                    lineNumber: 581,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 545,
+                                            lineNumber: 579,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1086,7 +1114,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Payment Notes"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 562,
+                                                    lineNumber: 596,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -1097,19 +1125,19 @@ const OrderPaymentPage = ()=>{
                                                     placeholder: "Add any notes about the payment"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 563,
+                                                    lineNumber: 597,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 561,
+                                            lineNumber: 595,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 474,
+                                    lineNumber: 508,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1122,7 +1150,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Total Order Amount"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 576,
+                                                    lineNumber: 610,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1133,13 +1161,13 @@ const OrderPaymentPage = ()=>{
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 577,
+                                                    lineNumber: 611,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 575,
+                                            lineNumber: 609,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1149,7 +1177,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Total Advance Payment"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 583,
+                                                    lineNumber: 617,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1165,7 +1193,7 @@ const OrderPaymentPage = ()=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                    lineNumber: 586,
+                                                                    lineNumber: 620,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1177,13 +1205,13 @@ const OrderPaymentPage = ()=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                    lineNumber: 587,
+                                                                    lineNumber: 621,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 585,
+                                                            lineNumber: 619,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1196,19 +1224,19 @@ const OrderPaymentPage = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 591,
+                                                            lineNumber: 625,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 584,
+                                                    lineNumber: 618,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 582,
+                                            lineNumber: 616,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1218,7 +1246,7 @@ const OrderPaymentPage = ()=>{
                                                     children: "Remaining Balance"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 599,
+                                                    lineNumber: 633,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1234,7 +1262,7 @@ const OrderPaymentPage = ()=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                    lineNumber: 602,
+                                                                    lineNumber: 636,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1246,13 +1274,13 @@ const OrderPaymentPage = ()=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                                    lineNumber: 603,
+                                                                    lineNumber: 637,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 601,
+                                                            lineNumber: 635,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1260,31 +1288,31 @@ const OrderPaymentPage = ()=>{
                                                             children: "After this payment"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                            lineNumber: 607,
+                                                            lineNumber: 641,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                                    lineNumber: 600,
+                                                    lineNumber: 634,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 598,
+                                            lineNumber: 632,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 574,
+                                    lineNumber: 608,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 471,
+                            lineNumber: 505,
                             columnNumber: 11
                         }, this),
                         imagePreview && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1295,7 +1323,7 @@ const OrderPaymentPage = ()=>{
                                     children: "Design Image"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 618,
+                                    lineNumber: 652,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1311,23 +1339,23 @@ const OrderPaymentPage = ()=>{
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                            lineNumber: 621,
+                                            lineNumber: 655,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                        lineNumber: 620,
+                                        lineNumber: 654,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 619,
+                                    lineNumber: 653,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 617,
+                            lineNumber: 651,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1340,7 +1368,7 @@ const OrderPaymentPage = ()=>{
                                     children: isSubmitting ? 'Processing...' : 'Process Payment'
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 634,
+                                    lineNumber: 668,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1351,13 +1379,13 @@ const OrderPaymentPage = ()=>{
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                                    lineNumber: 641,
+                                    lineNumber: 675,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 633,
+                            lineNumber: 667,
                             columnNumber: 11
                         }, this),
                         submitSuccess && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1365,7 +1393,7 @@ const OrderPaymentPage = ()=>{
                             children: "Payment processed successfully!"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 653,
+                            lineNumber: 687,
                             columnNumber: 13
                         }, this),
                         submitError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1376,24 +1404,24 @@ const OrderPaymentPage = ()=>{
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                            lineNumber: 658,
+                            lineNumber: 692,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-                    lineNumber: 281,
+                    lineNumber: 315,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-            lineNumber: 278,
+            lineNumber: 312,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/DashView/orders/pay/page.tsx",
-        lineNumber: 277,
+        lineNumber: 311,
         columnNumber: 5
     }, this);
 };

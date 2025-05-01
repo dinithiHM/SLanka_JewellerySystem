@@ -5,6 +5,16 @@ import { Eye, Edit, Trash2, Search, Filter } from 'lucide-react';
 import OrderImageThumbnail from '../../../../components/OrderImageThumbnail';
 import OrderDetailsModal from '../../../../components/OrderDetailsModal';
 
+interface PaymentRecord {
+  payment_id: number;
+  order_id: number;
+  amount_paid: number;
+  payment_date: string;
+  payment_method: string;
+  notes?: string;
+  created_by?: number;
+}
+
 interface Order {
   order_id: number;
   category: string;
@@ -40,6 +50,9 @@ interface Order {
   payment_status?: string;
   payment_method?: string;
   payment_notes?: string;
+
+  // Payment history
+  payment_history?: PaymentRecord[];
 }
 
 const ViewOrdersPage = () => {
