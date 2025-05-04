@@ -1,16 +1,13 @@
 {
   "/page": "app/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/login/page": "app/login/page.js",
-  "/DashView/admin/page": "app/DashView/admin/page.js",
-  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
-  "/DashView/assay-reports/page": "app/DashView/assay-reports/page.js",
-  "/DashView/admin/sales-report/page": "app/DashView/admin/sales-report/page.js",
-  "/DashView/sales/manage/page": "app/DashView/sales/manage/page.js",
-  "/DashView/sales/view/page": "app/DashView/sales/view/page.js",
-  "/DashView/sales/details/[id]/page": "app/DashView/sales/details/[id]/page.js",
-  "/DashView/sales/add/page": "app/DashView/sales/add/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/DashView/storeManager/page": "app/DashView/storeManager/page.js"
+  "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
+  "/DashView/advance-payment/page": "app/DashView/advance-payment/page.js",
+  "/DashView/advance-payment/view/page": "app/DashView/advance-payment/view/page.js",
+  "/DashView/custom-orders/page": "app/DashView/custom-orders/page.js",
+  "/DashView/custom-orders/create/page": "app/DashView/custom-orders/create/page.js",
+  "/DashView/custom-orders/[id]/page": "app/DashView/custom-orders/[id]/page.js"
 }

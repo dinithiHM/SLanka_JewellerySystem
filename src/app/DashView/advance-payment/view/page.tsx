@@ -47,9 +47,17 @@ interface AdvancePayment {
 // Response type for payment history API
 interface PaymentHistoryResponse {
   order_id: number;
-  payments: AdvancePayment[];
+  order_reference: string;
+  customer_name: string;
+  total_amount: number;
+  payments: (AdvancePayment & {
+    balance_after: number;
+    running_total_paid: number;
+  })[];
   total_payments: number;
   total_paid: number;
+  remaining_balance: number;
+  payment_status: string;
 }
 
 interface Branch {
@@ -640,20 +648,20 @@ const ViewAdvancePaymentsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <DollarSign className="h-5 w-5 text-green-500 mr-1" />
-                        <span>{formatCurrency(payment.advance_amount)}</span>
+                        <span>{formatCurrency(payment.total_paid_amount || payment.advance_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <DollarSign className="h-5 w-5 text-red-500 mr-1" />
-                        <span>{formatCurrency(payment.balance_amount)}</span>
+                        <span>{formatCurrency(payment.actual_balance_amount || payment.balance_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.payment_status)}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.actual_payment_status || payment.payment_status)}`}>
                         <div className="flex items-center">
-                          {getStatusIcon(payment.payment_status)}
-                          {payment.payment_status}
+                          {getStatusIcon(payment.actual_payment_status || payment.payment_status)}
+                          {payment.actual_payment_status || payment.payment_status}
                         </div>
                       </span>
                     </td>
@@ -671,7 +679,7 @@ const ViewAdvancePaymentsPage = () => {
                         >
                           History
                         </button>
-                        {payment.payment_status !== 'Completed' && (
+                        {(payment.actual_payment_status || payment.payment_status) !== 'Completed' && (
                           <button
                             onClick={() => handleMakeAdditionalPayment(payment)}
                             className="text-green-600 hover:text-green-900"
@@ -772,24 +780,24 @@ const ViewAdvancePaymentsPage = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Advance Paid</h3>
-                  <p className="mt-1 text-lg font-semibold text-green-600">{formatCurrency(selectedPayment.advance_amount)}</p>
+                  <p className="mt-1 text-lg font-semibold text-green-600">{formatCurrency(selectedPayment.total_paid_amount || selectedPayment.advance_amount)}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Balance</h3>
-                  <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(selectedPayment.balance_amount)}</p>
+                  <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(selectedPayment.actual_balance_amount || selectedPayment.balance_amount)}</p>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between">
-              <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedPayment.payment_status)}`}>
+              <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedPayment.actual_payment_status || selectedPayment.payment_status)}`}>
                 <div className="flex items-center">
-                  {getStatusIcon(selectedPayment.payment_status)}
-                  {selectedPayment.payment_status}
+                  {getStatusIcon(selectedPayment.actual_payment_status || selectedPayment.payment_status)}
+                  {selectedPayment.actual_payment_status || selectedPayment.payment_status}
                 </div>
               </span>
 
-              {selectedPayment.payment_status !== 'Completed' && (
+              {(selectedPayment.actual_payment_status || selectedPayment.payment_status) !== 'Completed' && (
                 <button
                   onClick={() => {
                     setShowDetailsModal(false);
@@ -851,6 +859,64 @@ const ViewAdvancePaymentsPage = () => {
                       <p className="font-medium">{paymentHistory.length}</p>
                     </div>
                   </div>
+
+                  {/* Payment Progress */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Payment Progress</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {paymentHistory.length > 0 && 'running_total_paid' in paymentHistory[paymentHistory.length - 1] ? (
+                          `${((paymentHistory[paymentHistory.length - 1].running_total_paid / paymentHistory[0].total_amount) * 100).toFixed(1)}%`
+                        ) : (
+                          `${((paymentHistory.reduce((sum, p) => sum + parseFloat(p.advance_amount), 0) / paymentHistory[0].total_amount) * 100).toFixed(1)}%`
+                        )}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{
+                          width: paymentHistory.length > 0 && 'running_total_paid' in paymentHistory[paymentHistory.length - 1] ?
+                            `${Math.min(100, (paymentHistory[paymentHistory.length - 1].running_total_paid / paymentHistory[0].total_amount) * 100)}%` :
+                            `${Math.min(100, (paymentHistory.reduce((sum, p) => sum + parseFloat(p.advance_amount), 0) / paymentHistory[0].total_amount) * 100)}%`
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-3">
+                      <div>
+                        <p className="text-sm text-gray-500">Total Paid</p>
+                        <p className="font-medium text-green-600">
+                          {paymentHistory.length > 0 && 'running_total_paid' in paymentHistory[paymentHistory.length - 1] ?
+                            formatCurrency(paymentHistory[paymentHistory.length - 1].running_total_paid) :
+                            formatCurrency(paymentHistory.reduce((sum, p) => sum + parseFloat(p.advance_amount), 0))
+                          }
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Remaining Balance</p>
+                        <p className="font-medium text-red-600">
+                          {paymentHistory.length > 0 && 'balance_after' in paymentHistory[paymentHistory.length - 1] ?
+                            formatCurrency(paymentHistory[paymentHistory.length - 1].balance_after) :
+                            formatCurrency(paymentHistory[0].total_amount - paymentHistory.reduce((sum, p) => sum + parseFloat(p.advance_amount), 0))
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Payment Limit Warning */}
+                    {paymentHistory.length >= 2 && (
+                      <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm text-yellow-700 flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          {paymentHistory.length >= 3 ?
+                            "Payment limit reached. Custom orders can have a maximum of 3 payments." :
+                            `You have made ${paymentHistory.length} of 3 allowed payments. ${3 - paymentHistory.length} payment(s) remaining.`
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -891,7 +957,7 @@ const ViewAdvancePaymentsPage = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <DollarSign className="h-5 w-5 text-red-500 mr-1" />
-                              <span>{formatCurrency(payment.balance_amount)}</span>
+                              <span>{formatCurrency('balance_after' in payment ? payment.balance_after : payment.balance_amount)}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

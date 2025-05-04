@@ -74,10 +74,13 @@ const CreateCustomOrderPage = () => {
     fetchCategories();
   }, []);
 
-  // Calculate balance amount when estimated or advance amount changes
+  // Calculate balance amount and minimum advance payment when estimated amount changes
   useEffect(() => {
     setBalanceAmount(estimatedAmount - advanceAmount);
   }, [estimatedAmount, advanceAmount]);
+
+  // Calculate minimum advance payment (25% of estimated amount)
+  const minAdvancePayment = estimatedAmount * 0.25;
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +130,19 @@ const CreateCustomOrderPage = () => {
     if (advanceAmount > estimatedAmount) {
       setError('Advance amount cannot be greater than estimated amount');
       return;
+    }
+
+    // Check if advance payment meets the minimum 25% requirement
+    if (advanceAmount < minAdvancePayment) {
+      const confirmProceed = window.confirm(
+        `Warning: The advance payment (Rs. ${advanceAmount.toLocaleString()}) is below the minimum required amount of Rs. ${minAdvancePayment.toLocaleString()} (25% of the estimated amount).\n\n` +
+        `According to the payment policy, the first payment must be at least 25% of the total amount, and the remaining balance must be paid within the next 2 payments.\n\n` +
+        `Do you want to proceed anyway?`
+      );
+
+      if (!confirmProceed) {
+        return;
+      }
     }
 
     setLoading(true);
@@ -449,7 +465,7 @@ const CreateCustomOrderPage = () => {
 
               <div>
                 <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700 mb-1">
-                  Advance Payment
+                  Advance Payment <span className="text-xs text-yellow-600">(Min: 25% of Estimated Amount)</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -458,7 +474,7 @@ const CreateCustomOrderPage = () => {
                   <input
                     type="number"
                     id="advanceAmount"
-                    className="block w-full pl-10 p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+                    className={`block w-full pl-10 p-2 border ${advanceAmount < minAdvancePayment && estimatedAmount > 0 ? 'border-yellow-500 bg-yellow-50' : 'border-gray-300'} rounded-md focus:ring-yellow-500 focus:border-yellow-500`}
                     placeholder="0.00"
                     value={advanceAmount || ''}
                     onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
@@ -467,6 +483,16 @@ const CreateCustomOrderPage = () => {
                     step="0.01"
                   />
                 </div>
+                {estimatedAmount > 0 && (
+                  <p className={`mt-1 text-sm ${advanceAmount < minAdvancePayment ? 'text-yellow-600' : 'text-gray-500'}`}>
+                    Recommended minimum: {formatCurrency(minAdvancePayment)}
+                    {advanceAmount < minAdvancePayment && advanceAmount > 0 && (
+                      <span className="ml-1 text-yellow-600">
+                        (Current: {((advanceAmount / estimatedAmount) * 100).toFixed(1)}%)
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
 
               <div>

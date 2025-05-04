@@ -28,6 +28,10 @@ interface AdvancePayment {
   item_name: string | null;
   item_category: string | null;
   item_quantity: number | null;
+  // Additional fields for payment history
+  total_paid?: number;
+  actual_balance?: number;
+  order_id?: number;
 }
 
 const CompleteAdvancePaymentPage = () => {
@@ -65,6 +69,28 @@ const CompleteAdvancePaymentPage = () => {
 
         // Set default additional amount to the balance
         setAdditionalAmount(data.balance_amount);
+
+        // If this is a custom order, fetch the payment history to get the correct total paid amount
+        if (data.is_custom_order && data.order_id) {
+          try {
+            const historyResponse = await fetch(`http://localhost:3002/advance-payments/history/order/${data.order_id}`);
+            if (historyResponse.ok) {
+              const historyData = await historyResponse.json();
+
+              // Update the payment data with the correct total paid amount from history
+              if (historyData && historyData.total_paid && payment) {
+                setPayment({
+                  ...payment,
+                  total_paid: historyData.total_paid,
+                  actual_balance: historyData.remaining_balance
+                });
+              }
+            }
+          } catch (historyErr) {
+            console.error('Error fetching payment history:', historyErr);
+            // Continue with the original payment data
+          }
+        }
       } catch (err) {
         console.error('Error fetching payment details:', err);
         setError(err instanceof Error ? err.message : 'An error occurred while fetching payment details');
@@ -188,6 +214,25 @@ const CompleteAdvancePaymentPage = () => {
         <h1 className="text-2xl font-bold text-gray-800">Complete Advance Payment</h1>
       </div>
 
+      {/* Order Status Information */}
+      <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+        <h2 className="text-lg font-semibold text-blue-800 mb-2">Payment Information</h2>
+        <div className="grid grid-cols-1 gap-2">
+          <p className="text-blue-700">
+            <strong>Order Status:</strong> {payment.payment_status}
+          </p>
+          <p className="text-green-700">
+            <strong>Current advance payment:</strong> {formatCurrency(payment.total_paid || payment.advance_amount)}
+          </p>
+          <p className="text-red-700">
+            <strong>Remaining balance:</strong> {formatCurrency(payment.actual_balance || payment.balance_amount)}
+          </p>
+          <p className="text-gray-700 italic mt-2">
+            Any amount entered below will be an additional payment.
+          </p>
+        </div>
+      </div>
+
       {/* Error message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
@@ -258,11 +303,11 @@ const CompleteAdvancePaymentPage = () => {
           </div>
           <div>
             <p className="text-sm text-gray-500">Paid Amount</p>
-            <p className="text-lg font-semibold text-green-600">{formatCurrency(payment.advance_amount)}</p>
+            <p className="text-lg font-semibold text-green-600">{formatCurrency(payment.total_paid || payment.advance_amount)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Balance</p>
-            <p className="text-lg font-semibold text-red-600">{formatCurrency(payment.balance_amount)}</p>
+            <p className="text-lg font-semibold text-red-600">{formatCurrency(payment.actual_balance || payment.balance_amount)}</p>
           </div>
         </div>
       </div>

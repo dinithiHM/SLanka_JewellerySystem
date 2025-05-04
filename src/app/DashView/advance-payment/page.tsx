@@ -354,6 +354,7 @@ const AdvancePaymentPage = () => {
   // Function to fetch more details about a custom order
   const fetchOrderDetails = async (orderId: number) => {
     try {
+      // First, fetch the basic order details
       const response = await fetch(`http://localhost:3002/custom-orders/${orderId}`);
       if (response.ok) {
         const orderDetails = await response.json();
@@ -362,7 +363,56 @@ const AdvancePaymentPage = () => {
         // Update the selected order with the accurate data from the server
         setSelectedOrder(orderDetails);
 
-        // If there's an advance amount, update the balance calculation
+        // Now fetch the payment history to get the most accurate payment information
+        try {
+          const historyResponse = await fetch(`http://localhost:3002/advance-payments/history/order/${orderId}`);
+          if (historyResponse.ok) {
+            const historyData = await historyResponse.json();
+            console.log('Fetched payment history from server:', historyData);
+
+            if (historyData && historyData.total_paid !== undefined) {
+              // Update the order details with the accurate payment information from history
+              const updatedOrderDetails = {
+                ...orderDetails,
+                actual_advance_amount: historyData.total_paid,
+                actual_balance_amount: historyData.remaining_balance
+              };
+
+              console.log('Updated order details with payment history:', updatedOrderDetails);
+              setSelectedOrder(updatedOrderDetails);
+
+              // Update the balance amount field with the correct remaining balance
+              setBalanceAmount(historyData.remaining_balance);
+              console.log(`Setting balance from payment history: ${historyData.remaining_balance}`);
+
+              // Add payment history information to notes
+              let paymentNotes = '';
+              if (historyData.payments && historyData.payments.length > 0) {
+                paymentNotes = `Previous Payments:\n`;
+                historyData.payments.forEach((payment: any, index: number) => {
+                  paymentNotes += `${index + 1}. ${payment.payment_reference}: ${formatCurrency(payment.advance_amount)} (${new Date(payment.payment_date).toLocaleDateString()})\n`;
+                });
+
+                if (orderDetails.description) {
+                  paymentNotes += `\nDescription: ${orderDetails.description}\n`;
+                }
+                if (orderDetails.special_requirements) {
+                  paymentNotes += `Special Requirements: ${orderDetails.special_requirements}\n`;
+                }
+
+                setNotes(paymentNotes);
+              }
+
+              return; // Skip the standard calculation below since we have accurate data
+            }
+          }
+        } catch (historyErr) {
+          console.error('Error fetching payment history:', historyErr);
+          // Continue with standard calculation if history fetch fails
+        }
+
+        // If payment history fetch failed or didn't have the data we need,
+        // fall back to the standard calculation using order details
         if (orderDetails.advance_amount && orderDetails.advance_amount > 0) {
           const advanceAmount = typeof orderDetails.advance_amount === 'string' ?
             parseFloat(orderDetails.advance_amount) : orderDetails.advance_amount;
@@ -846,23 +896,12 @@ const AdvancePaymentPage = () => {
             {selectedOrder && (
               <div className="mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
                 <strong>Order Status:</strong> {selectedOrder.payment_status || 'Not Paid'}
-                {selectedOrder.advance_amount && selectedOrder.advance_amount > 0 ? (
-                  <>
-                    <br />
-                    <strong>Current advance payment:</strong> {formatCurrency(selectedOrder.advance_amount || 0)}
-                    <br />
-                    <strong>Remaining balance:</strong> {formatCurrency(selectedOrder.balance_amount || ((selectedOrder.estimated_amount || 0) - (selectedOrder.advance_amount || 0)))}
-                    <br />
-                    <span className="text-green-700">Any amount entered below will be an additional payment.</span>
-                  </>
-                ) : (
-                  <>
-                    <br />
-                    <strong>Total amount:</strong> {formatCurrency(selectedOrder.estimated_amount || 0)}
-                    <br />
-                    <span className="text-green-700">No payments have been made yet.</span>
-                  </>
-                )}
+                <br />
+                <strong>Current advance payment:</strong> {formatCurrency(selectedOrder.actual_advance_amount || selectedOrder.advance_amount || 0)}
+                <br />
+                <strong>Remaining balance:</strong> {formatCurrency(selectedOrder.actual_balance_amount || (selectedOrder.estimated_amount - (selectedOrder.advance_amount || 0)) || 0)}
+                <br />
+                <span className="text-green-700">Any amount entered below will be an additional payment.</span>
               </div>
             )}
           </div>
