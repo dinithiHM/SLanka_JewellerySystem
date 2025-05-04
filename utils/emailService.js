@@ -8,7 +8,7 @@ const emailConfig = {
   auth: {
     user: 'slankajewel@gmail.com',
     // Make sure this is the correct App Password from Google Account
-    pass: 'viun mrlu hwfc nbxg'  // Added 'x' at the end as a guess - you'll need to replace with the correct password
+    pass: 'viun mrlu hwfc nbxg'  
   },
   // Add these options to help with Gmail connectivity
   tls: {

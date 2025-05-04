@@ -16,8 +16,42 @@ router.get("/", (req, res) => {
 
   if (grouped) {
     // Get grouped payments (latest payment for each order/customer combination)
+    // For custom orders, we need to calculate the total payments and correct balance
     let sql = `
-      SELECT ap.*, apd.*
+      SELECT
+        ap.*,
+        apd.*,
+        CASE
+          WHEN ap.is_custom_order = 1 THEN (
+            SELECT SUM(inner_ap.advance_amount)
+            FROM advance_payments inner_ap
+            WHERE inner_ap.order_id = ap.order_id AND inner_ap.is_custom_order = 1
+          )
+          ELSE ap.advance_amount
+        END as total_paid_amount,
+        CASE
+          WHEN ap.is_custom_order = 1 THEN (
+            SELECT co.estimated_amount - SUM(inner_ap.advance_amount)
+            FROM advance_payments inner_ap
+            JOIN custom_orders co ON inner_ap.order_id = co.order_id
+            WHERE inner_ap.order_id = ap.order_id AND inner_ap.is_custom_order = 1
+          )
+          ELSE ap.balance_amount
+        END as actual_balance_amount,
+        CASE
+          WHEN ap.is_custom_order = 1 THEN (
+            SELECT
+              CASE
+                WHEN co.estimated_amount <= SUM(inner_ap.advance_amount) THEN 'Completed'
+                WHEN SUM(inner_ap.advance_amount) > 0 THEN 'Partially Paid'
+                ELSE 'Not Paid'
+              END
+            FROM advance_payments inner_ap
+            JOIN custom_orders co ON inner_ap.order_id = co.order_id
+            WHERE inner_ap.order_id = ap.order_id AND inner_ap.is_custom_order = 1
+          )
+          ELSE ap.payment_status
+        END as actual_payment_status
       FROM advance_payments ap
       JOIN advance_payment_details apd ON ap.payment_id = apd.payment_id
       JOIN (
@@ -65,7 +99,22 @@ router.get("/", (req, res) => {
       }
 
       console.log(`Found ${results.length} grouped advance payments`);
-      res.json(results || []);
+
+      // Update the payment records with the correct values
+      const updatedResults = results.map(payment => {
+        if (payment.is_custom_order) {
+          // For custom orders, use the calculated values
+          return {
+            ...payment,
+            advance_amount: payment.total_paid_amount || payment.advance_amount,
+            balance_amount: payment.actual_balance_amount || payment.balance_amount,
+            payment_status: payment.actual_payment_status || payment.payment_status
+          };
+        }
+        return payment;
+      });
+
+      res.json(updatedResults || []);
     });
   } else {
     // Original non-grouped query
@@ -132,26 +181,67 @@ router.get("/:id", (req, res) => {
 router.get("/history/order/:orderId", (req, res) => {
   const orderId = req.params.orderId;
 
-  const sql = `
-    SELECT apd.*
-    FROM advance_payment_details apd
-    JOIN advance_payments ap ON apd.payment_id = ap.payment_id
-    WHERE ap.order_id = ? AND ap.is_custom_order = 1
-    ORDER BY apd.payment_date ASC
+  // First, get the order details to get the total amount
+  const orderSql = `
+    SELECT order_id, order_reference, customer_name, estimated_amount
+    FROM custom_orders
+    WHERE order_id = ?
   `;
 
-  con.query(sql, [orderId], (err, results) => {
-    if (err) {
-      console.error("Error fetching payment history:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  con.query(orderSql, [orderId], (orderErr, orderResults) => {
+    if (orderErr) {
+      console.error("Error fetching order details:", orderErr);
+      return res.status(500).json({ message: "Database error", error: orderErr.message });
     }
 
-    console.log(`Found ${results.length} payments for order ${orderId}`);
-    res.json({
-      order_id: orderId,
-      payments: results || [],
-      total_payments: results.length,
-      total_paid: results.reduce((sum, payment) => sum + parseFloat(payment.advance_amount), 0)
+    if (orderResults.length === 0) {
+      return res.status(404).json({ message: "Custom order not found" });
+    }
+
+    const order = orderResults[0];
+    const totalAmount = parseFloat(order.estimated_amount);
+
+    // Now get all payments for this order, ordered by date
+    const sql = `
+      SELECT apd.*
+      FROM advance_payment_details apd
+      JOIN advance_payments ap ON apd.payment_id = ap.payment_id
+      WHERE ap.order_id = ? AND ap.is_custom_order = 1
+      ORDER BY apd.payment_date ASC
+    `;
+
+    con.query(sql, [orderId], (err, results) => {
+      if (err) {
+        console.error("Error fetching payment history:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
+      }
+
+      console.log(`Found ${results.length} payments for order ${orderId}`);
+
+      // Calculate running balance for each payment
+      let runningTotal = 0;
+      const paymentsWithCorrectBalance = results.map(payment => {
+        runningTotal += parseFloat(payment.advance_amount);
+        const correctBalance = totalAmount - runningTotal;
+
+        return {
+          ...payment,
+          balance_after: correctBalance,
+          running_total_paid: runningTotal
+        };
+      });
+
+      res.json({
+        order_id: orderId,
+        order_reference: order.order_reference,
+        customer_name: order.customer_name,
+        total_amount: totalAmount,
+        payments: paymentsWithCorrectBalance || [],
+        total_payments: results.length,
+        total_paid: runningTotal,
+        remaining_balance: totalAmount - runningTotal,
+        payment_status: totalAmount <= runningTotal ? 'Fully Paid' : 'Partially Paid'
+      });
     });
   });
 });
