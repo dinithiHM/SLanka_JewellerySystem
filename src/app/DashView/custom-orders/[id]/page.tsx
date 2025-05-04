@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -16,7 +16,8 @@ import {
   AlertCircle,
   X,
   Printer,
-  RefreshCw
+  RefreshCw,
+  Send
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import LKRIcon from '@/components/LKRIcon';
@@ -57,9 +58,11 @@ interface CustomOrderDetail {
   isFromOtherBranch?: boolean; // Added for branch visibility feature
 }
 
-const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
+const CustomOrderDetailPage = ({ params }: { params: Promise<{ id: string }> | { id: string } }) => {
   const router = useRouter();
-  const orderId = params.id;
+  // Use React.use to unwrap the params if it's a Promise
+  const unwrappedParams = 'then' in params ? use(params) : params;
+  const orderId = unwrappedParams.id;
 
   // State
   const [order, setOrder] = useState<CustomOrderDetail | null>(null);
@@ -68,6 +71,9 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [reminderSuccess, setReminderSuccess] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
 
   // State for user role and branch
   const [userRole, setUserRole] = useState<string>('');
@@ -269,6 +275,50 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
   // Handle back button
   const handleBack = () => {
     router.push('/DashView/custom-orders');
+  };
+
+  // Handle sending payment reminder
+  const handleSendReminder = async () => {
+    if (!order || !order.customer_email) {
+      setReminderError('Cannot send reminder: Customer email is not available');
+      return;
+    }
+
+    // Clear previous messages
+    setReminderSuccess(null);
+    setReminderError(null);
+    setSendingReminder(true);
+
+    try {
+      const response = await fetch(`http://localhost:3002/custom-orders/${orderId}/send-reminder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Use the message from the server, which will indicate if it's a mock email
+        setReminderSuccess(data.message);
+
+        // If it's a mock email, add a note about installing nodemailer
+        if (data.isMockEmail) {
+          console.log('Mock email was generated. To send real emails, install nodemailer in the server.');
+        }
+
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => setReminderSuccess(null), 5000);
+      } else {
+        setReminderError(data.message || 'Failed to send payment reminder');
+      }
+    } catch (err) {
+      console.error('Error sending payment reminder:', err);
+      setReminderError(err instanceof Error ? err.message : 'An error occurred while sending the reminder');
+    } finally {
+      setSendingReminder(false);
+    }
   };
 
   // Handle print
@@ -548,6 +598,56 @@ const CustomOrderDetailPage = ({ params }: { params: { id: string } }) => {
                   </div>
                 </div>
               </div>
+
+              {/* Payment Reminder Button - Only show if there's a balance and customer email */}
+              {order.balance_amount > 0 && order.customer_email && (
+                <div className="mt-4">
+                  <button
+                    onClick={handleSendReminder}
+                    disabled={sendingReminder}
+                    className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium
+                      ${sendingReminder
+                        ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                        : 'bg-yellow-500 text-white hover:bg-yellow-600'}`}
+                  >
+                    {sendingReminder ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Payment Reminder
+                      </>
+                    )}
+                  </button>
+
+                  {/* Success Message */}
+                  {reminderSuccess && (
+                    <div className="mt-2 p-2 bg-green-100 border border-green-400 text-green-700 rounded-md text-sm">
+                      <CheckCircle className="h-4 w-4 inline-block mr-1" />
+                      {reminderSuccess}
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {reminderError && (
+                    <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                      <AlertCircle className="h-4 w-4 inline-block mr-1" />
+                      {reminderError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Show message if customer email is missing */}
+              {order.balance_amount > 0 && !order.customer_email && (
+                <div className="mt-4 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md text-sm">
+                  <AlertCircle className="h-4 w-4 inline-block mr-1" />
+                  Cannot send reminder: Customer email is not available
+                </div>
+              )}
             </div>
           </div>
         </div>
