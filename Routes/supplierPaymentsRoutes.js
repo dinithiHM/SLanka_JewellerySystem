@@ -87,7 +87,8 @@ router.post('/create', (req, res) => {
     making_charges,
     estimated_price,
     total_amount,
-    use_custom_estimate
+    use_custom_estimate,
+    is_final_payment // Flag indicating this is the final payment
   } = req.body;
 
   if (!order_id || !amount_paid) {
@@ -110,7 +111,8 @@ router.post('/create', (req, res) => {
     const order = orderResults[0];
     // Use the provided total amount or fall back to the existing one
     const orderTotalAmount = total_amount ? parseFloat(total_amount) : parseFloat(order.total_amount);
-    const advancePaymentAmount = parseFloat(amount_paid);
+    // Use let instead of const so we can modify it for final payments
+    let advancePaymentAmount = parseFloat(amount_paid);
 
     // Check if this is the first payment (advance payment)
     const checkPaymentsQuery = 'SELECT SUM(amount_paid) as total_paid FROM supplier_payments WHERE order_id = ?';
@@ -121,8 +123,10 @@ router.post('/create', (req, res) => {
         return res.status(500).json({ success: false, message: 'Database error', error: err.message });
       }
 
-      const existingPayments = paymentResults[0].total_paid || 0;
-      const totalPaidAfterThisPayment = parseFloat(existingPayments) + advancePaymentAmount;
+      // Ensure existingPayments is a number
+      const existingPayments = paymentResults[0].total_paid !== null ? parseFloat(paymentResults[0].total_paid) : 0;
+      // Use let instead of const so we can modify it for final payments
+      let totalPaidAfterThisPayment = existingPayments + advancePaymentAmount;
 
       // If this is the first payment, ensure it's at least 25% of the total
       if (existingPayments === 0 && advancePaymentAmount < (orderTotalAmount * 0.25)) {
@@ -135,14 +139,49 @@ router.post('/create', (req, res) => {
       }
 
       // If total paid exceeds total amount, reject
-      if (totalPaidAfterThisPayment > orderTotalAmount) {
-        return res.status(400).json({
-          success: false,
-          message: 'Total payments cannot exceed the order amount',
-          currentlyPaid: existingPayments.toFixed(2),
-          totalAmount: orderTotalAmount.toFixed(2),
-          remainingAmount: (orderTotalAmount - existingPayments).toFixed(2)
-        });
+      // But allow payments that exactly match the remaining balance
+      console.log('DEBUG - Payment validation:');
+      console.log(`- Existing payments: ${existingPayments}`);
+      console.log(`- Current payment: ${advancePaymentAmount}`);
+      console.log(`- Total after this payment: ${totalPaidAfterThisPayment}`);
+      console.log(`- Order total amount: ${orderTotalAmount}`);
+      console.log(`- Difference: ${totalPaidAfterThisPayment - orderTotalAmount}`);
+      console.log(`- Is final payment flag: ${is_final_payment ? 'Yes' : 'No'}`);
+
+      // If this is marked as a final payment, allow it and adjust the amount to exactly match the remaining balance
+      if (is_final_payment) {
+        console.log('Allowing payment because it is marked as final payment');
+        // Adjust the payment amount to exactly match the remaining balance
+        const exactRemainingBalance = orderTotalAmount - existingPayments;
+        console.log(`Adjusting final payment amount: ${advancePaymentAmount} -> ${exactRemainingBalance}`);
+        // Override the payment amount with the exact remaining balance
+        advancePaymentAmount = exactRemainingBalance;
+        // Recalculate the total after this payment
+        totalPaidAfterThisPayment = existingPayments + advancePaymentAmount;
+        console.log(`Adjusted total after payment: ${totalPaidAfterThisPayment}`);
+        // Continue with the payment
+      }
+      // If total paid exceeds total amount by more than a small tolerance
+      else if (totalPaidAfterThisPayment > orderTotalAmount) {
+        // Calculate the difference to see if it's just a floating point precision issue
+        const difference = Math.abs(totalPaidAfterThisPayment - orderTotalAmount);
+        console.log(`Difference between total paid and order total: ${difference}`);
+
+        // If the difference is very small (less than 1 rupee), consider it equal
+        if (difference < 1) {
+          console.log(`Payment amount adjusted for precision: ${totalPaidAfterThisPayment} -> ${orderTotalAmount}`);
+          // Adjust the payment to exactly match the remaining amount
+          // This prevents floating point precision issues
+        } else {
+          console.log('Rejecting payment: Total exceeds order amount by more than tolerance');
+          return res.status(400).json({
+            success: false,
+            message: 'Total payments cannot exceed the order amount',
+            currentlyPaid: existingPayments.toFixed(2),
+            totalAmount: orderTotalAmount.toFixed(2),
+            remainingAmount: (orderTotalAmount - existingPayments).toFixed(2)
+          });
+        }
       }
 
       // Insert the payment
@@ -152,9 +191,11 @@ router.post('/create', (req, res) => {
         VALUES (?, ?, ?, ?, ?)
       `;
 
+      // Use the potentially adjusted payment amount
+      console.log(`Inserting payment with amount: ${advancePaymentAmount}`);
       con.query(insertPaymentQuery, [
         order_id,
-        amount_paid,
+        advancePaymentAmount, // Use the adjusted amount if this is a final payment
         payment_method || 'Cash',
         notes || '',
         created_by || null
@@ -166,9 +207,13 @@ router.post('/create', (req, res) => {
 
         // Update the order's payment status
         let paymentStatus = 'Partial';
+
         // Use total_advance_payment if provided, otherwise use calculated total
-        const totalPaid = total_advance_payment || totalPaidAfterThisPayment;
-        if (totalPaid >= orderTotalAmount) {
+        const totalPaid = total_advance_payment !== undefined ? parseFloat(total_advance_payment) : totalPaidAfterThisPayment;
+
+        // If this is marked as a final payment or the total paid is very close to or exceeds the order total
+        if (is_final_payment || Math.abs(totalPaid - orderTotalAmount) < 1 || totalPaid >= orderTotalAmount) {
+          console.log('Setting payment status to Completed');
           paymentStatus = 'Completed';
         }
 
@@ -208,7 +253,7 @@ router.post('/create', (req, res) => {
 
         // Build the values array based on which fields are provided
         const updateValues = [
-          total_advance_payment || existingPayments + parseFloat(amount_paid), // Use total advance payment if provided
+          total_advance_payment !== undefined ? parseFloat(total_advance_payment) : (existingPayments + advancePaymentAmount), // Use total advance payment if provided and the adjusted amount
           paymentStatus,
           orderTotalAmount
         ];
@@ -230,7 +275,7 @@ router.post('/create', (req, res) => {
         });
 
         // Use total_advance_payment if provided, otherwise use calculated total
-        const totalPaidAmount = total_advance_payment || totalPaidAfterThisPayment;
+        const totalPaidAmount = total_advance_payment !== undefined ? parseFloat(total_advance_payment) : totalPaidAfterThisPayment;
 
         return res.json({
           success: true,
@@ -238,7 +283,7 @@ router.post('/create', (req, res) => {
           data: {
             payment_id: result.insertId,
             order_id,
-            current_payment: parseFloat(amount_paid),
+            current_payment: advancePaymentAmount, // Use the adjusted amount
             existing_payment: parseFloat(existing_payment || 0),
             total_advance_payment: parseFloat(totalPaidAmount),
             payment_status: paymentStatus,

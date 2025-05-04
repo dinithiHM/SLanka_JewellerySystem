@@ -1,6 +1,38 @@
 import express from 'express';
 import con from '../utils/db.js';
 import { generateOrderReference } from '../utils/referenceGenerator.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Determine which email service to use (real or mock)
+let emailService;
+try {
+  // Force use of real email service since we know nodemailer is installed
+  console.log("Using real email service");
+  emailService = await import('../utils/emailService.js');
+} catch (e) {
+  console.error("Error importing email service:", e);
+
+  // Fallback to mock service if there's an error
+  try {
+    console.log("Falling back to mock email service");
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const mockServicePath = path.join(__dirname, '..', 'utils', 'mockEmailService.js');
+
+    if (!fs.existsSync(mockServicePath)) {
+      console.log("Mock email service not found, please create it manually");
+    }
+
+    emailService = await import('../utils/mockEmailService.js');
+  } catch (mockError) {
+    console.error("Error importing mock email service:", mockError);
+    // If both fail, we'll get an error when trying to use sendCustomOrderPaymentReminder
+  }
+}
+
+const { sendCustomOrderPaymentReminder } = emailService;
 
 const router = express.Router();
 
@@ -519,6 +551,134 @@ router.get("/:id", (req, res) => {
         console.error("Error fetching related data:", err);
         res.status(500).json({ message: "Database error", error: err.message });
       });
+  });
+});
+
+// Send payment reminder email for a custom order
+router.post("/:id/send-reminder", async (req, res) => {
+  const orderId = req.params.id;
+
+  console.log(`POST /custom-orders/${orderId}/send-reminder - Sending payment reminder email`);
+
+  // Get the order details
+  const orderSql = `
+    SELECT * FROM custom_order_details
+    WHERE order_id = ?
+  `;
+
+  con.query(orderSql, [orderId], async (err, results) => {
+    if (err) {
+      console.error("Error fetching custom order:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom order not found"
+      });
+    }
+
+    const order = results[0];
+    console.log("Order details:", order);
+
+    // Check if customer email exists
+    if (!order.customer_email) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer email not available for this order"
+      });
+    }
+
+    try {
+      console.log(`Attempting to send email to ${order.customer_email}`);
+
+      // We're already handling nodemailer availability at the top of the file
+      // The code will use either the real email service or the mock email service
+
+      // Send the reminder email
+      const emailResult = await sendCustomOrderPaymentReminder(order, order.customer_email);
+      console.log("Email sending result:", emailResult);
+
+      if (emailResult.success) {
+        // Log the email sent in the database
+        try {
+          const logSql = `
+            INSERT INTO email_logs (
+              order_id,
+              email_type,
+              recipient_email,
+              sent_at,
+              status,
+              message_id,
+              error_message
+            ) VALUES (?, ?, ?, NOW(), ?, ?, ?)
+          `;
+
+          // Check if this is a mock email
+          const isMockEmail = emailResult.mockEmail === true;
+          const status = isMockEmail ? 'mock_sent' : 'sent';
+          const notes = isMockEmail ? 'Mock email (nodemailer not installed)' : null;
+
+          con.query(logSql, [
+            orderId,
+            'payment_reminder',
+            order.customer_email,
+            status,
+            emailResult.messageId || null,
+            notes
+          ], (logErr) => {
+            if (logErr) {
+              console.error("Error logging email:", logErr);
+              // Continue anyway since the email was sent
+            } else {
+              console.log(`Email log saved to database (${isMockEmail ? 'mock' : 'real'} email)`);
+            }
+          });
+        } catch (logError) {
+          console.error("Error with email logging:", logError);
+          // Continue anyway since the email was sent
+        }
+
+        // Check if this is a mock email
+        const isMockEmail = emailResult.mockEmail === true;
+        const message = isMockEmail
+          ? "Mock payment reminder email generated successfully (nodemailer not installed)"
+          : "Real payment reminder email sent successfully to " + order.customer_email;
+
+        console.log("Email sending result:", {
+          success: true,
+          isMock: isMockEmail,
+          message: message,
+          messageId: emailResult.messageId
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: message,
+          messageId: emailResult.messageId,
+          isMockEmail: isMockEmail
+        });
+      } else {
+        console.error("Email sending failed:", emailResult.error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send payment reminder email",
+          error: emailResult.error
+        });
+      }
+    } catch (error) {
+      console.error("Error sending payment reminder:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error sending payment reminder",
+        error: error.message
+      });
+    }
   });
 });
 
