@@ -1,9 +1,33 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, ShoppingCart, Tag, Coins, Store, Package, TrendingUp, AlertTriangle } from 'lucide-react';
+import { BarChart, Users, ShoppingCart, Tag, Coins, Store, Package, TrendingUp, AlertTriangle, Clock, CheckCircle, AlertCircle, Mail, Calendar } from 'lucide-react';
 import { useLanguage } from "@/contexts/LanguageContext";
 import TranslatedText from "@/components/TranslatedText";
+
+// Define types for advance payments
+interface AdvancePayment {
+  payment_id: number;
+  payment_reference: string;
+  customer_name: string;
+  payment_date: string;
+  total_amount: number;
+  advance_amount: number;
+  balance_amount: number;
+  payment_status: 'Pending' | 'Partially Paid' | 'Completed';
+  payment_method: string;
+  is_custom_order: boolean;
+  order_id: number | null;
+  order_reference: string | null;
+  item_id: number | null;
+  item_name: string | null;
+  item_category: string | null;
+  item_quantity: number | null;
+  branch_name: string;
+  branch_id: number;
+  created_by_first_name: string;
+  created_by_last_name: string;
+}
 
 const StoreManagerDashboard = () => {
   // Use language context to trigger re-renders when language changes
@@ -11,6 +35,14 @@ const StoreManagerDashboard = () => {
   const [userName, setUserName] = useState<string>('');
   const [branchName, setBranchName] = useState<string>('');
   const [branchId, setBranchId] = useState<string>('');
+
+  // State for outstanding payments
+  const [outstandingPayments, setOutstandingPayments] = useState<AdvancePayment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState<boolean>(true);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // Branch mapping function
   const getBranchNameById = (id: string | null): string => {
@@ -22,6 +54,147 @@ const StoreManagerDashboard = () => {
     };
 
     return branchMap[id] || `Branch ${id}`;
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Check if a date is older than 10 days
+  const isOlderThan10Days = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 10;
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Completed':
+        return <CheckCircle size={16} className="mr-1" />;
+      case 'Partially Paid':
+        return <Clock size={16} className="mr-1" />;
+      case 'Pending':
+        return <AlertCircle size={16} className="mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  // Fetch outstanding payments
+  const fetchOutstandingPayments = async (branchId: string) => {
+    setLoadingPayments(true);
+    setPaymentError(null);
+
+    try {
+      // Construct URL with query parameters for branch filtering
+      let url = 'http://localhost:3002/advance-payments';
+      const params = new URLSearchParams();
+
+      // Set role parameter (store manager)
+      params.append('role', 'store_manager');
+
+      // Use grouped endpoint to get latest payment for each order/customer
+      params.append('grouped', 'true');
+
+      // Filter by branch
+      params.append('branch_id', branchId);
+
+      // Only get payments that are not completed
+      params.append('status', 'outstanding');
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching outstanding payments from:', url);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch payments: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Log the data for debugging
+      console.log('Received outstanding payments:', data);
+
+      // Create a map to ensure we only have one entry per customer-order combination
+      const uniquePayments = new Map();
+
+      // Process each payment
+      data.forEach(payment => {
+        // Create a unique key for each customer-order combination
+        const key = payment.is_custom_order
+          ? `${payment.customer_name}-${payment.order_id}`
+          : `${payment.customer_name}-${payment.item_id}`;
+
+        // If we already have this combination, only keep the one with the latest payment_id
+        if (!uniquePayments.has(key) || payment.payment_id > uniquePayments.get(key).payment_id) {
+          uniquePayments.set(key, payment);
+        }
+      });
+
+      // Convert the map values back to an array
+      const uniquePaymentsArray = Array.from(uniquePayments.values());
+      console.log('Filtered to unique customer-order combinations:', uniquePaymentsArray);
+
+      setOutstandingPayments(uniquePaymentsArray);
+    } catch (err) {
+      console.error('Error fetching outstanding payments:', err);
+      setPaymentError(err instanceof Error ? err.message : 'An error occurred while fetching payments');
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // Send payment reminder email
+  const sendPaymentReminder = async (payment: AdvancePayment) => {
+    setSendingEmail(true);
+    setEmailSuccess(null);
+    setEmailError(null);
+
+    try {
+      let endpoint = '';
+
+      if (payment.is_custom_order && payment.order_id) {
+        // For custom orders
+        endpoint = `http://localhost:3002/custom-orders/${payment.order_id}/send-reminder`;
+      } else {
+        // For inventory items, we'll need to create a new endpoint or use a generic one
+        endpoint = `http://localhost:3002/advance-payments/${payment.payment_id}/send-reminder`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setEmailSuccess(`Payment reminder sent to ${payment.customer_name}`);
+
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => setEmailSuccess(null), 5000);
+      } else {
+        setEmailError(data.message || 'Failed to send payment reminder');
+      }
+    } catch (err) {
+      console.error('Error sending payment reminder:', err);
+      setEmailError(err instanceof Error ? err.message : 'An error occurred while sending the reminder');
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   useEffect(() => {
@@ -57,6 +230,9 @@ const StoreManagerDashboard = () => {
     // Set branch ID state
     if (storedBranchId) {
       setBranchId(storedBranchId);
+
+      // Fetch outstanding payments for this branch
+      fetchOutstandingPayments(storedBranchId);
     }
   }, []);
 
@@ -124,32 +300,104 @@ const StoreManagerDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Branch Performance</h2>
-            <button className="text-blue-500 hover:text-blue-700">View Report</button>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Sales Target</span>
-              <span className="text-sm font-medium">LKR 500,000</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '75%' }}></div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Current: LKR 375,000</span>
-              <span>75% of monthly target</span>
-            </div>
+            <h2 className="text-xl font-bold">Customers with Outstanding Payments</h2>
+            <button
+              onClick={() => fetchOutstandingPayments(branchId)}
+              className="text-blue-500 hover:text-blue-700 flex items-center"
+            >
+              <Clock className="mr-1" size={16} />
+              Refresh
+            </button>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Customer Satisfaction</span>
-              <span className="text-sm font-medium">4.8/5</span>
+          {/* Email success/error messages */}
+          {emailSuccess && (
+            <div className="mb-4 p-2 bg-green-100 border border-green-400 text-green-700 rounded">
+              {emailSuccess}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div className="bg-green-600 h-2.5 rounded-full" style={{ width: '96%' }}></div>
+          )}
+
+          {emailError && (
+            <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+              {emailError}
             </div>
-          </div>
+          )}
+
+          {/* Loading state */}
+          {loadingPayments ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : paymentError ? (
+            <div className="p-4 text-center text-red-500">
+              Error loading data: {paymentError}
+            </div>
+          ) : outstandingPayments.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No customers with outstanding payments found.
+            </div>
+          ) : (
+            <div className="overflow-y-auto max-h-80">
+              {outstandingPayments.map((payment) => (
+                <div
+                  key={payment.payment_id}
+                  className={`mb-3 p-3 border rounded-lg ${
+                    isOlderThan10Days(payment.payment_date)
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                  // Add a unique identifier as a data attribute for debugging
+                  data-customer-order={payment.is_custom_order
+                    ? `${payment.customer_name}-${payment.order_id}`
+                    : `${payment.customer_name}-${payment.item_id}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">
+                        {payment.customer_name}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {payment.is_custom_order
+                          ? `Custom Order #${payment.order_reference || payment.order_id}`
+                          : `Item: ${payment.item_name}`
+                        }
+                      </div>
+                      <div className="flex items-center text-sm mt-1">
+                        <Calendar className="h-4 w-4 text-gray-400 mr-1" />
+                        <span className={isOlderThan10Days(payment.payment_date) ? 'text-red-600 font-medium' : ''}>
+                          {formatDate(payment.payment_date)}
+                          {isOlderThan10Days(payment.payment_date) && ' (Overdue)'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center">
+                        {getStatusIcon(payment.payment_status)}
+                        <span className="text-sm font-medium">
+                          {payment.payment_status}
+                        </span>
+                      </div>
+                      <div className="text-sm font-bold mt-1">
+                        Balance: LKR {payment.balance_amount.toLocaleString()}
+                      </div>
+                      <button
+                        onClick={() => sendPaymentReminder(payment)}
+                        disabled={sendingEmail}
+                        className={`mt-2 px-2 py-1 text-xs rounded flex items-center ${
+                          sendingEmail
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
+                      >
+                        <Mail className="h-3 w-3 mr-1" />
+                        Send Reminder
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md">
