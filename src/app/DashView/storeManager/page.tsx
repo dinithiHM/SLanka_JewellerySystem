@@ -44,6 +44,26 @@ const StoreManagerDashboard = () => {
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
 
+  // State for supplier liabilities
+  interface SupplierLiability {
+    supplier_id: string;
+    name: string;
+    order_count: number;
+    total_debt: number;
+    payment_status: string;
+    orders: {
+      order_id: number;
+      total_amount: number;
+      paid_amount: number;
+      remaining: number;
+    }[];
+  }
+
+  const [supplierLiabilities, setSupplierLiabilities] = useState<SupplierLiability[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState<boolean>(true);
+  const [supplierError, setSupplierError] = useState<string | null>(null);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState<string>('');
+
   // Branch mapping function
   const getBranchNameById = (id: string | null): string => {
     if (!id) return "";
@@ -197,6 +217,115 @@ const StoreManagerDashboard = () => {
     }
   };
 
+  // Fetch supplier liabilities
+  const fetchSupplierLiabilities = async (branchId: string) => {
+    setLoadingSuppliers(true);
+    setSupplierError(null);
+
+    try {
+      // Construct URL with query parameters for branch filtering
+      let url = 'http://localhost:3002/supplier-payments/liabilities';
+      const params = new URLSearchParams();
+
+      // Set role parameter (store manager)
+      params.append('role', 'store_manager');
+
+      // Filter by branch
+      params.append('branch_id', branchId);
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching supplier liabilities from:', url);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch supplier liabilities: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Log the data for debugging
+      console.log('Received supplier liabilities:', data);
+
+      // Process the data
+      const processedData = data.map((supplier: any) => ({
+        supplier_id: supplier.supplier_id,
+        name: supplier.name,
+        order_count: supplier.order_count,
+        total_debt: supplier.total_debt || 0,
+        payment_status: supplier.payment_status || 'Pending',
+        orders: supplier.orders || []
+      }));
+
+      setSupplierLiabilities(processedData);
+    } catch (err) {
+      console.error('Error fetching supplier liabilities:', err);
+
+      // Use dummy data for development
+      const dummyData: SupplierLiability[] = [
+        {
+          supplier_id: '1',
+          name: 'Mohamad Nazeem',
+          order_count: 3,
+          total_debt: 250000,
+          payment_status: 'Partial',
+          orders: [
+            { order_id: 1, total_amount: 150000, paid_amount: 50000, remaining: 100000 },
+            { order_id: 2, total_amount: 100000, paid_amount: 0, remaining: 100000 },
+            { order_id: 3, total_amount: 50000, paid_amount: 0, remaining: 50000 }
+          ]
+        },
+        {
+          supplier_id: '2',
+          name: 'Abdulla Nazeem',
+          order_count: 2,
+          total_debt: 180000,
+          payment_status: 'Pending',
+          orders: [
+            { order_id: 4, total_amount: 80000, paid_amount: 0, remaining: 80000 },
+            { order_id: 5, total_amount: 100000, paid_amount: 0, remaining: 100000 }
+          ]
+        },
+        {
+          supplier_id: '3',
+          name: 'Vaseem Akram',
+          order_count: 1,
+          total_debt: 0,
+          payment_status: 'Completed',
+          orders: [
+            { order_id: 6, total_amount: 75000, paid_amount: 75000, remaining: 0 }
+          ]
+        }
+      ];
+
+      setSupplierLiabilities(dummyData);
+      setSupplierError(err instanceof Error ? err.message : 'An error occurred while fetching supplier liabilities');
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  };
+
+  // Filter supplier liabilities based on search term
+  const filteredSupplierLiabilities = supplierLiabilities.filter(supplier => {
+    if (!supplierSearchTerm) return true;
+
+    const searchLower = supplierSearchTerm.toLowerCase();
+
+    // Search by supplier name
+    if (supplier.name.toLowerCase().includes(searchLower)) return true;
+
+    // Search by supplier ID
+    if (supplier.supplier_id.toString().includes(searchLower)) return true;
+
+    // Search by order ID
+    if (supplier.orders && supplier.orders.some(order =>
+      order.order_id.toString().includes(searchLower)
+    )) return true;
+
+    return false;
+  });
+
   useEffect(() => {
     // Get user info from localStorage if available
     const storedName = localStorage.getItem('userName');
@@ -233,6 +362,9 @@ const StoreManagerDashboard = () => {
 
       // Fetch outstanding payments for this branch
       fetchOutstandingPayments(storedBranchId);
+
+      // Fetch supplier liabilities for this branch
+      fetchSupplierLiabilities(storedBranchId);
     }
   }, []);
 
@@ -401,39 +533,77 @@ const StoreManagerDashboard = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Staff Overview</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Amal Perera</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Sales Associate</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap">LKR 42,500</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Nimal Silva</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Sales Associate</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Present</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap">LKR 38,750</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Kamala Jayawardene</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Cashier</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Absent</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap">-</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Supplier Liabilities</h2>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Search supplier or order..."
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                value={supplierSearchTerm}
+                onChange={(e) => setSupplierSearchTerm(e.target.value)}
+              />
+              <button
+                onClick={() => fetchSupplierLiabilities(branchId)}
+                className="text-blue-500 hover:text-blue-700 flex items-center"
+              >
+                <Clock className="mr-1" size={16} />
+                Refresh
+              </button>
+            </div>
           </div>
+
+          {/* Loading state */}
+          {loadingSuppliers ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : supplierError ? (
+            <div className="p-4 text-center text-red-500">
+              Error loading data: {supplierError}
+            </div>
+          ) : supplierLiabilities.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No supplier liabilities found.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Debt</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredSupplierLiabilities.map((supplier) => (
+                    <tr key={supplier.supplier_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-medium">{supplier.name}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {supplier.order_count}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium">
+                        LKR {supplier.total_debt.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          supplier.payment_status === 'Completed' ? 'bg-green-100 text-green-800' :
+                          supplier.payment_status === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {supplier.payment_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

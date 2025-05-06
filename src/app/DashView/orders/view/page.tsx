@@ -572,6 +572,24 @@ const ViewOrdersPage = () => {
     }
   };
 
+  // Get payment status badge color
+  const getPaymentStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'Completed':
+      case 'Paid':
+      case 'Fully Paid':
+        return 'bg-green-100 text-green-800';
+      case 'Partial':
+      case 'Partially Paid':
+        return 'bg-blue-100 text-blue-800';
+      case 'Pending':
+      case 'Not Paid':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -724,6 +742,9 @@ const ViewOrdersPage = () => {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created At
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -768,6 +789,11 @@ const ViewOrdersPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentStatusBadgeColor(order.payment_status || 'Pending')}`}>
+                        {order.payment_status || 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

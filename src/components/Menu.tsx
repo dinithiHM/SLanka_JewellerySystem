@@ -30,7 +30,7 @@ const menuItems = [
       { icon: CalendarCheck, label: "Events", href: "/list/events", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: CreditCard, label: "Advance Payment", href: "/DashView/advance-payment", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: Package, label: "Custom Orders", href: "/DashView/custom-orders", visible: ["Admin", "Store Manager", "Sales Associate"] },
-      { icon: Bell, label: "Notifications", href: "/list/announcements", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Bell, label: "Notifications", href: "/list/notifications", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
     ],
   },
   {
