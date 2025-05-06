@@ -48,13 +48,26 @@ const ViewSalesPage = () => {
         console.log('Current user ID:', userId);
         console.log('Current branch ID:', branchId);
 
-        // Construct URL based on role
+        // Construct URL based on role and branch
         let url = 'http://localhost:3002/sales';
+        const queryParams = [];
 
         // If user is a cashier, only show their own sales
         if (userRole === 'Cashier' && userId) {
-          url += `?user_id=${userId}`;
+          queryParams.push(`user_id=${userId}`);
         }
+
+        // Filter by branch_id for all non-admin users
+        if (userRole !== 'Admin' && branchId) {
+          queryParams.push(`branch_id=${branchId}`);
+        }
+
+        // Add query parameters to URL
+        if (queryParams.length > 0) {
+          url += '?' + queryParams.join('&');
+        }
+
+        console.log('Filtering sales by branch_id:', branchId);
 
         console.log('Fetching sales from:', url);
         const response = await fetch(url);
@@ -196,16 +209,28 @@ const ViewSalesPage = () => {
       alert(`Invoice generated: ${result.invoice_number}`);
 
       // Refresh sales data
-      // Get user role and ID from localStorage
+      // Get user role, ID, and branch from localStorage
       const userRole = localStorage.getItem('role');
       const userId = localStorage.getItem('userId');
+      const branchId = localStorage.getItem('branchId');
 
-      // Construct URL based on role
+      // Construct URL based on role and branch
       let refreshUrl = 'http://localhost:3002/sales';
+      const queryParams = [];
 
       // If user is a cashier, only show their own sales
       if (userRole === 'Cashier' && userId) {
-        refreshUrl += `?user_id=${userId}`;
+        queryParams.push(`user_id=${userId}`);
+      }
+
+      // Filter by branch_id for all non-admin users
+      if (userRole !== 'Admin' && branchId) {
+        queryParams.push(`branch_id=${branchId}`);
+      }
+
+      // Add query parameters to URL
+      if (queryParams.length > 0) {
+        refreshUrl += '?' + queryParams.join('&');
       }
 
       const salesResponse = await fetch(refreshUrl);

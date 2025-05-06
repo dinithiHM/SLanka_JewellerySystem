@@ -86,9 +86,16 @@ const AddSalePage = () => {
         const testData = await testResponse.json();
         console.log('Test route response:', testData);
 
-        // If test route works, try the actual endpoint
-        console.log('Fetching available items...');
-        const response = await fetch(`http://localhost:3002/sale-items/available?t=${new Date().getTime()}`);
+        // If test route works, try the actual endpoint with branch filtering
+        console.log('Fetching available items for branch:', branchId);
+
+        // Construct URL with branch_id parameter if available
+        let url = `http://localhost:3002/sale-items/available?t=${new Date().getTime()}`;
+        if (branchId) {
+          url += `&branch_id=${branchId}`;
+        }
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -113,7 +120,7 @@ const AddSalePage = () => {
     };
 
     fetchAvailableItems();
-  }, []);
+  }, [branchId]);
 
   // Filter items based on search term
   useEffect(() => {
@@ -395,8 +402,13 @@ const AddSalePage = () => {
                   })
                   .then(data => {
                     console.log('Test route response:', data);
-                    // If test route works, try the actual endpoint
-                    return fetch(`http://localhost:3002/sale-items/available?t=${new Date().getTime()}`)
+                    // If test route works, try the actual endpoint with branch filtering
+                    let url = `http://localhost:3002/sale-items/available?t=${new Date().getTime()}`;
+                    if (branchId) {
+                      url += `&branch_id=${branchId}`;
+                    }
+                    console.log('Fetching available items for branch:', branchId);
+                    return fetch(url)
                   })
                   .then(response => {
                     if (!response.ok) {
