@@ -599,6 +599,74 @@ router.post("/create", (req, res) => {
                   // Still return success, just log the error
                 }
 
+                // Create a notification for the inventory order
+                try {
+                  console.log('Attempting to create inventory order notification...');
+
+                  // Get the supplier name
+                  con.query("SELECT name FROM suppliers WHERE supplier_id = ?", [supplier], (supplierErr, supplierResults) => {
+                    if (supplierErr) {
+                      console.error("Error fetching supplier name:", supplierErr);
+                    } else {
+                      const supplierName = supplierResults.length > 0 ? supplierResults[0].name : 'Unknown Supplier';
+
+                      console.log('Inventory order notification data:', {
+                        order_id: orderId,
+                        supplier_name: supplierName,
+                        category: category,
+                        branch_id: branch_id
+                      });
+
+                      // Make a direct database insert instead of using fetch
+                      // Calculate expiration date (5 days from now)
+                      const expiresAt = new Date();
+                      expiresAt.setDate(expiresAt.getDate() + 5);
+
+                      // Create notification for Admin and Store Manager
+                      const title = 'New Inventory Order';
+                      const categoryInfo = category ? ` for ${category}` : '';
+                      const message = `A new inventory order${categoryInfo} has been placed with ${supplierName}`;
+                      // Include all possible role formats to ensure compatibility
+                      const targetRoles = JSON.stringify(["admin", "Admin", "store manager", "Store Manager", "storemanager"]);
+
+                      const notificationSql = `
+                        INSERT INTO notifications (
+                          title,
+                          message,
+                          type,
+                          target_roles,
+                          expires_at,
+                          branch_id,
+                          related_id,
+                          related_type
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                      `;
+
+                      const notificationParams = [
+                        title,
+                        message,
+                        'inventory_order',
+                        targetRoles,
+                        expiresAt,
+                        branch_id,
+                        orderId,
+                        'order'
+                      ];
+
+                      con.query(notificationSql, notificationParams, (notificationErr, notificationResult) => {
+                        if (notificationErr) {
+                          console.error('Error creating inventory order notification in database:', notificationErr);
+                        } else {
+                          console.log(`Inventory order notification created with ID: ${notificationResult.insertId}`);
+                        }
+                      });
+                    }
+                  });
+                } catch (notificationError) {
+                  console.error('Error creating inventory order notification:', notificationError);
+                  // Continue anyway, notification failure shouldn't stop the order response
+                }
+
                 res.status(201).json({
                   success: true,
                   message: "Order created successfully with image",
@@ -607,6 +675,74 @@ router.post("/create", (req, res) => {
                 });
               });
             } else {
+              // Create a notification for the inventory order
+              try {
+                console.log('Attempting to create inventory order notification (no image)...');
+
+                // Get the supplier name
+                con.query("SELECT name FROM suppliers WHERE supplier_id = ?", [supplier], (supplierErr, supplierResults) => {
+                  if (supplierErr) {
+                    console.error("Error fetching supplier name:", supplierErr);
+                  } else {
+                    const supplierName = supplierResults.length > 0 ? supplierResults[0].name : 'Unknown Supplier';
+
+                    console.log('Inventory order notification data (no image):', {
+                      order_id: orderId,
+                      supplier_name: supplierName,
+                      category: category,
+                      branch_id: branch_id
+                    });
+
+                    // Make a direct database insert instead of using fetch
+                    // Calculate expiration date (5 days from now)
+                    const expiresAt = new Date();
+                    expiresAt.setDate(expiresAt.getDate() + 5);
+
+                    // Create notification for Admin and Store Manager
+                    const title = 'New Inventory Order';
+                    const categoryInfo = category ? ` for ${category}` : '';
+                    const message = `A new inventory order${categoryInfo} has been placed with ${supplierName}`;
+                    // Include all possible role formats to ensure compatibility
+                    const targetRoles = JSON.stringify(["admin", "Admin", "store manager", "Store Manager", "storemanager"]);
+
+                    const notificationSql = `
+                      INSERT INTO notifications (
+                        title,
+                        message,
+                        type,
+                        target_roles,
+                        expires_at,
+                        branch_id,
+                        related_id,
+                        related_type
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+
+                    const notificationParams = [
+                      title,
+                      message,
+                      'inventory_order',
+                      targetRoles,
+                      expiresAt,
+                      branch_id,
+                      orderId,
+                      'order'
+                    ];
+
+                    con.query(notificationSql, notificationParams, (notificationErr, notificationResult) => {
+                      if (notificationErr) {
+                        console.error('Error creating inventory order notification in database:', notificationErr);
+                      } else {
+                        console.log(`Inventory order notification created with ID: ${notificationResult.insertId}`);
+                      }
+                    });
+                  }
+                });
+              } catch (notificationError) {
+                console.error('Error creating inventory order notification:', notificationError);
+                // Continue anyway, notification failure shouldn't stop the order response
+              }
+
               // Return success even if image saving failed
               res.status(201).json({
                 success: true,
@@ -763,6 +899,127 @@ router.get("/debug/check-orders", (req, res) => {
     } else {
       res.json({ count, hasSamples: false });
     }
+  });
+});
+
+// Get supplier liabilities (for store manager dashboard)
+router.get("/supplier-liabilities", (req, res) => {
+  const { role, branch_id } = req.query;
+
+  console.log('GET /orders/supplier-liabilities - Fetching supplier liabilities');
+  console.log(`Query parameters: role=${role}, branch_id=${branch_id}`);
+
+  // Build the query based on role and branch_id
+  let sql = `
+    SELECT
+      s.supplier_id,
+      s.name,
+      COUNT(DISTINCT o.order_id) as order_count,
+      SUM(o.total_amount) as total_amount,
+      SUM(IFNULL(sp.amount_paid, 0)) as total_paid,
+      SUM(o.total_amount) - SUM(IFNULL(sp.amount_paid, 0)) as total_debt,
+      CASE
+        WHEN SUM(o.total_amount) <= SUM(IFNULL(sp.amount_paid, 0)) THEN 'Completed'
+        WHEN SUM(IFNULL(sp.amount_paid, 0)) > 0 THEN 'Partial'
+        ELSE 'Pending'
+      END as payment_status
+    FROM
+      orders o
+    JOIN
+      suppliers s ON o.supplier_id = s.supplier_id
+    LEFT JOIN (
+      SELECT
+        order_id,
+        SUM(amount_paid) as amount_paid
+      FROM
+        supplier_payments
+      GROUP BY
+        order_id
+    ) sp ON o.order_id = sp.order_id
+  `;
+
+  const whereConditions = [];
+  const params = [];
+
+  // Add branch filter if applicable
+  if (branch_id && role !== 'admin') {
+    whereConditions.push('o.branch_id = ?');
+    params.push(branch_id);
+  }
+
+  // Add WHERE clause if needed
+  if (whereConditions.length > 0) {
+    sql += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Group by supplier
+  sql += ' GROUP BY s.supplier_id, s.name';
+
+  // Only show suppliers with debt
+  sql += ' HAVING total_debt > 0';
+
+  // Order by debt amount (highest first)
+  sql += ' ORDER BY total_debt DESC';
+
+  console.log('Executing SQL query:', sql);
+  console.log('With parameters:', params);
+
+  con.query(sql, params, (err, results) => {
+    if (err) {
+      console.error("Error fetching supplier liabilities:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    // For each supplier, get their orders
+    const promises = results.map(supplier => {
+      return new Promise((resolve, reject) => {
+        const orderSql = `
+          SELECT
+            o.order_id,
+            o.total_amount,
+            IFNULL(SUM(sp.amount_paid), 0) as paid_amount,
+            o.total_amount - IFNULL(SUM(sp.amount_paid), 0) as remaining
+          FROM
+            orders o
+          LEFT JOIN
+            supplier_payments sp ON o.order_id = sp.order_id
+          WHERE
+            o.supplier_id = ?
+            ${branch_id && role !== 'admin' ? 'AND o.branch_id = ?' : ''}
+          GROUP BY
+            o.order_id
+          HAVING
+            remaining > 0
+          ORDER BY
+            o.created_at DESC
+        `;
+
+        const orderParams = [supplier.supplier_id];
+        if (branch_id && role !== 'admin') {
+          orderParams.push(branch_id);
+        }
+
+        con.query(orderSql, orderParams, (orderErr, orderResults) => {
+          if (orderErr) {
+            console.error(`Error fetching orders for supplier ${supplier.supplier_id}:`, orderErr);
+            return reject(orderErr);
+          }
+
+          supplier.orders = orderResults;
+          resolve(supplier);
+        });
+      });
+    });
+
+    Promise.all(promises)
+      .then(suppliersWithOrders => {
+        console.log(`Found ${suppliersWithOrders.length} suppliers with liabilities`);
+        res.json(suppliersWithOrders);
+      })
+      .catch(error => {
+        console.error("Error fetching supplier orders:", error);
+        res.status(500).json({ message: "Database error", error: error.message });
+      });
   });
 });
 

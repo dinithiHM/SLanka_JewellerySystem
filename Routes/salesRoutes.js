@@ -437,6 +437,67 @@ router.post("/create", (req, res) => {
                   });
                 }
 
+                // Create a notification for the sale
+                try {
+                  console.log('Attempting to create sale notification...');
+                  // Get the first item name for the notification (if any)
+                  const firstItem = items.length > 0 ? items[0] : null;
+                  const itemName = firstItem && firstItem.product_title ? firstItem.product_title : null;
+
+                  console.log('Sale notification data:', {
+                    sale_id: saleId,
+                    amount: total_amount,
+                    branch_id: branch_id,
+                    item_name: itemName
+                  });
+
+                  // Make a direct database insert instead of using fetch
+                  // Calculate expiration date (5 days from now)
+                  const expiresAt = new Date();
+                  expiresAt.setDate(expiresAt.getDate() + 5);
+
+                  // Create notification for Admin, Store Manager, and Cashier
+                  const title = 'New Sale';
+                  const message = `A new sale${itemName ? ' of ' + itemName : ''} has been made for LKR ${total_amount.toFixed(2)}`;
+                  // Include all possible role formats to ensure compatibility
+                  const targetRoles = JSON.stringify(["admin", "Admin", "store manager", "Store Manager", "storemanager", "cashier", "Cashier"]);
+
+                  const notificationSql = `
+                    INSERT INTO notifications (
+                      title,
+                      message,
+                      type,
+                      target_roles,
+                      expires_at,
+                      branch_id,
+                      related_id,
+                      related_type
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  `;
+
+                  const notificationParams = [
+                    title,
+                    message,
+                    'sales',
+                    targetRoles,
+                    expiresAt,
+                    branch_id,
+                    saleId,
+                    'sale'
+                  ];
+
+                  con.query(notificationSql, notificationParams, (notificationErr, notificationResult) => {
+                    if (notificationErr) {
+                      console.error('Error creating sale notification in database:', notificationErr);
+                    } else {
+                      console.log(`Sale notification created with ID: ${notificationResult.insertId}`);
+                    }
+                  });
+                } catch (notificationError) {
+                  console.error('Error creating sale notification:', notificationError);
+                  // Continue anyway, notification failure shouldn't stop the sale response
+                }
+
                 res.status(201).json({
                   message: "Sale created successfully",
                   sale_id: saleId,

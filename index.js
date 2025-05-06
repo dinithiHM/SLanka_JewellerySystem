@@ -33,6 +33,8 @@ import { assayReportRouter } from "./Routes/assayReportRoutes.new.js"; // ✅ Im
 import { authRouter } from "./Routes/authRoute.js"; // ✅ Import Auth Routes
 import { goldPriceRouter } from "./Routes/goldPriceRoutes.js"; // ✅ Import Gold Price Routes
 import { supplierPaymentsRouter } from "./Routes/supplierPaymentsRoutes.js"; // ✅ Import Supplier Payments Routes
+import { notificationsRouter } from "./Routes/notificationsRoutes.js"; // ✅ Import Notifications Routes
+import { lowStockNotificationsRouter } from "./Routes/lowStockNotificationsRoute.js"; // ✅ Import Low Stock Notifications Routes
 
 const app = express();
 
@@ -107,6 +109,8 @@ app.use("/branches", branchesRouter); // ✅ Add branches routes
 app.use("/assay-reports", assayReportRouter); // ✅ Add assay report routes
 app.use("/gold-prices", goldPriceRouter); // ✅ Add gold price routes
 app.use("/supplier-payments", supplierPaymentsRouter); // ✅ Add supplier payments routes
+app.use("/notifications", notificationsRouter); // ✅ Add notifications routes
+app.use("/low-stock-notifications", lowStockNotificationsRouter); // ✅ Add low stock notifications routes
 
 // ✅ Start the server
 const PORT = 3002;
