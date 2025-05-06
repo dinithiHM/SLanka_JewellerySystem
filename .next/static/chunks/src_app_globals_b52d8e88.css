@@ -414,6 +414,10 @@
     top: calc(var(--spacing) * 24);
   }
 
+  .top-full {
+    top: 100%;
+  }
+
   .-right-2 {
     right: calc(var(--spacing) * -2);
   }
@@ -1489,6 +1493,10 @@
   .border-none {
     --tw-border-style: none;
     border-style: none;
+  }
+
+  .border-black {
+    border-color: var(--color-black);
   }
 
   .border-blue-200 {
@@ -2922,6 +2930,12 @@
   @media (width >= 40rem) {
     .sm\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (width >= 40rem) {
+    .sm\:flex-row {
+      flex-direction: row;
     }
   }
 
