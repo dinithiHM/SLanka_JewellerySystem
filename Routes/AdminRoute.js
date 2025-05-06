@@ -46,18 +46,45 @@ router.post("/adminlogin", (req, res) => {
   });
 
 router.get('/category', (req, res) => {
-    const sql = "SELECT * FROM category";
+    const sql = "SELECT * FROM categories";
     con.query(sql, (err, result) => {
-        if(err) return res.json({Status: false, Error: "Query Error"})
+        if(err) return res.json({Status: false, Error: "Query Error: " + err})
         return res.json({Status: true, Result: result})
     })
 })
 
 router.post('/add_category', (req, res) => {
-    const sql = "INSERT INTO category (`name`) VALUES (?)"
-    con.query(sql, [req.body.category], (err, result) => {
-        if(err) return res.json({Status: false, Error: "Query Error"})
-        return res.json({Status: true})
+    const sql = "INSERT INTO categories (category_name, description) VALUES (?, ?)"
+    con.query(sql, [req.body.category_name, req.body.description || null], (err, result) => {
+        if(err) return res.json({Status: false, Error: "Query Error: " + err})
+        return res.json({Status: true, Result: result})
+    })
+})
+
+router.get('/category/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = "SELECT * FROM categories WHERE category_id = ?";
+    con.query(sql, [id], (err, result) => {
+        if(err) return res.json({Status: false, Error: "Query Error: " + err})
+        return res.json({Status: true, Result: result})
+    })
+})
+
+router.put('/edit_category/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = "UPDATE categories SET category_name = ?, description = ? WHERE category_id = ?";
+    con.query(sql, [req.body.category_name, req.body.description, id], (err, result) => {
+        if(err) return res.json({Status: false, Error: "Query Error: " + err})
+        return res.json({Status: true, Result: result})
+    })
+})
+
+router.delete('/delete_category/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = "DELETE FROM categories WHERE category_id = ?";
+    con.query(sql, [id], (err, result) => {
+        if(err) return res.json({Status: false, Error: "Query Error: " + err})
+        return res.json({Status: true, Result: result})
     })
 })
 
