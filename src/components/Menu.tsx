@@ -23,7 +23,7 @@ const menuItems = [
       { icon: Boxes, label: "Jewellery Stock", href: "/DashView/jewellery-stock", visible: ["Admin", "Store Manager", "Sales Associate"] },
       { icon: FileText, label: "Assay Reports", href: "/DashView/assay-reports", visible: ["Admin", "Store Manager", "Sales Associate"] },
       { icon: Coins, label: "Gold Stock", href: "/DashView/gold-stock", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Tag, label: "Categories", href: "/list/categories", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Tag, label: "Categories", href: "/DashView/categories", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: ShoppingCart, label: "Sales", href: "/DashView/sales/manage", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
       { icon: BarChart, label: "Reports", href: "/list/attendance", visible: ["Store Manager", "Sales Associate", "Cashier"] },
       { icon: BarChart, label: "Sales Report", href: "/DashView/admin/sales-report", visible: ["Admin"] },

@@ -922,6 +922,10 @@
     min-height: 60vh;
   }
 
+  .min-h-\[80px\] {
+    min-height: 80px;
+  }
+
   .min-h-screen {
     min-height: 100vh;
   }
@@ -2728,6 +2732,12 @@
   @media (hover: hover) {
     .hover\:text-yellow-600:hover {
       color: var(--color-yellow-600);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:text-yellow-700:hover {
+      color: var(--color-yellow-700);
     }
   }
 
