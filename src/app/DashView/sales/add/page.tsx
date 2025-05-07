@@ -67,6 +67,7 @@ const AddSalePage = () => {
   const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string>('');
   const [useGoldPriceCalculation, setUseGoldPriceCalculation] = useState<boolean>(false);
   const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
+  const [baseGoldPricePerUnit, setBaseGoldPricePerUnit] = useState<number>(0);
 
   // Karat purity mapping
   const karatPurityMap: Record<string, { purity: number; label: string }> = {
@@ -167,16 +168,9 @@ const AddSalePage = () => {
     }
   };
 
-  // Calculate gold price based on karat and weight
-  const calculateGoldPrice = (basePrice: number, karat: string, weight: number) => {
-    if (!karat || !weight || weight <= 0 || basePrice <= 0) return 0;
-
-    // Get purity for the karat
-    const purity = karatPurityMap[karat]?.purity || 0;
-    if (purity <= 0) return 0;
-
-    // Calculate price based on purity and weight
-    return basePrice * purity * weight;
+  // Helper function to get purity for a karat
+  const getPurity = (karat: string): number => {
+    return karatPurityMap[karat]?.purity || 0;
   };
 
   // Fetch available items
@@ -326,8 +320,31 @@ const AddSalePage = () => {
       basePrice = calculatedPrice;
     }
 
+    // For gold items, prioritize using the baseGoldPricePerUnit for discount calculation
+    let priceForDiscount;
+
+    if (selectedItem.gold_carat && selectedItem.weight) {
+      // For gold items, always try to use the gold price calculation
+      if (baseGoldPricePerUnit > 0) {
+        // Use the calculated base gold price if available
+        priceForDiscount = baseGoldPricePerUnit;
+      } else if (calculatedPrice && calculatedPrice > 0) {
+        // Fall back to calculated price if baseGoldPricePerUnit isn't set yet
+        priceForDiscount = calculatedPrice;
+      } else if (baseGoldPrice && selectedItem.weight) {
+        // Calculate directly if we have the base gold price and weight
+        priceForDiscount = baseGoldPrice * selectedItem.weight;
+      } else {
+        // Last resort, use the base price
+        priceForDiscount = basePrice;
+      }
+    } else {
+      // For non-gold items, use the base price
+      priceForDiscount = basePrice;
+    }
+
     // Apply discount
-    return calculatePriceAfterDiscount(basePrice, discountAmount, discountType);
+    return calculatePriceAfterDiscount(priceForDiscount, discountAmount, discountType);
   };
 
   // Calculate total
@@ -335,6 +352,7 @@ const AddSalePage = () => {
 
   // Handle item selection
   const handleSelectItem = async (item: JewelleryItem) => {
+    console.log('handleSelectItem called with item:', item);
     if (item.in_stock <= 0) {
       setError(`${item.product_title} is out of stock`);
       return;
@@ -346,6 +364,9 @@ const AddSalePage = () => {
     setDiscountAmount(0); // Reset discount
     setDiscountType('fixed'); // Reset discount type
     setShowItemDropdown(false);
+
+    // Reset gold price related values
+    setBaseGoldPricePerUnit(0);
     setError(null);
 
     // Check if it's a gold item with carat and weight
@@ -372,6 +393,9 @@ const AddSalePage = () => {
           // Use the price from gold stock if available
           goldPrice = goldStockItem.price_per_gram;
           console.log(`Using gold price from stock for ${karat}: ${goldPrice}`);
+
+          // Update the base gold price for display
+          setBaseGoldPrice(goldPrice);
         } else {
           // Try to fetch the specific karat price directly
           const karatNumber = parseInt(karat.replace('KT', ''));
@@ -387,9 +411,12 @@ const AddSalePage = () => {
           } else {
             // Fallback to fetching 24K price and calculating based on purity
             const baseGoldPrice = await fetchGoldPrice();
-            const purity = karatPurityMap[karat]?.purity || 0;
+            const purity = getPurity(karat);
             goldPrice = baseGoldPrice * purity;
             console.log(`Calculated gold price for ${karat}: ${goldPrice} (base: ${baseGoldPrice}, purity: ${purity})`);
+
+            // Update the base gold price for display
+            setBaseGoldPrice(goldPrice);
           }
         }
 
@@ -397,24 +424,81 @@ const AddSalePage = () => {
         const calculatedGoldPrice = goldPrice * item.weight;
 
         if (calculatedGoldPrice > 0) {
+          // Update all the state variables in one go to ensure consistency
           setCalculatedPrice(calculatedGoldPrice);
+          setBaseGoldPricePerUnit(calculatedGoldPrice);
+          setUseGoldPriceCalculation(true);
+
+          // Force a re-render by updating a non-critical state
+          setGoldPriceLastUpdated(new Date().toLocaleString());
+
+          console.log('Setting baseGoldPricePerUnit to:', calculatedGoldPrice, 'and useGoldPriceCalculation to true');
           // We don't automatically set custom price to allow user to see both prices
+        } else {
+          // If we couldn't calculate the gold price, calculate it directly
+          if (baseGoldPrice > 0 && item.weight) {
+            const directCalculation = baseGoldPrice * item.weight;
+            setCalculatedPrice(directCalculation);
+            setBaseGoldPricePerUnit(directCalculation);
+            setUseGoldPriceCalculation(true);
+            setGoldPriceLastUpdated(new Date().toLocaleString());
+            console.log('Direct calculation of baseGoldPricePerUnit:', directCalculation);
+          }
         }
       } catch (error) {
         console.error('Error calculating gold price:', error);
 
         // Fallback to original calculation method
-        const goldPrice = await fetchGoldPrice();
-        const karat = `${item.gold_carat}KT`;
-        const calculatedGoldPrice = calculateGoldPrice(goldPrice, karat, item.weight);
+        // Try to fetch the specific karat price first
+        const karatNumber = item.gold_carat || 0;
+        let goldPrice;
+
+        if (karatNumber > 0) {
+          goldPrice = await fetchKaratPrice(karatNumber);
+          if (goldPrice <= 0) {
+            // If that fails, fall back to 24K price and calculate
+            const basePrice = await fetchGoldPrice();
+            const karat = `${item.gold_carat}KT`;
+            const purity = getPurity(karat);
+            goldPrice = basePrice * purity;
+          }
+
+          // Update the base gold price for display
+          setBaseGoldPrice(goldPrice);
+        } else {
+          goldPrice = await fetchGoldPrice();
+          // Update the base gold price for display
+          setBaseGoldPrice(goldPrice);
+        }
+
+        const calculatedGoldPrice = goldPrice * item.weight;
 
         if (calculatedGoldPrice > 0) {
+          // Update all the state variables in one go to ensure consistency
           setCalculatedPrice(calculatedGoldPrice);
+          setBaseGoldPricePerUnit(calculatedGoldPrice);
+          setUseGoldPriceCalculation(true);
+
+          // Force a re-render by updating a non-critical state
+          setGoldPriceLastUpdated(new Date().toLocaleString());
+
+          console.log('Setting baseGoldPricePerUnit (fallback) to:', calculatedGoldPrice, 'and useGoldPriceCalculation to true');
+        } else {
+          // If we still couldn't calculate, try direct calculation
+          if (baseGoldPrice > 0 && item.weight) {
+            const directCalculation = baseGoldPrice * item.weight;
+            setCalculatedPrice(directCalculation);
+            setBaseGoldPricePerUnit(directCalculation);
+            setUseGoldPriceCalculation(true);
+            setGoldPriceLastUpdated(new Date().toLocaleString());
+            console.log('Direct calculation of baseGoldPricePerUnit (fallback):', directCalculation);
+          }
         }
       }
     } else {
       setUseGoldPriceCalculation(false);
       setCalculatedPrice(null);
+      setBaseGoldPricePerUnit(0);
     }
   };
 
@@ -454,12 +538,39 @@ const AddSalePage = () => {
       // Calculate subtotal based on the final price
       const subtotal = quantity * finalPrice;
 
+      // For gold items, determine the original price based on gold calculation
+      let itemOriginalPrice;
+      let isGoldPriceBased = false;
+
+      if (selectedItem.gold_carat && selectedItem.weight) {
+        // For gold items, prioritize using the gold price calculation
+        if (baseGoldPricePerUnit > 0) {
+          // Use the calculated base gold price if available
+          itemOriginalPrice = baseGoldPricePerUnit;
+          isGoldPriceBased = true;
+        } else if (calculatedPrice && calculatedPrice > 0) {
+          // Fall back to calculated price if baseGoldPricePerUnit isn't set yet
+          itemOriginalPrice = calculatedPrice;
+          isGoldPriceBased = true;
+        } else if (baseGoldPrice && selectedItem.weight) {
+          // Calculate directly if we have the base gold price and weight
+          itemOriginalPrice = baseGoldPrice * selectedItem.weight;
+          isGoldPriceBased = true;
+        } else {
+          // Last resort, use the original price
+          itemOriginalPrice = originalPrice;
+        }
+      } else {
+        // For non-gold items, use the original price
+        itemOriginalPrice = originalPrice;
+      }
+
       // Create the new item with gold information if applicable
       const newItem: SaleItem = {
         item_id: selectedItem.item_id,
         product_title: selectedItem.product_title,
         quantity,
-        original_price: originalPrice,
+        original_price: itemOriginalPrice,
         unit_price: finalPrice,
         discount_amount: discountAmount > 0 ? discountAmount : undefined,
         discount_type: discountAmount > 0 ? discountType : undefined,
@@ -468,7 +579,7 @@ const AddSalePage = () => {
         gold_carat: (selectedItem.is_solid_gold || (selectedItem.gold_carat !== undefined && selectedItem.gold_carat > 0)) ? selectedItem.gold_carat : undefined,
         gold_weight: (selectedItem.is_solid_gold || (selectedItem.weight !== undefined && selectedItem.weight > 0)) ? selectedItem.weight : undefined,
         gold_price_per_gram: (useGoldPriceCalculation && baseGoldPrice > 0) ? baseGoldPrice : undefined,
-        is_gold_price_based: useGoldPriceCalculation && calculatedPrice !== null && calculatedPrice > 0 && customPrice === calculatedPrice
+        is_gold_price_based: isGoldPriceBased
       };
 
       // Check if item already exists in sale
@@ -807,7 +918,7 @@ const AddSalePage = () => {
                     ) : (
                       <>
                         <div className="flex justify-between mt-1">
-                          <span className="text-sm">24KT Base Price:</span>
+                          <span className="text-sm">{selectedItem.gold_carat}KT Base Price:</span>
                           <div className="flex items-center">
                             <span className="text-sm mr-2">{formatCurrency(baseGoldPrice)}/gram</span>
                             <button
@@ -815,24 +926,33 @@ const AddSalePage = () => {
                               className="text-xs bg-yellow-400 text-black px-2 py-0.5 rounded"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                fetchGoldPrice().then(price => {
-                                  if (price > 0 && selectedItem?.gold_carat && selectedItem?.weight) {
-                                    // Re-trigger the item selection to recalculate everything
-                                    handleSelectItem(selectedItem);
-                                  }
-                                });
+                                // Fetch the specific karat price
+                                const karatNumber = selectedItem?.gold_carat || 0;
+                                if (karatNumber > 0) {
+                                  fetchKaratPrice(karatNumber).then(price => {
+                                    if (price > 0 && selectedItem?.gold_carat && selectedItem?.weight) {
+                                      // Calculate the base gold price directly
+                                      const calculatedGoldPrice = price * selectedItem.weight;
+                                      console.log('Refresh button: Setting baseGoldPricePerUnit to:', calculatedGoldPrice);
+
+                                      // Update all the state variables in one go to ensure consistency
+                                      setBaseGoldPricePerUnit(calculatedGoldPrice);
+                                      setCalculatedPrice(calculatedGoldPrice);
+                                      setUseGoldPriceCalculation(true);
+
+                                      // Force a re-render by updating a non-critical state
+                                      setGoldPriceLastUpdated(new Date().toLocaleString());
+
+                                      // Re-trigger the item selection to recalculate everything
+                                      // handleSelectItem(selectedItem);
+                                    }
+                                  });
+                                }
                               }}
                             >
                               Refresh
                             </button>
                           </div>
-                        </div>
-
-                        <div className="flex justify-between mt-1">
-                          <span className="text-sm">{selectedItem.gold_carat}KT Price:</span>
-                          <span className="text-sm">
-                            {formatCurrency(baseGoldPrice * karatPurityMap[`${selectedItem.gold_carat}KT`]?.purity || 0)}/gram
-                          </span>
                         </div>
 
                         {goldPriceLastUpdated && (
@@ -851,7 +971,7 @@ const AddSalePage = () => {
                       <div className="grid grid-cols-2 gap-1 text-sm">
                         <span>Gold Price:</span>
                         <span className="text-right">
-                          {formatCurrency(baseGoldPrice * karatPurityMap[`${selectedItem.gold_carat}KT`]?.purity || 0)}/gram
+                          {formatCurrency(baseGoldPrice)}/gram
                         </span>
                         <span>Weight:</span>
                         <span className="text-right">{selectedItem.weight} grams</span>
@@ -959,6 +1079,107 @@ const AddSalePage = () => {
             </div>
           </div>
 
+          {/* Base Gold Price (per unit) */}
+          {/* Debug info */}
+          {(() => {
+            console.log('Rendering Base Gold Price section, conditions:', {
+              selectedItem: !!selectedItem,
+              baseGoldPricePerUnit,
+              useGoldPriceCalculation,
+              shouldShow: selectedItem && baseGoldPricePerUnit > 0
+            });
+            return null;
+          })()}
+
+          {/* Show Base Gold Price for gold items */}
+          {selectedItem && selectedItem.gold_carat && selectedItem.weight && (
+            <div className="flex items-center">
+              <div className="w-32 font-medium">Base Gold Price (per unit)</div>
+              <div className="flex-1">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">
+                      {baseGoldPricePerUnit > 0
+                        ? formatCurrency(baseGoldPricePerUnit)
+                        : calculatedPrice
+                          ? formatCurrency(calculatedPrice)
+                          : baseGoldPrice && selectedItem.weight
+                            ? formatCurrency(baseGoldPrice * selectedItem.weight)
+                            : 'Calculating...'}
+                    </span>
+                    <div className="flex items-center">
+                      <span className="text-xs text-gray-500 mr-2">Gold price × weight</span>
+                      <button
+                        type="button"
+                        className="text-xs bg-yellow-400 text-black px-2 py-0.5 rounded"
+                        onClick={() => {
+                          // Calculate directly based on current values
+                          if (baseGoldPrice > 0 && selectedItem?.weight) {
+                            const directCalculation = baseGoldPrice * selectedItem.weight;
+                            console.log('Direct calculation of baseGoldPricePerUnit:', directCalculation);
+
+                            // Update all relevant state variables
+                            setBaseGoldPricePerUnit(directCalculation);
+                            setCalculatedPrice(directCalculation);
+                            setUseGoldPriceCalculation(true);
+
+                            // Force a re-render
+                            setGoldPriceLastUpdated(new Date().toLocaleString());
+                          } else {
+                            // If we don't have the base price yet, fetch it first
+                            const karatNumber = selectedItem?.gold_carat || 0;
+                            if (karatNumber > 0) {
+                              fetchKaratPrice(karatNumber).then(price => {
+                                if (price > 0 && selectedItem?.weight) {
+                                  const calculatedGoldPrice = price * selectedItem.weight;
+                                  console.log('Fetched and calculated baseGoldPricePerUnit:', calculatedGoldPrice);
+
+                                  // Update all relevant state variables
+                                  setBaseGoldPricePerUnit(calculatedGoldPrice);
+                                  setCalculatedPrice(calculatedGoldPrice);
+                                  setUseGoldPriceCalculation(true);
+                                  setBaseGoldPrice(price);
+
+                                  // Force a re-render
+                                  setGoldPriceLastUpdated(new Date().toLocaleString());
+                                }
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                  {/* Show the calculation details */}
+                  <div className="mt-2 text-xs text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Gold Price per gram:</span>
+                      <span>{formatCurrency(baseGoldPrice)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Weight:</span>
+                      <span>{selectedItem.weight} grams</span>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Total Gold Value:</span>
+                      <span>
+                        {baseGoldPricePerUnit > 0
+                          ? formatCurrency(baseGoldPricePerUnit)
+                          : calculatedPrice
+                            ? formatCurrency(calculatedPrice)
+                            : baseGoldPrice && selectedItem.weight
+                              ? formatCurrency(baseGoldPrice * selectedItem.weight)
+                              : 'Calculating...'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Discount */}
           <div className="flex items-center">
             <div className="w-32 font-medium">Discount</div>
@@ -976,7 +1197,31 @@ const AddSalePage = () => {
                       setDiscountAmount(75);
                     } else if (discountType === 'fixed' && selectedItem) {
                       // For fixed amount, limit to 75% of the price
-                      const basePrice = customPrice !== null ? customPrice : selectedItem.selling_price;
+                      // Use baseGoldPricePerUnit if available, otherwise use custom price or selling price
+                      let basePrice;
+
+                      if (selectedItem.gold_carat && selectedItem.weight) {
+                        // For gold items, prioritize using the gold price calculation
+                        if (baseGoldPricePerUnit > 0) {
+                          // Use the calculated base gold price if available
+                          basePrice = baseGoldPricePerUnit;
+                        } else if (calculatedPrice && calculatedPrice > 0) {
+                          // Fall back to calculated price if baseGoldPricePerUnit isn't set yet
+                          basePrice = calculatedPrice;
+                        } else if (baseGoldPrice && selectedItem.weight) {
+                          // Calculate directly if we have the base gold price and weight
+                          basePrice = baseGoldPrice * selectedItem.weight;
+                        } else if (customPrice !== null) {
+                          basePrice = customPrice;
+                        } else {
+                          basePrice = selectedItem.selling_price;
+                        }
+                      } else if (customPrice !== null) {
+                        basePrice = customPrice;
+                      } else {
+                        basePrice = selectedItem.selling_price;
+                      }
+
                       const maxDiscount = basePrice * 0.75;
                       if (value > maxDiscount) {
                         setError(`Maximum discount allowed is ${formatCurrency(maxDiscount)}`);
