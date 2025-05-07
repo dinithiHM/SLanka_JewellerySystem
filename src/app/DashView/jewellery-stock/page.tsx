@@ -194,6 +194,9 @@ const JewelleryStockPage = () => {
         const data = await response.json();
         console.log('Fetched jewellery items:', data.length);
         setJewelleryItems(data);
+
+        // Check for low stock items and create notifications
+        checkLowStockItems(data);
       } catch (err) {
         console.error('Error fetching jewellery items:', err);
       } finally {
@@ -203,6 +206,29 @@ const JewelleryStockPage = () => {
 
     fetchJewelleryItems();
   }, [userBranchId, userRole, initialLoadComplete]);
+
+  // Function to check for low stock items and create notifications
+  const checkLowStockItems = async (items: JewelleryItem[]) => {
+    try {
+      // Call the low stock notifications check endpoint
+      const response = await fetch('http://localhost:3002/low-stock-notifications/check', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Low stock check result:', result);
+      } else {
+        console.error('Failed to check for low stock items');
+      }
+    } catch (error) {
+      console.error('Error checking for low stock items:', error);
+    }
+  };
 
   // Filter jewellery items based on search term, category, branch, and date range
   const filteredItems = jewelleryItems.filter(item => {
@@ -420,6 +446,23 @@ const JewelleryStockPage = () => {
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
         setJewelleryItems(data);
+      }
+
+      // Check for low stock after adding/updating an item
+      if (inStock <= 10) {
+        try {
+          // Call the low stock notifications check endpoint
+          await fetch('http://localhost:3002/low-stock-notifications/check', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          console.log('Low stock check triggered after item update');
+        } catch (error) {
+          console.error('Error checking for low stock after item update:', error);
+        }
       }
 
       alert(`Item ${formMode === 'add' ? 'added' : 'updated'} successfully`);

@@ -54,12 +54,15 @@ const NotificationsPage = ()=>{
             if (data.success) {
                 // Process notifications to ensure they have the correct type
                 const processedNotifications = data.data.map((notification)=>{
+                    // Log each notification for debugging
+                    console.log('Processing notification:', notification);
                     // Ensure the notification has a valid type
                     if (![
                         'sales',
                         'inventory_order',
                         'low_stock'
                     ].includes(notification.type)) {
+                        console.log(`Notification ${notification.notification_id} has invalid type: ${notification.type}`);
                         // Try to determine the type from other fields
                         if (notification.related_type === 'sale') {
                             notification.type = 'sales';
@@ -67,21 +70,26 @@ const NotificationsPage = ()=>{
                             notification.type = 'inventory_order';
                         } else if (notification.related_type === 'item') {
                             notification.type = 'low_stock';
-                        } else if (notification.title.toLowerCase().includes('sale')) {
+                        } else if (notification.title && notification.title.toLowerCase().includes('sale')) {
                             notification.type = 'sales';
-                        } else if (notification.title.toLowerCase().includes('inventory') || notification.title.toLowerCase().includes('order')) {
+                        } else if (notification.title && (notification.title.toLowerCase().includes('inventory') || notification.title.toLowerCase().includes('order'))) {
                             notification.type = 'inventory_order';
-                        } else if (notification.title.toLowerCase().includes('stock') || notification.title.toLowerCase().includes('low')) {
+                        } else if (notification.title && (notification.title.toLowerCase().includes('stock') || notification.title.toLowerCase().includes('low'))) {
                             notification.type = 'low_stock';
                         } else {
                             // Default to sales if we can't determine the type
                             notification.type = 'sales';
                         }
+                        console.log(`Assigned type ${notification.type} to notification ${notification.notification_id}`);
                     }
                     return notification;
                 });
                 setNotifications(processedNotifications);
-                console.log(`Loaded ${processedNotifications.length} notifications`);
+                // Log notification counts by type
+                const salesCount = processedNotifications.filter((n)=>n.type === 'sales').length;
+                const inventoryCount = processedNotifications.filter((n)=>n.type === 'inventory_order').length;
+                const lowStockCount = processedNotifications.filter((n)=>n.type === 'low_stock').length;
+                console.log(`Loaded ${processedNotifications.length} notifications: ${salesCount} sales, ${inventoryCount} inventory, ${lowStockCount} low stock`);
             } else {
                 throw new Error(data.message || "Failed to fetch notifications");
             }
@@ -132,40 +140,42 @@ const NotificationsPage = ()=>{
     const getNotificationIcon = (type)=>{
         // Normalize the type to handle different formats
         const normalizedType = type?.toLowerCase() || '';
-        if (normalizedType.includes('sale')) {
+        console.log(`Getting icon for notification type: ${type} (normalized: ${normalizedType})`);
+        if (normalizedType === 'sales' || normalizedType.includes('sale')) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$shopping$2d$cart$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ShoppingCart$3e$__["ShoppingCart"], {
                 className: "text-green-600",
                 size: 20
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 153,
+                lineNumber: 169,
                 columnNumber: 14
             }, this);
-        } else if (normalizedType.includes('inventory') || normalizedType.includes('order')) {
+        } else if (normalizedType === 'inventory_order' || normalizedType.includes('inventory') || normalizedType.includes('order')) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$package$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Package$3e$__["Package"], {
                 className: "text-blue-600",
                 size: 20
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 155,
+                lineNumber: 171,
                 columnNumber: 14
             }, this);
-        } else if (normalizedType.includes('stock') || normalizedType.includes('low')) {
+        } else if (normalizedType === 'low_stock' || normalizedType.includes('stock') || normalizedType.includes('low')) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$bell$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Bell$3e$__["Bell"], {
                 className: "text-red-600",
                 size: 20
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 157,
+                lineNumber: 173,
                 columnNumber: 14
             }, this);
         } else {
+            console.log(`Unknown notification type: ${type}`);
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$bell$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Bell$3e$__["Bell"], {
                 className: "text-gray-600",
                 size: 20
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 159,
+                lineNumber: 176,
                 columnNumber: 14
             }, this);
         }
@@ -173,13 +183,15 @@ const NotificationsPage = ()=>{
     const getNotificationColor = (type)=>{
         // Normalize the type to handle different formats
         const normalizedType = type?.toLowerCase() || '';
-        if (normalizedType.includes('sale')) {
+        console.log(`Getting color for notification type: ${type} (normalized: ${normalizedType})`);
+        if (normalizedType === 'sales' || normalizedType.includes('sale')) {
             return "bg-green-50 border-green-200";
-        } else if (normalizedType.includes('inventory') || normalizedType.includes('order')) {
+        } else if (normalizedType === 'inventory_order' || normalizedType.includes('inventory') || normalizedType.includes('order')) {
             return "bg-blue-50 border-blue-200";
-        } else if (normalizedType.includes('stock') || normalizedType.includes('low')) {
+        } else if (normalizedType === 'low_stock' || normalizedType.includes('stock') || normalizedType.includes('low')) {
             return "bg-red-50 border-red-200";
         } else {
+            console.log(`Unknown notification type for color: ${type}`);
             return "bg-gray-50 border-gray-200";
         }
     };
@@ -222,7 +234,18 @@ const NotificationsPage = ()=>{
             return "Unknown date";
         }
     };
-    const filteredNotifications = activeFilter ? notifications.filter((notification)=>notification.type === activeFilter) : notifications;
+    const filteredNotifications = activeFilter ? notifications.filter((notification)=>{
+        const notificationType = notification.type?.toLowerCase() || '';
+        const filter = activeFilter.toLowerCase();
+        if (filter === 'sales') {
+            return notificationType === 'sales' || notificationType.includes('sale');
+        } else if (filter === 'inventory_order') {
+            return notificationType === 'inventory_order' || notificationType.includes('inventory') || notificationType.includes('order');
+        } else if (filter === 'low_stock') {
+            return notificationType === 'low_stock' || notificationType.includes('stock') || notificationType.includes('low');
+        }
+        return notificationType === filter;
+    }) : notifications;
     if (isLoading) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex justify-center items-center h-64",
@@ -230,12 +253,12 @@ const NotificationsPage = ()=>{
                 className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 231,
+                lineNumber: 266,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/list/notifications/page.tsx",
-            lineNumber: 230,
+            lineNumber: 265,
             columnNumber: 7
         }, this);
     }
@@ -249,12 +272,12 @@ const NotificationsPage = ()=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 239,
+                lineNumber: 274,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/list/notifications/page.tsx",
-            lineNumber: 238,
+            lineNumber: 273,
             columnNumber: 7
         }, this);
     }
@@ -269,7 +292,7 @@ const NotificationsPage = ()=>{
                         children: "Notifications"
                     }, void 0, false, {
                         fileName: "[project]/src/app/list/notifications/page.tsx",
-                        lineNumber: 247,
+                        lineNumber: 282,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -281,7 +304,7 @@ const NotificationsPage = ()=>{
                                 children: "All"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                lineNumber: 249,
+                                lineNumber: 284,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -290,7 +313,7 @@ const NotificationsPage = ()=>{
                                 children: "Sales"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                lineNumber: 259,
+                                lineNumber: 294,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -299,7 +322,7 @@ const NotificationsPage = ()=>{
                                 children: "Inventory"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                lineNumber: 269,
+                                lineNumber: 304,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -308,19 +331,19 @@ const NotificationsPage = ()=>{
                                 children: "Low Stock"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                lineNumber: 279,
+                                lineNumber: 314,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/list/notifications/page.tsx",
-                        lineNumber: 248,
+                        lineNumber: 283,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 246,
+                lineNumber: 281,
                 columnNumber: 7
             }, this),
             filteredNotifications.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -331,20 +354,20 @@ const NotificationsPage = ()=>{
                         className: "mx-auto mb-4 text-gray-300"
                     }, void 0, false, {
                         fileName: "[project]/src/app/list/notifications/page.tsx",
-                        lineNumber: 294,
+                        lineNumber: 329,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                         children: "No notifications found"
                     }, void 0, false, {
                         fileName: "[project]/src/app/list/notifications/page.tsx",
-                        lineNumber: 295,
+                        lineNumber: 330,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 293,
+                lineNumber: 328,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "space-y-4",
@@ -361,7 +384,7 @@ const NotificationsPage = ()=>{
                                             children: getNotificationIcon(notification.type)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                            lineNumber: 308,
+                                            lineNumber: 343,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -374,13 +397,13 @@ const NotificationsPage = ()=>{
                                                             className: "ml-2 inline-block w-2 h-2 bg-blue-600 rounded-full"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                            lineNumber: 315,
+                                                            lineNumber: 350,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                    lineNumber: 312,
+                                                    lineNumber: 347,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -388,7 +411,7 @@ const NotificationsPage = ()=>{
                                                     children: notification.message
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                    lineNumber: 318,
+                                                    lineNumber: 353,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -398,7 +421,7 @@ const NotificationsPage = ()=>{
                                                             children: getTimeAgo(notification.created_at)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                            lineNumber: 320,
+                                                            lineNumber: 355,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -408,25 +431,25 @@ const NotificationsPage = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                            lineNumber: 321,
+                                                            lineNumber: 356,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                    lineNumber: 319,
+                                                    lineNumber: 354,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                            lineNumber: 311,
+                                            lineNumber: 346,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/list/notifications/page.tsx",
-                                    lineNumber: 307,
+                                    lineNumber: 342,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -441,12 +464,12 @@ const NotificationsPage = ()=>{
                                                 className: "text-green-600"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                lineNumber: 332,
+                                                lineNumber: 367,
                                                 columnNumber: 23
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                            lineNumber: 327,
+                                            lineNumber: 362,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -458,40 +481,40 @@ const NotificationsPage = ()=>{
                                                 className: "text-red-600"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                                                lineNumber: 340,
+                                                lineNumber: 375,
                                                 columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                                            lineNumber: 335,
+                                            lineNumber: 370,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/list/notifications/page.tsx",
-                                    lineNumber: 325,
+                                    lineNumber: 360,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/list/notifications/page.tsx",
-                            lineNumber: 306,
+                            lineNumber: 341,
                             columnNumber: 15
                         }, this)
                     }, notification.notification_id, false, {
                         fileName: "[project]/src/app/list/notifications/page.tsx",
-                        lineNumber: 300,
+                        lineNumber: 335,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/src/app/list/notifications/page.tsx",
-                lineNumber: 298,
+                lineNumber: 333,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/list/notifications/page.tsx",
-        lineNumber: 245,
+        lineNumber: 280,
         columnNumber: 5
     }, this);
 };

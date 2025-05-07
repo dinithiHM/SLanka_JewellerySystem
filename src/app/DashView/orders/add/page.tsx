@@ -381,6 +381,36 @@ const AddOrderPage = () => {
     }
   };
 
+  // Check gold stock availability
+  const checkGoldStockAvailability = async () => {
+    if (offerGold !== 'yes' || !Object.values(selectedKarats).some(value => value)) {
+      return { available: true }; // No gold selected, so no need to check
+    }
+
+    try {
+      const response = await fetch('http://localhost:3002/gold-stock/check-availability', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          selectedKarats,
+          karatValues
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check gold stock availability');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error checking gold stock availability:', error);
+      return { available: false, error: 'Failed to check gold stock availability' };
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -397,6 +427,28 @@ const AddOrderPage = () => {
         // Show alert with formatted amount
         alert(`Advance payment must be at least ${minAdvancePayment.toFixed(2).toLocaleString()} Rs. (25% of total amount)`);
         return;
+      }
+
+      // Check gold stock availability if offering gold
+      if (offerGold === 'yes') {
+        const stockAvailability = await checkGoldStockAvailability();
+
+        if (!stockAvailability.available) {
+          // Format the unavailable items for display
+          const unavailableItemsText = stockAvailability.unavailableItems
+            .map((item: { purity: string; requested: number; available: number }) =>
+              `${item.purity}: Requested ${item.requested}g, Available ${item.available}g`
+            )
+            .join('\n');
+
+          const proceed = window.confirm(
+            `Some requested gold is not available in sufficient quantity:\n\n${unavailableItemsText}\n\nDo you want to proceed anyway?`
+          );
+
+          if (!proceed) {
+            return;
+          }
+        }
       }
 
       // Prepare the data to be sent
@@ -481,6 +533,50 @@ const AddOrderPage = () => {
           console.error('Error creating payment record:', paymentError);
           // We don't throw an error here since the order was already created
         }
+      }
+
+      // Create a notification for the inventory order
+      try {
+        // Get the supplier name - log for debugging
+        console.log('Suppliers list:', suppliers);
+        console.log('Selected supplier ID:', supplier);
+
+        // Try to find the supplier by ID
+        let supplierObj = suppliers.find(s => s.supplier_id.toString() === supplier.toString());
+
+        // If not found, try to find by other means
+        if (!supplierObj) {
+          console.log('Supplier not found by ID, trying alternative methods');
+          // Try to find by ID as a substring (in case format is different)
+          supplierObj = suppliers.find(s => s.supplier_id.toString().includes(supplier.toString()) ||
+                                           supplier.toString().includes(s.supplier_id.toString()));
+        }
+
+        const supplierName = supplierObj ? supplierObj.name : 'Unknown Supplier';
+        console.log('Resolved supplier name:', supplierName);
+
+        // Create the notification
+        const notificationResponse = await fetch('http://localhost:3002/notifications/inventory-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            order_id: result.orderId,
+            supplier_name: supplierName,
+            category: category,
+            branch_id: userBranchId
+          })
+        });
+
+        if (notificationResponse.ok) {
+          console.log('Inventory order notification created successfully');
+        } else {
+          console.error('Failed to create inventory order notification');
+        }
+      } catch (notificationError) {
+        console.error('Error creating inventory order notification:', notificationError);
       }
 
       alert('Order submitted successfully!');

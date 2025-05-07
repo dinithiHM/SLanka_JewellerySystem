@@ -57,8 +57,13 @@ const NotificationsPage = () => {
       if (data.success) {
         // Process notifications to ensure they have the correct type
         const processedNotifications = data.data.map((notification: any) => {
+          // Log each notification for debugging
+          console.log('Processing notification:', notification);
+
           // Ensure the notification has a valid type
           if (!['sales', 'inventory_order', 'low_stock'].includes(notification.type)) {
+            console.log(`Notification ${notification.notification_id} has invalid type: ${notification.type}`);
+
             // Try to determine the type from other fields
             if (notification.related_type === 'sale') {
               notification.type = 'sales';
@@ -66,24 +71,33 @@ const NotificationsPage = () => {
               notification.type = 'inventory_order';
             } else if (notification.related_type === 'item') {
               notification.type = 'low_stock';
-            } else if (notification.title.toLowerCase().includes('sale')) {
+            } else if (notification.title && notification.title.toLowerCase().includes('sale')) {
               notification.type = 'sales';
-            } else if (notification.title.toLowerCase().includes('inventory') ||
-                      notification.title.toLowerCase().includes('order')) {
+            } else if (notification.title && (notification.title.toLowerCase().includes('inventory') ||
+                      notification.title.toLowerCase().includes('order'))) {
               notification.type = 'inventory_order';
-            } else if (notification.title.toLowerCase().includes('stock') ||
-                      notification.title.toLowerCase().includes('low')) {
+            } else if (notification.title && (notification.title.toLowerCase().includes('stock') ||
+                      notification.title.toLowerCase().includes('low'))) {
               notification.type = 'low_stock';
             } else {
               // Default to sales if we can't determine the type
               notification.type = 'sales';
             }
+
+            console.log(`Assigned type ${notification.type} to notification ${notification.notification_id}`);
           }
+
           return notification;
         });
 
         setNotifications(processedNotifications);
-        console.log(`Loaded ${processedNotifications.length} notifications`);
+
+        // Log notification counts by type
+        const salesCount = processedNotifications.filter(n => n.type === 'sales').length;
+        const inventoryCount = processedNotifications.filter(n => n.type === 'inventory_order').length;
+        const lowStockCount = processedNotifications.filter(n => n.type === 'low_stock').length;
+
+        console.log(`Loaded ${processedNotifications.length} notifications: ${salesCount} sales, ${inventoryCount} inventory, ${lowStockCount} low stock`);
       } else {
         throw new Error(data.message || "Failed to fetch notifications");
       }
@@ -149,13 +163,16 @@ const NotificationsPage = () => {
     // Normalize the type to handle different formats
     const normalizedType = type?.toLowerCase() || '';
 
-    if (normalizedType.includes('sale')) {
+    console.log(`Getting icon for notification type: ${type} (normalized: ${normalizedType})`);
+
+    if (normalizedType === 'sales' || normalizedType.includes('sale')) {
       return <ShoppingCart className="text-green-600" size={20} />;
-    } else if (normalizedType.includes('inventory') || normalizedType.includes('order')) {
+    } else if (normalizedType === 'inventory_order' || normalizedType.includes('inventory') || normalizedType.includes('order')) {
       return <Package className="text-blue-600" size={20} />;
-    } else if (normalizedType.includes('stock') || normalizedType.includes('low')) {
+    } else if (normalizedType === 'low_stock' || normalizedType.includes('stock') || normalizedType.includes('low')) {
       return <Bell className="text-red-600" size={20} />;
     } else {
+      console.log(`Unknown notification type: ${type}`);
       return <Bell className="text-gray-600" size={20} />;
     }
   };
@@ -164,13 +181,16 @@ const NotificationsPage = () => {
     // Normalize the type to handle different formats
     const normalizedType = type?.toLowerCase() || '';
 
-    if (normalizedType.includes('sale')) {
+    console.log(`Getting color for notification type: ${type} (normalized: ${normalizedType})`);
+
+    if (normalizedType === 'sales' || normalizedType.includes('sale')) {
       return "bg-green-50 border-green-200";
-    } else if (normalizedType.includes('inventory') || normalizedType.includes('order')) {
+    } else if (normalizedType === 'inventory_order' || normalizedType.includes('inventory') || normalizedType.includes('order')) {
       return "bg-blue-50 border-blue-200";
-    } else if (normalizedType.includes('stock') || normalizedType.includes('low')) {
+    } else if (normalizedType === 'low_stock' || normalizedType.includes('stock') || normalizedType.includes('low')) {
       return "bg-red-50 border-red-200";
     } else {
+      console.log(`Unknown notification type for color: ${type}`);
       return "bg-gray-50 border-gray-200";
     }
   };
@@ -222,7 +242,22 @@ const NotificationsPage = () => {
   };
 
   const filteredNotifications = activeFilter
-    ? notifications.filter((notification) => notification.type === activeFilter)
+    ? notifications.filter((notification) => {
+        const notificationType = notification.type?.toLowerCase() || '';
+        const filter = activeFilter.toLowerCase();
+
+        if (filter === 'sales') {
+          return notificationType === 'sales' || notificationType.includes('sale');
+        } else if (filter === 'inventory_order') {
+          return notificationType === 'inventory_order' ||
+                 (notificationType.includes('inventory') || notificationType.includes('order'));
+        } else if (filter === 'low_stock') {
+          return notificationType === 'low_stock' ||
+                 (notificationType.includes('stock') || notificationType.includes('low'));
+        }
+
+        return notificationType === filter;
+      })
     : notifications;
 
   if (isLoading) {

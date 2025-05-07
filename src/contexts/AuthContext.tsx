@@ -295,16 +295,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Logout function
   const logout = () => {
-    // Clear auth data
-    localStorage.removeItem('user');
+    // Clear all auth data
+    localStorage.removeItem('userInfo');
     localStorage.removeItem('token');
     localStorage.removeItem('role');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('branchName');
+    localStorage.removeItem('branchId');
+
+    // For backward compatibility
+    localStorage.removeItem('user');
 
     // Update state
     setUser(null);
 
     // Redirect to login
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   // Check if the user has access to a route based on their role
