@@ -1,9 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 6, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 6, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}},
-    {"offset": {"line": 60, "column": 0}, "map": {"version":3,"sources":["file://D%3A/JewelleryWEBApp/front_end/src/app/api/auth/%5B...nextauth%5D/route.ts"],"sourcesContent":["// This is a minimal Next-Auth configuration file to prevent client-side errors\n// We're not actually using Next-Auth for authentication in this application\n\nimport { NextResponse } from 'next/server';\n\n// Return a simple JSON response for any Next-Auth API requests\nexport async function GET() {\n  return NextResponse.json({ \n    message: \"Auth API not configured. Using custom authentication.\" \n  });\n}\n\nexport async function POST() {\n  return NextResponse.json({ \n    message: \"Auth API not configured. Using custom authentication.\" \n  });\n}\n"],"names":[],"mappings":"AAAA,+EAA+E;AAC/E,4EAA4E;;;;;AAE5E;;AAGO,eAAe;IACpB,OAAO,gIAAA,CAAA,eAAY,CAAC,IAAI,CAAC;QACvB,SAAS;IACX;AACF;AAEO,eAAe;IACpB,OAAO,gIAAA,CAAA,eAAY,CAAC,IAAI,CAAC;QACvB,SAAS;IACX;AACF","debugId":null}},
-    {"offset": {"line": 78, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 15, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/pages/_app.js"],"sourcesContent":["import Layout from \"@/components/common/Layout\"\nimport \"@/styles/main.scss\"\n\nexport default function App({ Component, pageProps }) {\n  return (\n    <Layout>\n      <Component {...pageProps} />\n    </Layout>\n  )\n}\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;AAGe,SAAS,IAAI,EAAE,SAAS,EAAE,SAAS,EAAE;IAClD,qBACE,qKAAC;kBACC,cAAA,qKAAC;YAAW,GAAG,SAAS;;;;;;;;;;;AAG9B","debugId":null}},
-    {"offset": {"line": 47, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}

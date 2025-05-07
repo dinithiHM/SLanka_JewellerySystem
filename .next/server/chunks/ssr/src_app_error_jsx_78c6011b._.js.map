@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file://F%3A/JewelleryWEBApp/front_end/src/app/error.jsx"],"sourcesContent":["\"use client\"\nconst Error = () => {\n  return (\n    //The error layout\n    <div>Error</div>\n  )\n}\n\nexport default Error"],"names":[],"mappings":";;;;AAAA;;AACA,MAAM,QAAQ;IACZ,OACE,kBAAkB;kBAClB,8OAAC;kBAAI;;;;;;AAET;uCAEe","debugId":null}},
-    {"offset": {"line": 24, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}

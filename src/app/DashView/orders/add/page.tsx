@@ -39,22 +39,16 @@ const AddOrderPage = () => {
   const [supplier, setSupplier] = useState(supplierIdFromQuery || '');
   const [quantity, setQuantity] = useState(quantityFromQuery ? parseInt(quantityFromQuery, 10) : 20);
   const [offerGold, setOfferGold] = useState('yes');
-  const [selectedKarats, setSelectedKarats] = useState({
-    '24KT': false,
-    '22KT': false,
-    '21KT': false,
-    '18KT': false,
-    '16KT': false,
-  });
-  const [karatValues, setKaratValues] = useState({
-    '24KT': 50,
-    '22KT': 50,
-    '21KT': 50,
-    '18KT': 50,
-    '16KT': 50,
-  });
+  const [selectedKarats, setSelectedKarats] = useState<Record<string, boolean>>({});
+  const [karatValues, setKaratValues] = useState<Record<string, number>>({});
   const [imagePreview, setImagePreview] = useState<string | 'loading' | null>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Gold stock state
+  const [goldStock, setGoldStock] = useState<{purity: string, quantity_in_grams: number}[]>([]);
+  const [isLoadingGoldStock, setIsLoadingGoldStock] = useState(false);
+  const [goldStockError, setGoldStockError] = useState<string | null>(null);
 
   // Gold karat purity mapping
   type KaratKey = '24K' | '23K' | '22K' | '21K' | '20K' | '19K' | '18K' | '16K' | '14K' | '10K';
@@ -196,10 +190,23 @@ const AddOrderPage = () => {
 
   // Handle karat value change
   const handleKaratValueChange = (karat: string, value: number) => {
+    // Find the stock item for this karat
+    const stockItem = goldStock.find(item => item.purity === karat);
+    const availableQuantity = stockItem ? stockItem.quantity_in_grams : 0;
+
+    // Ensure value is not negative
+    const validValue = Math.max(0, value);
+
+    // Update the karat value
     setKaratValues({
       ...karatValues,
-      [karat]: value
+      [karat]: validValue
     });
+
+    // Show warning if value exceeds available quantity
+    if (validValue > availableQuantity) {
+      console.warn(`Warning: Requested ${validValue}g of ${karat} exceeds available quantity of ${availableQuantity}g`);
+    }
   };
 
   // Function to fetch current gold price
@@ -231,6 +238,53 @@ const AddOrderPage = () => {
     }
   };
 
+  // Function to fetch gold stock data
+  const fetchGoldStock = async () => {
+    try {
+      setIsLoadingGoldStock(true);
+      setGoldStockError(null);
+
+      const response = await fetch('http://localhost:3002/gold-stock', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch gold stock: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Gold stock data:', result.data);
+
+        // Initialize selectedKarats and karatValues based on available stock
+        const newSelectedKarats: Record<string, boolean> = {};
+        const newKaratValues: Record<string, number> = {};
+
+        result.data.forEach((item: {purity: string, quantity_in_grams: number}) => {
+          // Only add karats that have stock available
+          if (item.quantity_in_grams > 0) {
+            newSelectedKarats[item.purity] = false;
+            newKaratValues[item.purity] = 0; // Initialize with 0
+          }
+        });
+
+        setGoldStock(result.data);
+        setSelectedKarats(newSelectedKarats);
+        setKaratValues(newKaratValues);
+      } else {
+        setGoldStockError('Failed to fetch gold stock data');
+      }
+    } catch (error) {
+      console.error('Error fetching gold stock:', error);
+      setGoldStockError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsLoadingGoldStock(false);
+    }
+  };
+
   // Function to update gold price when karat changes
   const updateGoldPriceForKarat = (karat: KaratKey) => {
     setSelectedKarat(karat);
@@ -247,6 +301,13 @@ const AddOrderPage = () => {
       fetchGoldPrice();
     }
   }, [showPriceCalculation]);
+
+  // Fetch gold stock data when component mounts or when offerGold changes to 'yes'
+  useEffect(() => {
+    if (offerGold === 'yes') {
+      fetchGoldStock();
+    }
+  }, [offerGold]);
 
   // Set total amount and show price calculation if we have query parameters
   useEffect(() => {
@@ -382,38 +443,59 @@ const AddOrderPage = () => {
   };
 
   // Check gold stock availability
-  const checkGoldStockAvailability = async () => {
+  const checkGoldStockAvailability = () => {
     if (offerGold !== 'yes' || !Object.values(selectedKarats).some(value => value)) {
       return { available: true }; // No gold selected, so no need to check
     }
 
-    try {
-      const response = await fetch('http://localhost:3002/gold-stock/check-availability', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          selectedKarats,
-          karatValues
-        })
-      });
+    // Check availability against local goldStock data
+    const unavailableItems: { purity: string; requested: number; available: number }[] = [];
 
-      if (!response.ok) {
-        throw new Error('Failed to check gold stock availability');
+    Object.keys(selectedKarats).forEach(karat => {
+      if (selectedKarats[karat]) {
+        // Ensure karatValues is a number and not negative
+        const requestedQuantity = parseFloat(karatValues[karat].toString());
+
+        if (requestedQuantity > 0) {
+          // Find the stock item for this karat
+          const stockItem = goldStock.find(item => item.purity === karat);
+          const availableQuantity = stockItem ? parseFloat(stockItem.quantity_in_grams.toString()) : 0;
+
+          console.log(`Checking ${karat}: Requested ${requestedQuantity}g, Available ${availableQuantity}g`);
+
+          if (availableQuantity < requestedQuantity) {
+            unavailableItems.push({
+              purity: karat,
+              requested: requestedQuantity,
+              available: availableQuantity
+            });
+          }
+        }
       }
+    });
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error checking gold stock availability:', error);
-      return { available: false, error: 'Failed to check gold stock availability' };
+    if (unavailableItems.length > 0) {
+      console.warn('Unavailable items:', unavailableItems);
+      return {
+        available: false,
+        unavailableItems,
+        message: 'Some requested gold is not available in sufficient quantity'
+      };
     }
+
+    return { available: true, message: 'All requested gold is available' };
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       // Validate advance payment
@@ -431,9 +513,9 @@ const AddOrderPage = () => {
 
       // Check gold stock availability if offering gold
       if (offerGold === 'yes') {
-        const stockAvailability = await checkGoldStockAvailability();
+        const stockAvailability = checkGoldStockAvailability();
 
-        if (!stockAvailability.available) {
+        if (!stockAvailability.available && stockAvailability.unavailableItems) {
           // Format the unavailable items for display
           const unavailableItemsText = stockAvailability.unavailableItems
             .map((item: { purity: string; requested: number; available: number }) =>
@@ -441,13 +523,38 @@ const AddOrderPage = () => {
             )
             .join('\n');
 
-          const proceed = window.confirm(
-            `Some requested gold is not available in sufficient quantity:\n\n${unavailableItemsText}\n\nDo you want to proceed anyway?`
-          );
+          // Don't allow proceeding if not enough gold is available
+          alert(`Cannot proceed with order. Not enough gold available:\n\n${unavailableItemsText}\n\nPlease adjust the requested quantities.`);
+          setIsSubmitting(false);
+          return;
+        }
 
-          if (!proceed) {
-            return;
-          }
+        // Double-check that we're not trying to deduct more gold than available
+        // This is a safety check to prevent database constraint violations
+        const invalidDeductions = Object.keys(selectedKarats)
+          .filter(k => selectedKarats[k])
+          .map(k => {
+            const requestedQuantity = parseFloat(karatValues[k].toString());
+            const stockItem = goldStock.find(item => item.purity === k);
+            const availableQuantity = stockItem ? parseFloat(stockItem.quantity_in_grams.toString()) : 0;
+
+            return {
+              purity: k,
+              requested: requestedQuantity,
+              available: availableQuantity,
+              isValid: requestedQuantity <= availableQuantity
+            };
+          })
+          .filter(item => !item.isValid);
+
+        if (invalidDeductions.length > 0) {
+          const errorText = invalidDeductions
+            .map(item => `${item.purity}: Requested ${item.requested}g, Available ${item.available}g`)
+            .join('\n');
+
+          alert(`Cannot proceed with order. Gold stock validation failed:\n\n${errorText}\n\nPlease refresh the page and try again with valid quantities.`);
+          setIsSubmitting(false);
+          return;
         }
       }
 
@@ -457,9 +564,9 @@ const AddOrderPage = () => {
         supplier,
         quantity,
         offerGold,
-        selectedKarats: Object.keys(selectedKarats).filter(k => selectedKarats[k as keyof typeof selectedKarats]),
+        selectedKarats: Object.keys(selectedKarats).filter(k => selectedKarats[k]),
         karatValues: Object.fromEntries(
-          Object.entries(karatValues).filter(([k]) => selectedKarats[k as keyof typeof selectedKarats])
+          Object.entries(karatValues).filter(([k]) => selectedKarats[k])
         ),
         image: imagePreview,
         branch_id: userBranchId, // Include branch_id from user info
@@ -483,7 +590,20 @@ const AddOrderPage = () => {
         },
         // Additional fields for database storage
         selectedKarat_db: selectedKarat, // Store the selected karat explicitly
-        goldPurity_db: karatPurityMap[selectedKarat].purity // Store the purity explicitly
+        goldPurity_db: karatPurityMap[selectedKarat].purity, // Store the purity explicitly
+        // Include gold stock information for deduction
+        gold_stock_deduction: offerGold === 'yes' ?
+          Object.keys(selectedKarats)
+            .filter(k => selectedKarats[k])
+            .map(k => {
+              // Ensure it's a valid number
+              const quantity = parseFloat(karatValues[k].toString());
+              console.log(`Sending gold deduction for ${k}: ${quantity}g`);
+              return {
+                purity: k,
+                quantity: quantity
+              };
+            }) : []
       };
 
       console.log('Including branch_id:', userBranchId);
@@ -586,20 +706,20 @@ const AddOrderPage = () => {
       setSupplier('');
       setQuantity(20);
       setOfferGold('yes');
-      setSelectedKarats({
-        '24KT': false,
-        '22KT': false,
-        '21KT': false,
-        '18KT': false,
-        '16KT': false,
+
+      // Reset karat selections based on available stock
+      const newSelectedKarats: Record<string, boolean> = {};
+      const newKaratValues: Record<string, number> = {};
+
+      goldStock.forEach(item => {
+        if (item.quantity_in_grams > 0) {
+          newSelectedKarats[item.purity] = false;
+          newKaratValues[item.purity] = 0;
+        }
       });
-      setKaratValues({
-        '24KT': 50,
-        '22KT': 50,
-        '21KT': 50,
-        '18KT': 50,
-        '16KT': 50,
-      });
+
+      setSelectedKarats(newSelectedKarats);
+      setKaratValues(newKaratValues);
       setImagePreview(null);
 
       // Reset price calculation fields
@@ -617,6 +737,8 @@ const AddOrderPage = () => {
     } catch (error) {
       console.error('Error submitting order:', error);
       alert(`Failed to submit order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -730,25 +852,62 @@ const AddOrderPage = () => {
             <div className="mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  {Object.keys(selectedKarats).map((karat) => (
-                    <div key={karat} className="flex items-center mb-2">
-                      <input
-                        type="checkbox"
-                        id={karat}
-                        checked={selectedKarats[karat as keyof typeof selectedKarats]}
-                        onChange={() => handleKaratChange(karat)}
-                        className="mr-2"
-                      />
-                      <label htmlFor={karat} className="mr-4 w-12">{karat}</label>
-                      <input
-                        type="number"
-                        value={karatValues[karat as keyof typeof karatValues]}
-                        onChange={(e) => handleKaratValueChange(karat, Number(e.target.value))}
-                        className="w-16 p-1 border border-gray-300 rounded-md"
-                        disabled={!selectedKarats[karat as keyof typeof selectedKarats]}
-                      />
+                  {isLoadingGoldStock ? (
+                    <div className="flex items-center justify-center p-4">
+                      <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2"></div>
+                      <span>Loading gold stock data...</span>
                     </div>
-                  ))}
+                  ) : goldStockError ? (
+                    <div className="text-red-500 p-2">
+                      Error loading gold stock: {goldStockError}
+                    </div>
+                  ) : Object.keys(selectedKarats).length === 0 ? (
+                    <div className="text-amber-600 p-2">
+                      No gold stock available. Please add gold to inventory first.
+                    </div>
+                  ) : (
+                    Object.keys(selectedKarats).map((karat) => {
+                      // Find the stock item for this karat
+                      const stockItem = goldStock.find(item => item.purity === karat);
+                      const availableQuantity = stockItem ? stockItem.quantity_in_grams : 0;
+
+                      return (
+                        <div key={karat} className="flex items-center mb-2">
+                          <input
+                            type="checkbox"
+                            id={karat}
+                            checked={selectedKarats[karat]}
+                            onChange={() => handleKaratChange(karat)}
+                            className="mr-2"
+                          />
+                          <label htmlFor={karat} className="mr-4 w-12">{karat}</label>
+                          <div className="relative flex-1">
+                            <input
+                              type="number"
+                              value={karatValues[karat]}
+                              onChange={(e) => {
+                                const value = Number(e.target.value);
+                                handleKaratValueChange(karat, value);
+                              }}
+                              className={`w-16 p-1 border ${
+                                selectedKarats[karat] && karatValues[karat] > availableQuantity
+                                  ? 'border-red-500'
+                                  : 'border-gray-300'
+                              } rounded-md`}
+                              disabled={!selectedKarats[karat]}
+                              min="0"
+                              step="any"
+                            />
+                            {selectedKarats[karat] && karatValues[karat] > availableQuantity && (
+                              <div className="absolute left-20 top-1 text-xs text-red-500">
+                                Max: {availableQuantity.toFixed(2)}g
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file://D%3A/JewelleryWEBApp/front_end/src/app/DashView/cashier/layout.tsx"],"sourcesContent":["'use client';\n\nimport React from 'react';\nimport ProtectedRoute from '@/components/ProtectedRoute';\n\nexport default function CashierLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <ProtectedRoute allowedRoles={['Cashier']}>\n      {children}\n    </ProtectedRoute>\n  );\n}\n"],"names":[],"mappings":";;;;AAGA;AAHA;;;AAKe,SAAS,cAAc,EACpC,QAAQ,EAGT;IACC,qBACE,6LAAC,uIAAA,CAAA,UAAc;QAAC,cAAc;YAAC;SAAU;kBACtC;;;;;;AAGP;KAVwB","debugId":null}},
-    {"offset": {"line": 33, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}

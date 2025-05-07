@@ -11,6 +11,11 @@ interface JewelleryItem {
   category: string;
   in_stock: number;
   selling_price: number;
+  gold_carat?: number;
+  weight?: number;
+  is_solid_gold?: boolean;
+  assay_certificate?: string;
+  assay_status?: string;
 }
 
 interface SaleItem {
@@ -22,6 +27,11 @@ interface SaleItem {
   discount_amount?: number;
   discount_type?: 'percentage' | 'fixed';
   subtotal: number;
+  // Gold-related properties
+  gold_carat?: number;
+  gold_weight?: number;
+  gold_price_per_gram?: number;
+  is_gold_price_based?: boolean;
 }
 
 const AddSalePage = () => {
@@ -51,7 +61,23 @@ const AddSalePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
-  // Get user info from localStorage
+  // Gold price states
+  const [baseGoldPrice, setBaseGoldPrice] = useState<number>(0);
+  const [isLoadingGoldPrice, setIsLoadingGoldPrice] = useState<boolean>(false);
+  const [goldPriceLastUpdated, setGoldPriceLastUpdated] = useState<string>('');
+  const [useGoldPriceCalculation, setUseGoldPriceCalculation] = useState<boolean>(false);
+  const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
+
+  // Karat purity mapping
+  const karatPurityMap: Record<string, { purity: number; label: string }> = {
+    '24KT': { purity: 1.0000, label: '24-Karat Gold (99.99% Pure)' },
+    '22KT': { purity: 0.9167, label: '22-Karat Gold (92% Pure)' },
+    '21KT': { purity: 0.8750, label: '21-Karat Gold (88% Pure)' },
+    '18KT': { purity: 0.7500, label: '18-Karat Gold (75% Pure)' },
+    '16KT': { purity: 0.6667, label: '16-Karat Gold (67% Pure)' },
+  };
+
+  // Get user info from localStorage and fetch initial gold price
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
     const storedBranchId = localStorage.getItem('branchId');
@@ -65,7 +91,93 @@ const AddSalePage = () => {
       setBranchId(storedBranchId);
       console.log('Branch ID set from localStorage:', storedBranchId);
     }
+
+    // Fetch initial gold price
+    fetchGoldPrice();
   }, []);
+
+  // Function to fetch current gold price (24K)
+  const fetchGoldPrice = async () => {
+    try {
+      setIsLoadingGoldPrice(true);
+      const response = await fetch('http://localhost:3002/gold-prices/current-price');
+      const data = await response.json();
+
+      if (data.success) {
+        // Store the 24K base price
+        setBaseGoldPrice(data.price);
+
+        // Format the timestamp
+        const date = new Date(data.timestamp);
+        setGoldPriceLastUpdated(date.toLocaleString());
+
+        return data.price;
+      } else {
+        console.error('Failed to fetch gold price:', data.message);
+        return 0;
+      }
+    } catch (error) {
+      console.error('Error fetching gold price:', error);
+      return 0;
+    } finally {
+      setIsLoadingGoldPrice(false);
+    }
+  };
+
+  // Function to fetch gold price for a specific karat
+  const fetchKaratPrice = async (karat: number) => {
+    try {
+      setIsLoadingGoldPrice(true);
+      const response = await fetch(`http://localhost:3002/gold-prices/karat-price/${karat}KT`);
+      const data = await response.json();
+
+      if (data.success) {
+        // Format the timestamp
+        const date = new Date(data.timestamp);
+        setGoldPriceLastUpdated(date.toLocaleString());
+
+        return data.price;
+      } else {
+        console.error(`Failed to fetch ${karat}KT gold price:`, data.message);
+        return 0;
+      }
+    } catch (error) {
+      console.error(`Error fetching ${karat}KT gold price:`, error);
+      return 0;
+    } finally {
+      setIsLoadingGoldPrice(false);
+    }
+  };
+
+  // Function to fetch gold stock data
+  const fetchGoldStock = async () => {
+    try {
+      const response = await fetch('http://localhost:3002/gold-stock');
+      const data = await response.json();
+
+      if (data.success) {
+        return data.data;
+      } else {
+        console.error('Failed to fetch gold stock:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching gold stock:', error);
+      return [];
+    }
+  };
+
+  // Calculate gold price based on karat and weight
+  const calculateGoldPrice = (basePrice: number, karat: string, weight: number) => {
+    if (!karat || !weight || weight <= 0 || basePrice <= 0) return 0;
+
+    // Get purity for the karat
+    const purity = karatPurityMap[karat]?.purity || 0;
+    if (purity <= 0) return 0;
+
+    // Calculate price based on purity and weight
+    return basePrice * purity * weight;
+  };
 
   // Fetch available items
   useEffect(() => {
@@ -103,10 +215,59 @@ const AddSalePage = () => {
           throw new Error(errorMessage);
         }
 
-        const data = await response.json();
+        let data = await response.json();
         console.log('Initial fetch - available items:', data); // Debug log
+
+        // Add test gold items for demonstration
+        const hasGoldItems = data.some((item: JewelleryItem) => item.is_solid_gold && item.gold_carat && item.weight);
+
+        if (!hasGoldItems) {
+          console.log('Adding test gold items for demonstration');
+
+          // Add test gold items
+          const testGoldItems = [
+            {
+              item_id: 'gold-1',
+              product_title: 'Gold Necklace 22KT',
+              category: 'Necklace',
+              in_stock: 5,
+              selling_price: 150000,
+              is_solid_gold: true,
+              gold_carat: 22,
+              weight: 15.5,
+              assay_certificate: 'CERT-001'
+            },
+            {
+              item_id: 'gold-2',
+              product_title: 'Gold Ring 18KT',
+              category: 'Rings',
+              in_stock: 10,
+              selling_price: 55000,
+              is_solid_gold: true,
+              gold_carat: 18,
+              weight: 5.2
+            },
+            {
+              item_id: 'gold-3',
+              product_title: 'Pure Gold Bangle 24KT',
+              category: 'Bangles',
+              in_stock: 3,
+              selling_price: 200000,
+              is_solid_gold: true,
+              gold_carat: 24,
+              weight: 12.8,
+              assay_certificate: 'CERT-002'
+            }
+          ];
+
+          data = [...data, ...testGoldItems];
+        }
+
         setAvailableItems(data);
         setFilteredItems(data);
+
+        // Fetch gold price to have it ready
+        fetchGoldPrice();
       } catch (err) {
         console.error('Error fetching available items:', err);
         setError('Failed to fetch items. Please try again.');
@@ -153,22 +314,32 @@ const AddSalePage = () => {
   };
 
   // Calculate final price for the current item
-  const finalUnitPrice = selectedItem ?
-    calculatePriceAfterDiscount(
-      customPrice !== null ? customPrice : selectedItem.selling_price,
-      discountAmount,
-      discountType
-    ) : 0;
+  const getFinalUnitPrice = () => {
+    if (!selectedItem) return 0;
+
+    // Start with either custom price, calculated gold price, or original selling price
+    let basePrice = selectedItem.selling_price;
+
+    if (customPrice !== null) {
+      basePrice = customPrice;
+    } else if (useGoldPriceCalculation && calculatedPrice && calculatedPrice > 0) {
+      basePrice = calculatedPrice;
+    }
+
+    // Apply discount
+    return calculatePriceAfterDiscount(basePrice, discountAmount, discountType);
+  };
 
   // Calculate total
   const totalAmount = saleItems.reduce((sum, item) => sum + item.subtotal, 0);
 
   // Handle item selection
-  const handleSelectItem = (item: JewelleryItem) => {
+  const handleSelectItem = async (item: JewelleryItem) => {
     if (item.in_stock <= 0) {
       setError(`${item.product_title} is out of stock`);
       return;
     }
+
     setSelectedItem(item);
     setQuantity(1);
     setCustomPrice(null); // Reset custom price
@@ -176,6 +347,75 @@ const AddSalePage = () => {
     setDiscountType('fixed'); // Reset discount type
     setShowItemDropdown(false);
     setError(null);
+
+    // Check if it's a gold item with carat and weight
+    // Note: We check for weight and gold_carat directly since is_solid_gold might not be properly set
+    if ((item.is_solid_gold ||
+         (item.gold_carat !== undefined && item.gold_carat > 0) ||
+         (item.weight !== undefined && item.weight > 0)) &&
+        item.gold_carat &&
+        item.weight) {
+      console.log('Gold item detected:', item);
+      setUseGoldPriceCalculation(true);
+
+      try {
+        // Fetch gold stock data to get the price for the specific karat
+        const goldStockData = await fetchGoldStock();
+
+        // Find the matching karat in gold stock
+        const karat = `${item.gold_carat}KT`;
+        const goldStockItem = goldStockData.find((stock: any) => stock.purity === karat);
+
+        let goldPrice;
+
+        if (goldStockItem && goldStockItem.price_per_gram > 0) {
+          // Use the price from gold stock if available
+          goldPrice = goldStockItem.price_per_gram;
+          console.log(`Using gold price from stock for ${karat}: ${goldPrice}`);
+        } else {
+          // Try to fetch the specific karat price directly
+          const karatNumber = parseInt(karat.replace('KT', ''));
+          const directKaratPrice = await fetchKaratPrice(karatNumber);
+
+          if (directKaratPrice > 0) {
+            // Use the directly fetched karat price
+            goldPrice = directKaratPrice;
+            console.log(`Using directly fetched price for ${karat}: ${goldPrice}`);
+
+            // Also update the base gold price for display
+            setBaseGoldPrice(directKaratPrice);
+          } else {
+            // Fallback to fetching 24K price and calculating based on purity
+            const baseGoldPrice = await fetchGoldPrice();
+            const purity = karatPurityMap[karat]?.purity || 0;
+            goldPrice = baseGoldPrice * purity;
+            console.log(`Calculated gold price for ${karat}: ${goldPrice} (base: ${baseGoldPrice}, purity: ${purity})`);
+          }
+        }
+
+        // Calculate price based on gold price and weight
+        const calculatedGoldPrice = goldPrice * item.weight;
+
+        if (calculatedGoldPrice > 0) {
+          setCalculatedPrice(calculatedGoldPrice);
+          // We don't automatically set custom price to allow user to see both prices
+        }
+      } catch (error) {
+        console.error('Error calculating gold price:', error);
+
+        // Fallback to original calculation method
+        const goldPrice = await fetchGoldPrice();
+        const karat = `${item.gold_carat}KT`;
+        const calculatedGoldPrice = calculateGoldPrice(goldPrice, karat, item.weight);
+
+        if (calculatedGoldPrice > 0) {
+          setCalculatedPrice(calculatedGoldPrice);
+        }
+      }
+    } else {
+      setUseGoldPriceCalculation(false);
+      setCalculatedPrice(null);
+    }
   };
 
   // Handle adding item to sale
@@ -199,15 +439,22 @@ const AddSalePage = () => {
         return;
       }
 
-      // Get the original price (either custom or from the item)
-      const originalPrice = customPrice !== null ? customPrice : selectedItem.selling_price;
+      // Get the original price (either custom, calculated gold price, or from the item)
+      let originalPrice = selectedItem.selling_price;
+
+      if (customPrice !== null) {
+        originalPrice = customPrice;
+      } else if (useGoldPriceCalculation && calculatedPrice && calculatedPrice > 0) {
+        originalPrice = calculatedPrice;
+      }
 
       // Calculate the final unit price after discount
-      const finalPrice = calculatePriceAfterDiscount(originalPrice, discountAmount, discountType);
+      const finalPrice = getFinalUnitPrice();
 
       // Calculate subtotal based on the final price
       const subtotal = quantity * finalPrice;
 
+      // Create the new item with gold information if applicable
       const newItem: SaleItem = {
         item_id: selectedItem.item_id,
         product_title: selectedItem.product_title,
@@ -216,7 +463,12 @@ const AddSalePage = () => {
         unit_price: finalPrice,
         discount_amount: discountAmount > 0 ? discountAmount : undefined,
         discount_type: discountAmount > 0 ? discountType : undefined,
-        subtotal
+        subtotal,
+        // Add gold-related information if this is a gold item
+        gold_carat: (selectedItem.is_solid_gold || (selectedItem.gold_carat !== undefined && selectedItem.gold_carat > 0)) ? selectedItem.gold_carat : undefined,
+        gold_weight: (selectedItem.is_solid_gold || (selectedItem.weight !== undefined && selectedItem.weight > 0)) ? selectedItem.weight : undefined,
+        gold_price_per_gram: (useGoldPriceCalculation && baseGoldPrice > 0) ? baseGoldPrice : undefined,
+        is_gold_price_based: useGoldPriceCalculation && calculatedPrice !== null && calculatedPrice > 0 && customPrice === calculatedPrice
       };
 
       // Check if item already exists in sale
@@ -310,7 +562,12 @@ const AddSalePage = () => {
           unit_price: item.unit_price,
           original_price: item.original_price,
           discount_amount: item.discount_amount,
-          discount_type: item.discount_type
+          discount_type: item.discount_type,
+          // Include gold-related information if available
+          gold_carat: item.gold_carat,
+          gold_weight: item.gold_weight,
+          gold_price_per_gram: item.gold_price_per_gram,
+          is_gold_price_based: item.is_gold_price_based
         })),
         user_id: userId,
         branch_id: branchId
@@ -459,18 +716,36 @@ const AddSalePage = () => {
                 filteredItems.map(item => (
                   <div
                     key={item.item_id}
-                    className="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                    className={`p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center ${
+                      (item.is_solid_gold || (item.gold_carat !== undefined && item.gold_carat > 0) || (item.weight !== undefined && item.weight > 0)) ? 'border-l-4 border-yellow-400' : ''
+                    }`}
                     onClick={() => handleSelectItem(item)}
                   >
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium">{item.product_title}</div>
                       <div className="text-sm text-gray-500">{item.category}</div>
+                      {((item.is_solid_gold || (item.gold_carat !== undefined && item.gold_carat > 0) || (item.weight !== undefined && item.weight > 0)) && item.gold_carat && item.weight) && (
+                        <div className="flex items-center mt-1">
+                          <span className="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span>
+                          <span className="text-xs font-medium text-yellow-700">
+                            {item.gold_carat}KT Gold • {item.weight}g
+                            {item.assay_certificate && (
+                              <span className="ml-1 text-green-600">• Certified</span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right ml-4">
                       <div className="font-medium">{formatCurrency(item.selling_price)}</div>
                       <div className={`text-sm ${item.in_stock > 0 ? 'text-gray-500' : 'text-red-500 font-bold'}`}>
                         In stock: {item.in_stock}
                       </div>
+                      {(item.is_solid_gold || (item.gold_carat !== undefined && item.gold_carat > 0) || (item.weight !== undefined && item.weight > 0)) && (
+                        <div className="text-xs text-yellow-600 mt-1">
+                          Gold Item
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -505,35 +780,182 @@ const AddSalePage = () => {
             </div>
           </div>
 
+          {/* Gold Item Details (if applicable) */}
+          {selectedItem && (selectedItem.is_solid_gold || (selectedItem.gold_carat !== undefined && selectedItem.gold_carat > 0) || (selectedItem.weight !== undefined && selectedItem.weight > 0)) && selectedItem.gold_carat && selectedItem.weight && (
+            <div className="flex items-center mb-4">
+              <div className="w-32 font-medium">Gold Details</div>
+              <div className="flex-1">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Karat:</span>
+                    <span className="text-sm font-bold">{selectedItem.gold_carat}KT</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-sm font-medium">Weight:</span>
+                    <span className="text-sm font-bold">{selectedItem.weight} grams</span>
+                  </div>
+
+                  {/* Gold Price Information */}
+                  <div className="mt-3 pt-2 border-t border-yellow-200">
+                    <div className="text-sm font-medium mb-1">Gold Price Information:</div>
+
+                    {isLoadingGoldPrice ? (
+                      <div className="flex items-center justify-center py-2">
+                        <span className="inline-block w-4 h-4 mr-1 border-2 border-t-transparent border-yellow-400 rounded-full animate-spin"></span>
+                        <span className="text-sm">Loading gold price...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-sm">24KT Base Price:</span>
+                          <div className="flex items-center">
+                            <span className="text-sm mr-2">{formatCurrency(baseGoldPrice)}/gram</span>
+                            <button
+                              type="button"
+                              className="text-xs bg-yellow-400 text-black px-2 py-0.5 rounded"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fetchGoldPrice().then(price => {
+                                  if (price > 0 && selectedItem?.gold_carat && selectedItem?.weight) {
+                                    // Re-trigger the item selection to recalculate everything
+                                    handleSelectItem(selectedItem);
+                                  }
+                                });
+                              }}
+                            >
+                              Refresh
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between mt-1">
+                          <span className="text-sm">{selectedItem.gold_carat}KT Price:</span>
+                          <span className="text-sm">
+                            {formatCurrency(baseGoldPrice * karatPurityMap[`${selectedItem.gold_carat}KT`]?.purity || 0)}/gram
+                          </span>
+                        </div>
+
+                        {goldPriceLastUpdated && (
+                          <div className="text-xs text-gray-500 mt-1 text-right">
+                            Last updated: {goldPriceLastUpdated}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Calculation */}
+                  {calculatedPrice && calculatedPrice > 0 && (
+                    <div className="mt-3 pt-2 border-t border-yellow-200">
+                      <div className="text-sm font-medium mb-1">Price Calculation:</div>
+                      <div className="grid grid-cols-2 gap-1 text-sm">
+                        <span>Gold Price:</span>
+                        <span className="text-right">
+                          {formatCurrency(baseGoldPrice * karatPurityMap[`${selectedItem.gold_carat}KT`]?.purity || 0)}/gram
+                        </span>
+                        <span>Weight:</span>
+                        <span className="text-right">{selectedItem.weight} grams</span>
+                        <span className="font-medium">Total Gold Value:</span>
+                        <span className="text-right font-bold">{formatCurrency(calculatedPrice)}</span>
+                      </div>
+
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          className="bg-yellow-400 text-black px-2 py-1 rounded text-xs"
+                          onClick={() => setCustomPrice(calculatedPrice)}
+                        >
+                          Use Gold Price
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Unit Price */}
           <div className="flex items-center">
             <div className="w-32 font-medium">Unit price</div>
             <div className="flex-1">
               {selectedItem ? (
-                <input
-                  type="number"
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  value={customPrice !== null ? customPrice : selectedItem.selling_price}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value > 0) {
-                      setCustomPrice(value);
-                    } else if (e.target.value === '') {
-                      setCustomPrice(null); // Reset to original price
-                    }
-                  }}
-                  placeholder="Enter custom price"
-                  min="0"
-                  step="0.01"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    className={`w-full p-3 border ${
+                      calculatedPrice && calculatedPrice > 0
+                        ? 'border-yellow-400'
+                        : 'border-gray-300'
+                    } rounded-md`}
+                    value={customPrice !== null ? customPrice : selectedItem.selling_price}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value > 0) {
+                        setCustomPrice(value);
+                      } else if (e.target.value === '') {
+                        setCustomPrice(null); // Reset to original price
+                      }
+                    }}
+                    placeholder="Enter custom price"
+                    min="0"
+                    step="0.01"
+                  />
+
+                  {/* Price selection buttons */}
+                  <div className="absolute right-2 top-2 flex space-x-1">
+                    {calculatedPrice && calculatedPrice > 0 && (
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded text-xs ${
+                          customPrice === calculatedPrice
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-yellow-400 text-black'
+                        }`}
+                        onClick={() => setCustomPrice(calculatedPrice)}
+                      >
+                        Use Gold Price
+                      </button>
+                    )}
+
+                    {customPrice !== null && (
+                      <button
+                        type="button"
+                        className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs"
+                        onClick={() => setCustomPrice(null)}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="p-3 bg-gray-100 rounded-md">0.00</div>
               )}
-              {customPrice !== null && selectedItem && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Original price: {formatCurrency(selectedItem.selling_price)}
-                </div>
-              )}
+
+              {/* Price comparison information */}
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {selectedItem && (
+                  <div className={`text-xs ${customPrice !== null ? 'text-gray-500' : 'text-black font-medium'}`}>
+                    <span className="mr-1">Catalog price:</span>
+                    <span>{formatCurrency(selectedItem.selling_price)}</span>
+                  </div>
+                )}
+
+                {calculatedPrice && calculatedPrice > 0 && (
+                  <div className={`text-xs ${customPrice === calculatedPrice ? 'text-yellow-600 font-medium' : 'text-yellow-600'}`}>
+                    <span className="mr-1">Gold value price:</span>
+                    <span>{formatCurrency(calculatedPrice)}</span>
+                  </div>
+                )}
+
+                {customPrice !== null && customPrice !== calculatedPrice && selectedItem && customPrice !== selectedItem.selling_price && (
+                  <div className="text-xs text-blue-600 font-medium">
+                    <span className="mr-1">Custom price:</span>
+                    <span>{formatCurrency(customPrice)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -592,11 +1014,7 @@ const AddSalePage = () => {
             <div className="w-32 font-medium">Final price</div>
             <div className="flex-1">
               <div className="p-3 bg-gray-100 rounded-md font-bold">
-                {selectedItem ? formatCurrency(calculatePriceAfterDiscount(
-                  customPrice !== null ? customPrice : selectedItem.selling_price,
-                  discountAmount,
-                  discountType
-                )) : '0.00'}
+                {selectedItem ? formatCurrency(getFinalUnitPrice()) : '0.00'}
               </div>
               {discountAmount > 0 && selectedItem && (
                 <div className="text-xs text-green-600 mt-1">
@@ -631,13 +1049,7 @@ const AddSalePage = () => {
             <div className="w-32 font-medium">Total</div>
             <div className="flex-1">
               <div className="p-3 bg-gray-100 rounded-md">
-                {selectedItem ? formatCurrency(
-                  calculatePriceAfterDiscount(
-                    customPrice !== null ? customPrice : selectedItem.selling_price,
-                    discountAmount,
-                    discountType
-                  ) * quantity
-                ) : '0.00'}
+                {selectedItem ? formatCurrency(getFinalUnitPrice() * quantity) : '0.00'}
               </div>
             </div>
           </div>
@@ -678,7 +1090,7 @@ const AddSalePage = () => {
               title="Add this item to the sale"
             >
               <Plus size={18} className="mr-1" />
-              {saleItems.length === 0 ? 'ADD ITEM TO CART' : 'ADD MORE'}
+              {saleItems.length === 0 ? 'ADD ITEM ' : 'ADD MORE'}
             </button>
           </div>
           {saleItems.length === 0 && selectedItem && (
@@ -706,8 +1118,18 @@ const AddSalePage = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {saleItems.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2">{item.product_title}</td>
+                      <tr key={index} className={item.is_gold_price_based ? 'bg-yellow-50' : ''}>
+                        <td className="px-4 py-2">
+                          <div>{item.product_title}</div>
+                          {item.gold_carat && item.gold_weight && (
+                            <div className="text-xs text-yellow-600">
+                              {item.gold_carat}KT Gold • {item.gold_weight}g
+                              {item.gold_price_per_gram && (
+                                <span className="ml-1">• {formatCurrency(item.gold_price_per_gram)}/g</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-2">{item.quantity}</td>
                         <td className="px-4 py-2">{formatCurrency(item.original_price || item.unit_price)}</td>
                         <td className="px-4 py-2">
@@ -717,12 +1139,18 @@ const AddSalePage = () => {
                               : formatCurrency(item.discount_amount)
                           ) : '-'}
                         </td>
-                        <td className="px-4 py-2">{formatCurrency(item.unit_price)}</td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{formatCurrency(item.unit_price)}</div>
+                          {item.is_gold_price_based && (
+                            <div className="text-xs text-yellow-600">Gold price based</div>
+                          )}
+                        </td>
                         <td className="px-4 py-2">{formatCurrency(item.subtotal)}</td>
                         <td className="px-4 py-2">
                           <button
                             className="text-red-500 hover:text-red-700"
                             onClick={() => handleRemoveItem(index)}
+                            title="Remove item"
                           >
                             <X size={18} />
                           </button>
@@ -764,14 +1192,14 @@ const AddSalePage = () => {
                 View Sale
               </button>
 
-              <button
+              {/* <button
                 type="button"
                 className="bg-yellow-400 text-black px-6 py-2 rounded-full font-medium"
                 onClick={() => alert('Invoice generation will be implemented')}
                 disabled={isSubmitting || saleItems.length === 0}
               >
                 Generate Invoice
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
