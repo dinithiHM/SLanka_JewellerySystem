@@ -41,14 +41,17 @@ router.get("/available", (req, res) => {
       if (branchColumnExists && branchId) {
         // Filter by branch_id if the column exists and branch_id is provided
         sql = `
-          SELECT item_id, product_title, category, in_stock, selling_price
+          SELECT item_id, product_title, category, in_stock, selling_price,
+                 is_solid_gold, gold_carat, weight, assay_certificate
           FROM jewellery_items
           WHERE branch_id = ? OR branch_id IS NULL
         `;
         queryParams = [branchId];
       } else {
         // Get all items if branch_id column doesn't exist or branch_id is not provided
-        sql = "SELECT item_id, product_title, category, in_stock, selling_price FROM jewellery_items";
+        sql = `SELECT item_id, product_title, category, in_stock, selling_price,
+                      is_solid_gold, gold_carat, weight, assay_certificate
+               FROM jewellery_items`;
       }
 
       console.log('Executing SQL query:', sql, 'with params:', queryParams);

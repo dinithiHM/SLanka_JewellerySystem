@@ -605,64 +605,355 @@ router.post("/create", (req, res) => {
         }
       }
 
-      con.query(sql, values, (err, result) => {
-        if (err) {
-          console.error("Error creating order:", err);
-          return res.status(500).json({ message: "Database error", error: err.message });
+      // Start a transaction to ensure atomicity
+      con.beginTransaction(async (transErr) => {
+        if (transErr) {
+          console.error("Error starting transaction:", transErr);
+          return res.status(500).json({ message: "Database error", error: transErr.message });
         }
 
-        const orderId = result.insertId;
-        console.log(`Order created with ID: ${orderId}`);
+        try {
+          // First, check if there's enough gold stock if offering gold
+          if (offerGold === 'yes') {
+            const goldStockDeduction = req.body.gold_stock_deduction;
 
-        // Update gold stock if gold is offered
-        if (offerGold === 'yes') {
-          console.log('Updating gold stock for order:', orderId);
-          console.log('Selected karats JSON:', karatsJson);
-          console.log('Karat values JSON:', karatValuesJson);
+            if (goldStockDeduction && Array.isArray(goldStockDeduction) && goldStockDeduction.length > 0) {
+              // Check each karat's availability
+              for (const item of goldStockDeduction) {
+                if (item.purity && item.quantity > 0) {
+                  const checkSql = `SELECT quantity_in_grams FROM gold_stock WHERE purity = ?`;
 
-          // First try to call the stored procedure
-          console.log('Calling stored procedure update_gold_stock_from_order with order ID:', orderId);
-          con.query('CALL update_gold_stock_from_order(?)', [orderId], (procErr, procResult) => {
-            if (procErr) {
-              console.error('Error calling stored procedure:', procErr);
-              console.log('Falling back to direct updates...');
-
-              // Fall back to direct updates if the stored procedure fails
-              try {
-                const selectedKaratsObj = JSON.parse(karatsJson);
-                const karatValuesObj = JSON.parse(karatValuesJson);
-
-                console.log('Parsed selected karats:', selectedKaratsObj);
-                console.log('Parsed karat values:', karatValuesObj);
-
-                // Update gold stock for each selected karat
-                Object.keys(selectedKaratsObj).forEach(karat => {
-                  if (selectedKaratsObj[karat] && karatValuesObj[karat] > 0) {
-                    const updateSql = `
-                      UPDATE gold_stock
-                      SET quantity_in_grams = quantity_in_grams - ?
-                      WHERE purity = ?
-                    `;
-
-                    console.log(`Updating gold stock for ${karat} by ${karatValuesObj[karat]} grams`);
-                    con.query(updateSql, [karatValuesObj[karat], karat], (updateErr, updateResult) => {
-                      if (updateErr) {
-                        console.error(`Error updating gold stock for ${karat}:`, updateErr);
+                  // Use a promise to make the query awaitable
+                  const checkResult = await new Promise((resolve, reject) => {
+                    con.query(checkSql, [item.purity], (checkErr, checkResult) => {
+                      if (checkErr) {
+                        reject(checkErr);
                       } else {
-                        console.log(`Gold stock for ${karat} updated successfully, reduced by ${karatValuesObj[karat]} grams`);
-                        console.log('Update result:', updateResult);
+                        resolve(checkResult);
                       }
                     });
+                  });
+
+                  if (checkResult.length === 0) {
+                    throw new Error(`Gold stock for ${item.purity} not found`);
                   }
-                });
-              } catch (parseError) {
-                console.error('Error parsing JSON data for gold stock update:', parseError);
-                console.log('Original JSON strings:', { karatsJson, karatValuesJson });
+
+                  const availableQuantity = parseFloat(checkResult[0].quantity_in_grams);
+                  const requestedQuantity = parseFloat(item.quantity);
+
+                  if (availableQuantity < requestedQuantity) {
+                    throw new Error(`Not enough gold stock for ${item.purity}. Available: ${availableQuantity}g, Requested: ${requestedQuantity}g`);
+                  }
+                }
               }
-            } else {
-              console.log('Stored procedure executed successfully:', procResult);
             }
+          }
+
+          // If we get here, there's enough gold stock, so create the order
+          // Check if goldPurity is a valid number between 0 and 1
+          if (goldPurity !== null && (isNaN(goldPurity) || goldPurity < 0 || goldPurity > 1)) {
+            // Fix goldPurity to be a valid value
+            if (selectedKarat === '24K') {
+              values[values.length - 1] = 0.999; // 24K is 99.9% pure
+            } else if (selectedKarat === '22K') {
+              values[values.length - 1] = 0.916; // 22K is 91.6% pure
+            } else if (selectedKarat === '21K') {
+              values[values.length - 1] = 0.875; // 21K is 87.5% pure
+            } else if (selectedKarat === '18K') {
+              values[values.length - 1] = 0.750; // 18K is 75.0% pure
+            } else if (selectedKarat === '16K') {
+              values[values.length - 1] = 0.667; // 16K is 66.7% pure
+            } else {
+              values[values.length - 1] = 0.5; // Default to 50% if unknown
+            }
+            console.log(`Fixed goldPurity to ${values[values.length - 1]}`);
+          }
+
+          const orderResult = await new Promise((resolve, reject) => {
+            con.query(sql, values, (err, result) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            });
           });
+
+          const orderId = orderResult.insertId;
+          console.log(`Order created with ID: ${orderId}`);
+
+          // Commit the transaction
+          con.commit((commitErr) => {
+            if (commitErr) {
+              console.error("Error committing transaction:", commitErr);
+              return con.rollback(() => {
+                return res.status(500).json({ message: "Database error", error: commitErr.message });
+              });
+            }
+
+            // Continue with the rest of the function
+
+            // Update gold stock if gold is offered
+            if (offerGold === 'yes') {
+              console.log('Updating gold stock for order:', orderId);
+              console.log('Selected karats JSON:', karatsJson);
+              console.log('Karat values JSON:', karatValuesJson);
+
+          // Check if we have gold_stock_deduction data from the frontend
+          const goldStockDeduction = req.body.gold_stock_deduction;
+
+          if (goldStockDeduction && Array.isArray(goldStockDeduction) && goldStockDeduction.length > 0) {
+            console.log('Using gold_stock_deduction data from frontend:', goldStockDeduction);
+
+            // Start a transaction to ensure atomicity
+            con.beginTransaction(async (transErr) => {
+              if (transErr) {
+                console.error('Error starting transaction:', transErr);
+                return;
+              }
+
+              try {
+                // First, get the current gold stock for logging
+                const goldStockPromises = goldStockDeduction.map(item => {
+                  return new Promise((resolve, reject) => {
+                    if (item.purity && item.quantity > 0) {
+                      const selectSql = `SELECT * FROM gold_stock WHERE purity = ?`;
+                      con.query(selectSql, [item.purity], (selectErr, selectResult) => {
+                        if (selectErr) {
+                          reject(selectErr);
+                        } else {
+                          if (selectResult.length > 0) {
+                            resolve({
+                              purity: item.purity,
+                              before: selectResult[0].quantity_in_grams,
+                              deduction: item.quantity,
+                              after: selectResult[0].quantity_in_grams - item.quantity
+                            });
+                          } else {
+                            resolve(null);
+                          }
+                        }
+                      });
+                    } else {
+                      resolve(null);
+                    }
+                  });
+                });
+
+                // Get all current gold stock values
+                const goldStockBefore = await Promise.all(goldStockPromises);
+                console.log('Gold stock before deduction:', goldStockBefore);
+
+                // Process each karat directly from the frontend data
+                const deductionPromises = goldStockDeduction.map(item => {
+                  return new Promise((resolve, reject) => {
+                    if (item.purity && item.quantity > 0) {
+                      // Use a direct value assignment instead of subtraction to avoid race conditions
+                      // First, get the current value for logging and validation
+                      const selectSql = `SELECT quantity_in_grams FROM gold_stock WHERE purity = ?`;
+                      con.query(selectSql, [item.purity], (selectErr, selectResult) => {
+                        if (selectErr) {
+                          console.error(`Error getting current gold stock for ${item.purity}:`, selectErr);
+                          return reject(selectErr);
+                        }
+
+                        if (selectResult.length === 0) {
+                          return reject(new Error(`Gold stock for ${item.purity} not found`));
+                        }
+
+                        const currentQuantity = parseFloat(selectResult[0].quantity_in_grams);
+                        const deductionAmount = parseFloat(item.quantity);
+                        const expectedAfter = currentQuantity - deductionAmount;
+
+                        console.log(`
+                          ============================================
+                          GOLD STOCK DEDUCTION FOR ${item.purity}
+                          --------------------------------------------
+                          Current quantity: ${currentQuantity}g
+                          Deducting: ${deductionAmount}g
+                          Expected after: ${expectedAfter}g
+                          ============================================
+                        `);
+
+                        // Store these values for verification later
+                        item.originalQuantity = currentQuantity;
+                        item.deductionAmount = deductionAmount;
+                        item.expectedAfter = expectedAfter;
+
+                        // Validate that we have enough stock before updating
+                        if (expectedAfter < 0) {
+                          return reject(new Error(`Not enough gold stock for ${item.purity}. Available: ${currentQuantity}g, Requested: ${deductionAmount}g`));
+                        }
+
+                        // Proceed with the update
+                        const updateSql = `
+                          UPDATE gold_stock
+                          SET quantity_in_grams = quantity_in_grams - ?
+                          WHERE purity = ? AND quantity_in_grams >= ?
+                        `;
+
+                        console.log(`Updating gold stock for ${item.purity} by ${item.quantity} grams`);
+                        con.query(updateSql, [item.quantity, item.purity, item.quantity], (updateErr, updateResult) => {
+                          if (updateErr) {
+                            console.error(`Error updating gold stock for ${item.purity}:`, updateErr);
+                            reject(updateErr);
+                          } else if (updateResult.affectedRows === 0) {
+                            // No rows were updated, which means the quantity check failed
+                            reject(new Error(`Not enough gold stock for ${item.purity}. Available: ${currentQuantity}g, Requested: ${deductionAmount}g`));
+                          } else {
+                            console.log(`Gold stock for ${item.purity} updated successfully, reduced by ${item.quantity} grams`);
+                            console.log('Update result:', updateResult);
+                            resolve(updateResult);
+                          }
+                        });
+                      });
+                    } else {
+                      resolve(null); // Skip invalid items
+                    }
+                  });
+                });
+
+                try {
+                  // Wait for all updates to complete
+                  await Promise.all(deductionPromises);
+
+                  // Verify the updates by getting the current gold stock
+                  const verifyPromises = goldStockDeduction.map(item => {
+                    return new Promise((resolve, reject) => {
+                      if (item.purity && item.quantity > 0) {
+                        const selectSql = `SELECT * FROM gold_stock WHERE purity = ?`;
+                        con.query(selectSql, [item.purity], (selectErr, selectResult) => {
+                          if (selectErr) {
+                            reject(selectErr);
+                          } else {
+                            if (selectResult.length > 0) {
+                              const actualAfter = parseFloat(selectResult[0].quantity_in_grams);
+
+                              console.log(`
+                                ============================================
+                                GOLD STOCK VERIFICATION FOR ${item.purity}
+                                --------------------------------------------
+                                Original quantity: ${item.originalQuantity}g
+                                Deducted: ${item.deductionAmount}g
+                                Expected after: ${item.expectedAfter}g
+                                Actual after: ${actualAfter}g
+                                Difference: ${actualAfter - item.expectedAfter}g
+                                ============================================
+                              `);
+
+                              resolve({
+                                purity: item.purity,
+                                original: item.originalQuantity,
+                                deducted: item.deductionAmount,
+                                expected: item.expectedAfter,
+                                actual: actualAfter,
+                                difference: actualAfter - item.expectedAfter
+                              });
+                            } else {
+                              resolve(null);
+                            }
+                          }
+                        });
+                      } else {
+                        resolve(null);
+                      }
+                    });
+                  });
+
+                  const goldStockAfter = await Promise.all(verifyPromises);
+                  console.log('Gold stock verification complete:', goldStockAfter);
+
+                  // Commit the transaction
+                  con.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error('Error committing transaction:', commitErr);
+                      return con.rollback(() => {
+                        console.error('Transaction rolled back due to commit error');
+                        // Continue with the rest of the order creation process
+                        // The gold stock update failed, but we'll still create the order
+                        // This is a fallback in case the transaction fails
+                        console.log('Continuing with order creation despite gold stock update failure');
+                      });
+                    }
+                    console.log('All gold stock updates committed successfully');
+                  });
+                } catch (error) {
+                  console.error('Error during gold stock updates:', error);
+
+                  // Check if the error is related to insufficient gold stock
+                  if (error.message && error.message.includes('Not enough gold stock')) {
+                    return con.rollback(() => {
+                      console.error('Transaction rolled back due to insufficient gold stock');
+                      return res.status(400).json({
+                        success: false,
+                        message: 'Insufficient gold stock',
+                        error: error.message
+                      });
+                    });
+                  }
+
+                  // For other errors, roll back but continue with order creation
+                  return con.rollback(() => {
+                    console.error('Transaction rolled back due to error');
+                    console.log('Continuing with order creation despite gold stock update failure');
+                  });
+                }
+              } catch (outerError) {
+                console.error('Outer error in gold stock transaction:', outerError);
+                return res.status(500).json({
+                  success: false,
+                  message: 'Server error during gold stock update',
+                  error: outerError.message
+                });
+              }
+            });
+          } else {
+            // Try the stored procedure first
+            console.log('No gold_stock_deduction data, trying stored procedure...');
+            console.log('Calling stored procedure update_gold_stock_from_order with order ID:', orderId);
+
+            con.query('CALL update_gold_stock_from_order(?)', [orderId], (procErr, procResult) => {
+              if (procErr) {
+                console.error('Error calling stored procedure:', procErr);
+                console.log('Falling back to direct updates...');
+
+                // Fall back to direct updates if the stored procedure fails
+                try {
+                  const selectedKaratsObj = JSON.parse(karatsJson);
+                  const karatValuesObj = JSON.parse(karatValuesJson);
+
+                  console.log('Parsed selected karats:', selectedKaratsObj);
+                  console.log('Parsed karat values:', karatValuesObj);
+
+                  // Update gold stock for each selected karat
+                  Object.keys(selectedKaratsObj).forEach(karat => {
+                    if (selectedKaratsObj[karat] && karatValuesObj[karat] > 0) {
+                      const updateSql = `
+                        UPDATE gold_stock
+                        SET quantity_in_grams = quantity_in_grams - ?
+                        WHERE purity = ?
+                      `;
+
+                      console.log(`Updating gold stock for ${karat} by ${karatValuesObj[karat]} grams`);
+                      con.query(updateSql, [karatValuesObj[karat], karat], (updateErr, updateResult) => {
+                        if (updateErr) {
+                          console.error(`Error updating gold stock for ${karat}:`, updateErr);
+                        } else {
+                          console.log(`Gold stock for ${karat} updated successfully, reduced by ${karatValuesObj[karat]} grams`);
+                          console.log('Update result:', updateResult);
+                        }
+                      });
+                    }
+                  });
+                } catch (parseError) {
+                  console.error('Error parsing JSON data for gold stock update:', parseError);
+                  console.log('Original JSON strings:', { karatsJson, karatValuesJson });
+                }
+              } else {
+                console.log('Stored procedure executed successfully:', procResult);
+              }
+            });
+          }
         }
 
         // If there's an image, save it and update the order
@@ -848,7 +1139,26 @@ router.post("/create", (req, res) => {
           });
         }
       });
-    });
+    } catch (error) {
+      console.error("Error in order creation transaction:", error);
+
+      // Roll back the transaction
+      return con.rollback(() => {
+        // Check if the error is related to insufficient gold stock
+        if (error.message && error.message.includes('Not enough gold stock')) {
+          return res.status(400).json({
+            message: "Insufficient gold stock",
+            error: error.message
+          });
+        }
+
+        // For other errors
+        return res.status(500).json({
+          message: "Database error",
+          error: error.message
+        });
+      });
+    }
   });
 });
 
@@ -944,8 +1254,42 @@ router.get("/debug/user-info", (req, res) => {
   });
 });
 
+// Debug endpoint to check gold stock values
+router.get("/debug/gold-stock", (_req, res) => {
+  console.log('DEBUG: Checking gold stock values');
+
+  const sql = `
+    SELECT * FROM gold_stock
+    ORDER BY
+      CASE
+        WHEN purity = '24KT' THEN 1
+        WHEN purity = '22KT' THEN 2
+        WHEN purity = '21KT' THEN 3
+        WHEN purity = '18KT' THEN 4
+        WHEN purity = '16KT' THEN 5
+        ELSE 6
+      END
+  `;
+
+  con.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching gold stock for debug:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error',
+        error: err.message
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: results
+    });
+  });
+});
+
 // Debug endpoint to check if there are any orders in the database
-router.get("/debug/check-orders", (req, res) => {
+router.get("/debug/check-orders", (_req, res) => {
   console.log('DEBUG: Checking if there are any orders in the database');
 
   // Simple query to count orders
@@ -1102,5 +1446,7 @@ router.get("/supplier-liabilities", (req, res) => {
       });
   });
 });
+}); // Close the missing brace from line 335
+}); // Close another missing brace
 
 export { router as orderRouter };

@@ -4,7 +4,129 @@ import verifyToken from '../Middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
+// Create debug routes without authentication
+const debugRouter = express.Router();
+
+/**
+ * Debug endpoint to check current gold stock values
+ */
+debugRouter.get('/debug', (req, res) => {
+  console.log('GET /gold-stock/debug - Checking current gold stock values');
+
+  const sql = `
+    SELECT * FROM gold_stock
+    ORDER BY
+      CASE
+        WHEN purity = '24KT' THEN 1
+        WHEN purity = '22KT' THEN 2
+        WHEN purity = '21KT' THEN 3
+        WHEN purity = '18KT' THEN 4
+        WHEN purity = '16KT' THEN 5
+        ELSE 6
+      END
+  `;
+
+  con.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching gold stock for debug:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error',
+        error: err.message
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: results
+    });
+  });
+});
+
+/**
+ * Debug endpoint to reset gold stock values
+ */
+debugRouter.post('/reset', (req, res) => {
+  console.log('POST /gold-stock/reset - Resetting gold stock values');
+
+  // Start a transaction
+  con.beginTransaction(err => {
+    if (err) {
+      console.error('Error starting transaction:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error',
+        error: err.message
+      });
+    }
+
+    // Reset values for each karat
+    const updates = [
+      { purity: '24KT', quantity: 100 },
+      { purity: '22KT', quantity: 150 },
+      { purity: '21KT', quantity: 200 },
+      { purity: '18KT', quantity: 250 },
+      { purity: '16KT', quantity: 300 }
+    ];
+
+    const updatePromises = updates.map(update => {
+      return new Promise((resolve, reject) => {
+        const sql = `
+          UPDATE gold_stock
+          SET quantity_in_grams = ?
+          WHERE purity = ?
+        `;
+
+        con.query(sql, [update.quantity, update.purity], (updateErr, updateResult) => {
+          if (updateErr) {
+            reject(updateErr);
+          } else {
+            console.log(`Reset ${update.purity} to ${update.quantity}g`);
+            resolve(updateResult);
+          }
+        });
+      });
+    });
+
+    Promise.all(updatePromises)
+      .then(() => {
+        // Commit the transaction
+        con.commit(commitErr => {
+          if (commitErr) {
+            console.error('Error committing transaction:', commitErr);
+            return con.rollback(() => {
+              res.status(500).json({
+                success: false,
+                message: 'Error committing transaction',
+                error: commitErr.message
+              });
+            });
+          }
+
+          res.json({
+            success: true,
+            message: 'Gold stock values reset successfully',
+            updates
+          });
+        });
+      })
+      .catch(error => {
+        console.error('Error updating gold stock:', error);
+        con.rollback(() => {
+          res.status(500).json({
+            success: false,
+            message: 'Error updating gold stock',
+            error: error.message
+          });
+        });
+      });
+  });
+});
+
+// Register debug routes
+router.use(debugRouter);
+
+// Apply authentication middleware to all other routes
 router.use(verifyToken);
 
 /**
@@ -19,7 +141,7 @@ router.get('/', (req, res) => {
 
   // Build the query
   let sql = `
-    SELECT 
+    SELECT
       gs.stock_id,
       gs.purity,
       gs.quantity_in_grams,
@@ -29,11 +151,11 @@ router.get('/', (req, res) => {
       gs.description,
       gs.status,
       b.branch_name
-    FROM 
+    FROM
       gold_stock gs
-    LEFT JOIN 
+    LEFT JOIN
       branches b ON gs.branch_id = b.branch_id
-    WHERE 
+    WHERE
       gs.status = 'active'
   `;
 
@@ -46,8 +168,8 @@ router.get('/', (req, res) => {
   }
 
   // Order by purity
-  sql += ` ORDER BY 
-    CASE 
+  sql += ` ORDER BY
+    CASE
       WHEN gs.purity = '24KT' THEN 1
       WHEN gs.purity = '22KT' THEN 2
       WHEN gs.purity = '21KT' THEN 3
@@ -83,14 +205,14 @@ router.get('/:id', (req, res) => {
   const stockId = req.params.id;
 
   const sql = `
-    SELECT 
+    SELECT
       gs.*,
       b.branch_name
-    FROM 
+    FROM
       gold_stock gs
-    LEFT JOIN 
+    LEFT JOIN
       branches b ON gs.branch_id = b.branch_id
-    WHERE 
+    WHERE
       gs.stock_id = ?
   `;
 
@@ -305,12 +427,12 @@ router.post('/check-availability', (req, res) => {
   }
 
   const sql = `
-    SELECT 
-      purity, 
-      quantity_in_grams 
-    FROM 
-      gold_stock 
-    WHERE 
+    SELECT
+      purity,
+      quantity_in_grams
+    FROM
+      gold_stock
+    WHERE
       ${checks.join(' OR ')}
   `;
 
@@ -359,5 +481,7 @@ router.post('/check-availability', (req, res) => {
     });
   });
 });
+
+
 
 export { router as goldStockRouter };

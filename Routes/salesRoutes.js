@@ -288,6 +288,8 @@ router.post("/create", (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
+  console.log('Creating sale with gold price information:', items.filter(item => item.gold_carat && item.gold_weight).length, 'gold items');
+
   // Start transaction
   con.beginTransaction(async (err) => {
     if (err) {
@@ -355,57 +357,88 @@ router.post("/create", (req, res) => {
               // Insert sale item with discount information
               const subtotal = item.quantity * item.unit_price;
 
-              // Check if the table has the new discount columns
-              con.query("SHOW COLUMNS FROM sale_items LIKE 'original_price'", (err, columns) => {
+              // Check if the table has the new gold price columns
+              con.query("SHOW COLUMNS FROM sale_items LIKE 'gold_price_per_gram'", (err, goldColumns) => {
                 if (err) {
                   return reject(err);
                 }
 
-                let itemSql;
-                let itemParams;
-
-                if (columns.length > 0) {
-                  // New schema with discount columns
-                  itemSql = `
-                    INSERT INTO sale_items (
-                      sale_id, item_id, quantity, unit_price, original_price,
-                      discount_amount, discount_type, subtotal
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                  `;
-
-                  itemParams = [
-                    saleId,
-                    item.item_id,
-                    item.quantity,
-                    item.unit_price,
-                    item.original_price || item.unit_price,
-                    item.discount_amount || null,
-                    item.discount_type || null,
-                    subtotal
-                  ];
-                } else {
-                  // Old schema without discount columns
-                  itemSql = "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)";
-                  itemParams = [saleId, item.item_id, item.quantity, item.unit_price, subtotal];
-                }
-
-                con.query(itemSql, itemParams, (err) => {
+                // Check if the table has the discount columns
+                con.query("SHOW COLUMNS FROM sale_items LIKE 'original_price'", (err, discountColumns) => {
                   if (err) {
                     return reject(err);
                   }
 
-                  // Update inventory
-                  const updateSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
-                  con.query(updateSql, [item.quantity, item.item_id, item.quantity], (err, updateResult) => {
+                  let itemSql;
+                  let itemParams;
+
+                  if (goldColumns.length > 0 && discountColumns.length > 0) {
+                    // New schema with both gold price and discount columns
+                    itemSql = `
+                      INSERT INTO sale_items (
+                        sale_id, item_id, quantity, unit_price, original_price,
+                        discount_amount, discount_type, subtotal,
+                        gold_price_per_gram, gold_carat, gold_weight, is_gold_price_based
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+
+                    itemParams = [
+                      saleId,
+                      item.item_id,
+                      item.quantity,
+                      item.unit_price,
+                      item.original_price || item.unit_price,
+                      item.discount_amount || null,
+                      item.discount_type || null,
+                      subtotal,
+                      item.gold_price_per_gram || null,
+                      item.gold_carat || null,
+                      item.gold_weight || null,
+                      item.is_gold_price_based ? 1 : 0
+                    ];
+                  } else if (discountColumns.length > 0) {
+                    // Schema with discount columns but no gold price columns
+                    itemSql = `
+                      INSERT INTO sale_items (
+                        sale_id, item_id, quantity, unit_price, original_price,
+                        discount_amount, discount_type, subtotal
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+
+                    itemParams = [
+                      saleId,
+                      item.item_id,
+                      item.quantity,
+                      item.unit_price,
+                      item.original_price || item.unit_price,
+                      item.discount_amount || null,
+                      item.discount_type || null,
+                      subtotal
+                    ];
+                  } else {
+                    // Old schema without discount or gold price columns
+                    itemSql = "INSERT INTO sale_items (sale_id, item_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)";
+                    itemParams = [saleId, item.item_id, item.quantity, item.unit_price, subtotal];
+                  }
+
+                  con.query(itemSql, itemParams, (err) => {
                     if (err) {
                       return reject(err);
                     }
 
-                    if (updateResult.affectedRows === 0) {
-                      return reject(new Error('Insufficient stock for item ID ' + item.item_id));
-                    }
+                    // Update inventory
+                    const updateSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
+                    con.query(updateSql, [item.quantity, item.item_id, item.quantity], (err, updateResult) => {
+                      if (err) {
+                        return reject(err);
+                      }
 
-                    resolve();
+                      if (updateResult.affectedRows === 0) {
+                        return reject(new Error('Insufficient stock for item ID ' + item.item_id));
+                      }
+
+                      resolve();
+                    });
                   });
                 });
               });
