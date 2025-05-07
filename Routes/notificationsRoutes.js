@@ -42,26 +42,36 @@ router.get('/', (req, res) => {
 
   console.log(`Normalized role: ${normalizedRole}`);
 
+  // Create additional role variations for better matching
+  const roleVariations = [
+    role,                   // Original role
+    role.toLowerCase(),     // Lowercase
+    role.toUpperCase(),     // Uppercase
+    normalizedRole,         // Normalized role
+    normalizedRole.replace(/\s+/g, ''), // Remove spaces
+    role.replace(/\s+/g, '') // Remove spaces from original
+  ];
+
+  console.log('Role variations for matching:', roleVariations);
+
   // Build the query - use multiple LIKE conditions to handle different role formats
+  // Create a dynamic query with placeholders for each role variation
+  const likeClauses = roleVariations.map(() => 'target_roles LIKE ?').join(' OR ');
+
   let sql = `
     SELECT * FROM notifications
     WHERE
       (
-        target_roles LIKE ? OR
-        target_roles LIKE ? OR
-        target_roles LIKE ? OR
-        target_roles LIKE ?
+        ${likeClauses}
       )
       AND (expires_at IS NULL OR expires_at > NOW())
   `;
 
   // Use LIKE with % wildcards to find the role in the JSON array with different capitalizations
-  const params = [
-    `%${role}%`,                 // Original role from token
-    `%${role.toLowerCase()}%`,   // Lowercase
-    `%${role.toUpperCase()}%`,   // Uppercase
-    `%${normalizedRole}%`        // Normalized role
-  ];
+  const params = roleVariations.map(r => `%${r}%`);
+
+  console.log('SQL query:', sql);
+  console.log('Query parameters:', params);
 
   // If user is not admin, filter by branch
   if (!normalizedRole.includes('admin') && branch_id) {
@@ -300,7 +310,12 @@ router.post('/sales', (req, res) => {
   const title = 'New Sale';
   const itemInfo = item_name ? ` of ${item_name}` : '';
   const message = `A new sale${itemInfo} has been made for LKR ${amount.toFixed(2)}`;
-  const targetRoles = JSON.stringify(["Admin", "Store Manager", "Cashier"]);
+  // Include all possible role formats to ensure proper filtering
+  const targetRoles = JSON.stringify([
+    "admin", "Admin", "administrator", "Administrator",
+    "store manager", "Store Manager", "storemanager", "StoreManager",
+    "cashier", "Cashier"
+  ]);
 
   // Calculate expiration date (5 days from now)
   const expiresAt = new Date();
@@ -369,7 +384,11 @@ router.post('/inventory-order', (req, res) => {
   const title = 'New Inventory Order';
   const categoryInfo = category ? ` for ${category}` : '';
   const message = `A new inventory order${categoryInfo} has been placed with ${supplier_name}`;
-  const targetRoles = JSON.stringify(["Admin", "Store Manager"]);
+  // Include all possible role formats to ensure proper filtering
+  const targetRoles = JSON.stringify([
+    "admin", "Admin", "administrator", "Administrator",
+    "store manager", "Store Manager", "storemanager", "StoreManager"
+  ]);
 
   // Calculate expiration date (5 days from now)
   const expiresAt = new Date();
@@ -437,7 +456,12 @@ router.post('/low-stock', (req, res) => {
   // Create notification for Admin, Store Manager, and Sales Associate
   const title = 'Low Stock Alert';
   const message = `${item_name} is running low on stock. Current stock: ${current_stock}`;
-  const targetRoles = JSON.stringify(["Admin", "Store Manager", "Sales Associate"]);
+  // Include all possible role formats to ensure proper filtering
+  const targetRoles = JSON.stringify([
+    "admin", "Admin", "administrator", "Administrator",
+    "store manager", "Store Manager", "storemanager", "StoreManager",
+    "sales associate", "Sales Associate", "salesassociate", "SalesAssociate"
+  ]);
 
   // Calculate expiration date (5 days from now)
   const expiresAt = new Date();

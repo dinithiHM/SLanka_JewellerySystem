@@ -35,6 +35,7 @@ import { goldPriceRouter } from "./Routes/goldPriceRoutes.js"; // ✅ Import Gol
 import { supplierPaymentsRouter } from "./Routes/supplierPaymentsRoutes.js"; // ✅ Import Supplier Payments Routes
 import { notificationsRouter } from "./Routes/notificationsRoutes.js"; // ✅ Import Notifications Routes
 import { lowStockNotificationsRouter } from "./Routes/lowStockNotificationsRoute.js"; // ✅ Import Low Stock Notifications Routes
+import { goldStockRouter } from "./Routes/goldStockRoutes.js"; // ✅ Import Gold Stock Routes
 
 const app = express();
 
@@ -111,6 +112,7 @@ app.use("/gold-prices", goldPriceRouter); // ✅ Add gold price routes
 app.use("/supplier-payments", supplierPaymentsRouter); // ✅ Add supplier payments routes
 app.use("/notifications", notificationsRouter); // ✅ Add notifications routes
 app.use("/low-stock-notifications", lowStockNotificationsRouter); // ✅ Add low stock notifications routes
+app.use("/gold-stock", goldStockRouter); // ✅ Add gold stock routes
 
 // ✅ Start the server
 const PORT = 3002;

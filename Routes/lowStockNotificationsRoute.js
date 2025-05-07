@@ -49,10 +49,11 @@ router.get('/check', async (req, res) => {
         const title = 'Low Stock Alert';
         const message = `${item.product_title} is running low on stock. Current stock: ${item.in_stock}`;
         // Include all possible role formats to ensure compatibility
+        // Make sure to include all variations of role names to ensure proper filtering
         const targetRoles = JSON.stringify([
-          "admin", "Admin",
-          "store manager", "Store Manager", "storemanager",
-          "sales associate", "Sales Associate", "salesassociate"
+          "admin", "Admin", "administrator", "Administrator",
+          "store manager", "Store Manager", "storemanager", "StoreManager",
+          "sales associate", "Sales Associate", "salesassociate", "SalesAssociate"
         ]);
 
         const notificationSql = `

@@ -299,8 +299,37 @@ router.post("/create", (req, res) => {
   }
 
   // Convert arrays and objects to JSON strings for storage
-  const karatsJson = JSON.stringify(selectedKarats || []);
-  const karatValuesJson = JSON.stringify(karatValues || {});
+  let karatsJson;
+  let karatValuesJson;
+
+  try {
+    // Check if selectedKarats is already a string
+    if (typeof selectedKarats === 'string') {
+      // Try to parse it to make sure it's valid JSON
+      JSON.parse(selectedKarats);
+      karatsJson = selectedKarats;
+    } else {
+      // Convert to JSON string
+      karatsJson = JSON.stringify(selectedKarats || {});
+    }
+
+    // Check if karatValues is already a string
+    if (typeof karatValues === 'string') {
+      // Try to parse it to make sure it's valid JSON
+      JSON.parse(karatValues);
+      karatValuesJson = karatValues;
+    } else {
+      // Convert to JSON string
+      karatValuesJson = JSON.stringify(karatValues || {});
+    }
+
+    console.log('Processed JSON data:');
+    console.log('karatsJson:', karatsJson);
+    console.log('karatValuesJson:', karatValuesJson);
+  } catch (jsonError) {
+    console.error('Error processing JSON data:', jsonError);
+    return res.status(400).json({ message: "Invalid JSON data", error: jsonError.message });
+  }
 
   // Check if required columns exist in orders table
   con.query("SHOW COLUMNS FROM orders LIKE 'branch_id'", (columnErr, columnResults) => {
@@ -584,6 +613,57 @@ router.post("/create", (req, res) => {
 
         const orderId = result.insertId;
         console.log(`Order created with ID: ${orderId}`);
+
+        // Update gold stock if gold is offered
+        if (offerGold === 'yes') {
+          console.log('Updating gold stock for order:', orderId);
+          console.log('Selected karats JSON:', karatsJson);
+          console.log('Karat values JSON:', karatValuesJson);
+
+          // First try to call the stored procedure
+          console.log('Calling stored procedure update_gold_stock_from_order with order ID:', orderId);
+          con.query('CALL update_gold_stock_from_order(?)', [orderId], (procErr, procResult) => {
+            if (procErr) {
+              console.error('Error calling stored procedure:', procErr);
+              console.log('Falling back to direct updates...');
+
+              // Fall back to direct updates if the stored procedure fails
+              try {
+                const selectedKaratsObj = JSON.parse(karatsJson);
+                const karatValuesObj = JSON.parse(karatValuesJson);
+
+                console.log('Parsed selected karats:', selectedKaratsObj);
+                console.log('Parsed karat values:', karatValuesObj);
+
+                // Update gold stock for each selected karat
+                Object.keys(selectedKaratsObj).forEach(karat => {
+                  if (selectedKaratsObj[karat] && karatValuesObj[karat] > 0) {
+                    const updateSql = `
+                      UPDATE gold_stock
+                      SET quantity_in_grams = quantity_in_grams - ?
+                      WHERE purity = ?
+                    `;
+
+                    console.log(`Updating gold stock for ${karat} by ${karatValuesObj[karat]} grams`);
+                    con.query(updateSql, [karatValuesObj[karat], karat], (updateErr, updateResult) => {
+                      if (updateErr) {
+                        console.error(`Error updating gold stock for ${karat}:`, updateErr);
+                      } else {
+                        console.log(`Gold stock for ${karat} updated successfully, reduced by ${karatValuesObj[karat]} grams`);
+                        console.log('Update result:', updateResult);
+                      }
+                    });
+                  }
+                });
+              } catch (parseError) {
+                console.error('Error parsing JSON data for gold stock update:', parseError);
+                console.log('Original JSON strings:', { karatsJson, karatValuesJson });
+              }
+            } else {
+              console.log('Stored procedure executed successfully:', procResult);
+            }
+          });
+        }
 
         // If there's an image, save it and update the order
         if (image) {
