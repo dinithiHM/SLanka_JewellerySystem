@@ -36,6 +36,7 @@ import { supplierPaymentsRouter } from "./Routes/supplierPaymentsRoutes.js"; // 
 import { notificationsRouter } from "./Routes/notificationsRoutes.js"; // ✅ Import Notifications Routes
 import { lowStockNotificationsRouter } from "./Routes/lowStockNotificationsRoute.js"; // ✅ Import Low Stock Notifications Routes
 import { goldStockRouter } from "./Routes/goldStockRoutes.js"; // ✅ Import Gold Stock Routes
+import reportsRouter from "./Routes/reportsRoutes.js"; // ✅ Import Reports Routes
 
 const app = express();
 
@@ -113,6 +114,7 @@ app.use("/supplier-payments", supplierPaymentsRouter); // ✅ Add supplier payme
 app.use("/notifications", notificationsRouter); // ✅ Add notifications routes
 app.use("/low-stock-notifications", lowStockNotificationsRouter); // ✅ Add low stock notifications routes
 app.use("/gold-stock", goldStockRouter); // ✅ Add gold stock routes
+app.use("/api/reports", reportsRouter); // ✅ Add reports routes
 
 // ✅ Start the server
 const PORT = 3002;
