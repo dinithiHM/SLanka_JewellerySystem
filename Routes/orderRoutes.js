@@ -47,15 +47,17 @@ const saveBase64Image = (base64String, orderId) => {
 router.get("/", (req, res) => {
   console.log('GET /orders - Fetching orders');
 
-  // Get branch_id and role from query parameters
+  // Get query parameters
   const branchId = req.query.branch_id;
   let userRole = req.query.role;
+  const statusFilter = req.query.status;
 
   // Normalize the role to lowercase for consistent comparison
   userRole = userRole ? userRole.toLowerCase() : '';
 
   // Log the exact role for debugging
   console.log(`DEBUG: Role after lowercase: '${userRole}'`);
+  console.log(`DEBUG: Status filter: '${statusFilter}'`);
 
   // Handle different role formats
   if (userRole.includes('store') && userRole.includes('manager')) {
@@ -100,6 +102,14 @@ router.get("/", (req, res) => {
           FROM orders o
           LEFT JOIN branches b ON o.branch_id = b.branch_id
         `;
+
+        // Add status filter if provided
+        if (statusFilter) {
+          sql += ` WHERE o.status = ?`;
+          queryParams.push(statusFilter);
+          console.log(`Adding status filter: ${statusFilter}`);
+        }
+
         console.log('SQL for admin:', sql);
       } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
         // Non-admin users (store manager, sales associate, cashier) only see orders from their branch
@@ -111,6 +121,14 @@ router.get("/", (req, res) => {
           WHERE o.branch_id = ?
         `;
         queryParams = [branchId || 0]; // Use 0 as fallback to prevent seeing all orders
+
+        // Add status filter if provided
+        if (statusFilter) {
+          sql += ` AND o.status = ?`;
+          queryParams.push(statusFilter);
+          console.log(`Adding status filter: ${statusFilter}`);
+        }
+
         console.log('SQL for non-admin:', sql);
         console.log('Query params:', queryParams);
       } else {
@@ -124,6 +142,13 @@ router.get("/", (req, res) => {
       if (userRole === 'admin' || userRole.includes('admin')) {
         console.log('Branch column not found, showing all orders for admin');
         sql = "SELECT * FROM orders";
+
+        // Add status filter if provided
+        if (statusFilter) {
+          sql += " WHERE status = ?";
+          queryParams.push(statusFilter);
+          console.log(`Adding status filter: ${statusFilter}`);
+        }
       } else if (userRole === 'storemanager' || isStoreManager || userRole === 'salesassociate' || userRole === 'cashier') {
         console.log('Branch column not found, but restricting non-admin users');
         // Return empty result for non-admin users if branch filtering is not possible
