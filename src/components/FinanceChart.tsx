@@ -59,6 +59,12 @@ const FinanceChart = () => {
         setLoading(true);
         setError(null);
 
+        // Get authentication token
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
         // Construct URL with query parameters
         let url = `http://localhost:3002/sales/finance?period=${period}`;
 
@@ -75,7 +81,11 @@ const FinanceChart = () => {
 
         console.log('Fetching finance data from:', url);
 
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to fetch finance data: ${response.status}`);

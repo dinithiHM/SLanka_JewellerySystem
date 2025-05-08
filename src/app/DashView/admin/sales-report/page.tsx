@@ -35,13 +35,13 @@ const SalesReportPage: React.FC = () => {
   const [cashiers, setCashiers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
   const [selectedCashier, setSelectedCashier] = useState<number | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  
+
   // Summary statistics
   const [totalSales, setTotalSales] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -53,17 +53,29 @@ const SalesReportPage: React.FC = () => {
     const fetchSales = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:3002/sales');
+
+        // Get authentication token
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await fetch('http://localhost:3002/sales', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
         if (!response.ok) {
           throw new Error('Failed to fetch sales data');
         }
-        
+
         const data = await response.json();
         console.log('Sales data:', data);
-        
+
         setSales(data);
         setFilteredSales(data);
-        
+
         // Extract unique branches
         const uniqueBranches = Array.from(
           new Set(data.map((sale: Sale) => sale.branch_id))
@@ -74,9 +86,9 @@ const SalesReportPage: React.FC = () => {
             branch_name: branch?.branch_name || `Branch ${branchId}`
           };
         });
-        
+
         setBranches(uniqueBranches as Branch[]);
-        
+
         // Extract unique cashiers
         const uniqueCashiers = Array.from(
           new Set(data.map((sale: Sale) => sale.user_id).filter((id: number | null | undefined) => id !== null && id !== undefined))
@@ -88,12 +100,12 @@ const SalesReportPage: React.FC = () => {
             last_name: user?.cashier_last_name || ''
           };
         });
-        
+
         setCashiers(uniqueCashiers as User[]);
-        
+
         // Calculate summary statistics
         calculateSummaryStatistics(data);
-        
+
       } catch (error) {
         console.error('Error fetching sales:', error);
         setError('Failed to load sales data. Please try again later.');
@@ -101,32 +113,32 @@ const SalesReportPage: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchSales();
   }, []);
-  
+
   // Apply filters when filter values change
   useEffect(() => {
     applyFilters();
   }, [selectedBranch, selectedCashier, startDate, endDate, sales]);
-  
+
   // Calculate summary statistics
   const calculateSummaryStatistics = (salesData: Sale[]) => {
     // Total sales count
     setTotalSales(salesData.length);
-    
+
     // Total amount - ensure we're working with numbers
     const total = salesData.reduce((sum, sale) => {
       // Convert total_amount to number if it's a string
-      const amount = typeof sale.total_amount === 'string' 
-        ? parseFloat(sale.total_amount) 
+      const amount = typeof sale.total_amount === 'string'
+        ? parseFloat(sale.total_amount)
         : sale.total_amount;
-      
+
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
-    
+
     setTotalAmount(total);
-    
+
     // Branch summary
     const branchStats: {[key: string]: {count: number, amount: number}} = {};
     salesData.forEach(sale => {
@@ -134,52 +146,52 @@ const SalesReportPage: React.FC = () => {
       if (!branchStats[branchName]) {
         branchStats[branchName] = { count: 0, amount: 0 };
       }
-      
+
       // Convert total_amount to number if it's a string
-      const amount = typeof sale.total_amount === 'string' 
-        ? parseFloat(sale.total_amount) 
+      const amount = typeof sale.total_amount === 'string'
+        ? parseFloat(sale.total_amount)
         : sale.total_amount;
-        
+
       branchStats[branchName].count += 1;
       branchStats[branchName].amount += isNaN(amount) ? 0 : amount;
     });
     setBranchSummary(branchStats);
-    
+
     // Cashier summary
     const cashierStats: {[key: string]: {count: number, amount: number}} = {};
     salesData.forEach(sale => {
       if (!sale.user_id) return;
-      
+
       const cashierName = `${sale.cashier_first_name || ''} ${sale.cashier_last_name || ''}`.trim() || `User ${sale.user_id}`;
       if (!cashierStats[cashierName]) {
         cashierStats[cashierName] = { count: 0, amount: 0 };
       }
-      
+
       // Convert total_amount to number if it's a string
-      const amount = typeof sale.total_amount === 'string' 
-        ? parseFloat(sale.total_amount) 
+      const amount = typeof sale.total_amount === 'string'
+        ? parseFloat(sale.total_amount)
         : sale.total_amount;
-        
+
       cashierStats[cashierName].count += 1;
       cashierStats[cashierName].amount += isNaN(amount) ? 0 : amount;
     });
     setCashierSummary(cashierStats);
   };
-  
+
   // Apply filters to sales data
   const applyFilters = () => {
     let filtered = [...sales];
-    
+
     // Filter by branch
     if (selectedBranch) {
       filtered = filtered.filter(sale => sale.branch_id === selectedBranch);
     }
-    
+
     // Filter by cashier
     if (selectedCashier) {
       filtered = filtered.filter(sale => sale.user_id === selectedCashier);
     }
-    
+
     // Filter by date range
     if (startDate) {
       const startDateTime = new Date(startDate).setHours(0, 0, 0, 0);
@@ -188,7 +200,7 @@ const SalesReportPage: React.FC = () => {
         return saleDate >= startDateTime;
       });
     }
-    
+
     if (endDate) {
       const endDateTime = new Date(endDate).setHours(23, 59, 59, 999);
       filtered = filtered.filter(sale => {
@@ -196,11 +208,11 @@ const SalesReportPage: React.FC = () => {
         return saleDate <= endDateTime;
       });
     }
-    
+
     setFilteredSales(filtered);
     calculateSummaryStatistics(filtered);
   };
-  
+
   // Reset all filters
   const resetFilters = () => {
     setSelectedBranch(null);
@@ -208,36 +220,36 @@ const SalesReportPage: React.FC = () => {
     setStartDate('');
     setEndDate('');
   };
-  
+
   // Format currency
   const formatCurrency = (amount: number | string) => {
     // Convert to number if it's a string
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    
+
     if (isNaN(numericAmount)) {
       console.warn('Invalid amount for formatting:', amount);
       return 'LKR 0.00';
     }
-    
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'LKR',
       maximumFractionDigits: 2
     }).format(numericAmount).replace('LKR', 'LKR ');
   };
-  
+
   // Format date
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
-  
+
   // Export to CSV
   const exportToCSV = () => {
     // Create CSV header
@@ -251,14 +263,14 @@ const SalesReportPage: React.FC = () => {
       'Branch',
       'Cashier'
     ].join(',');
-    
+
     // Create CSV rows
     const rows = filteredSales.map(sale => {
       // Convert total_amount to number if it's a string
-      const amount = typeof sale.total_amount === 'string' 
-        ? parseFloat(sale.total_amount) 
+      const amount = typeof sale.total_amount === 'string'
+        ? parseFloat(sale.total_amount)
         : sale.total_amount;
-      
+
       return [
         sale.sale_id,
         sale.invoice_number,
@@ -270,10 +282,10 @@ const SalesReportPage: React.FC = () => {
         `"${(sale.cashier_first_name || '') + ' ' + (sale.cashier_last_name || '')}".trim() || "User ${sale.user_id || 'Unknown'}"`
       ].join(',');
     });
-    
+
     // Combine header and rows
     const csv = [headers, ...rows].join('\n');
-    
+
     // Create download link
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -304,7 +316,7 @@ const SalesReportPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-800">Sales Report</h1>
         <p className="text-gray-600 mt-1">View and analyze sales data across branches and cashiers</p>
       </div>
-      
+
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <div className="flex flex-col md:flex-row items-center justify-between mb-4">
@@ -313,14 +325,14 @@ const SalesReportPage: React.FC = () => {
             Filters
           </h2>
           <div className="flex space-x-2 mt-2 md:mt-0">
-            <button 
+            <button
               onClick={resetFilters}
               className="flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
             >
               <RefreshCw size={14} className="mr-1" />
               Reset
             </button>
-            <button 
+            <button
               onClick={exportToCSV}
               className="flex items-center px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded text-sm"
             >
@@ -329,11 +341,11 @@ const SalesReportPage: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-            <select 
+            <select
               className="w-full p-2 border border-gray-300 rounded-md"
               value={selectedBranch || ''}
               onChange={(e) => setSelectedBranch(e.target.value ? Number(e.target.value) : null)}
@@ -346,10 +358,10 @@ const SalesReportPage: React.FC = () => {
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cashier</label>
-            <select 
+            <select
               className="w-full p-2 border border-gray-300 rounded-md"
               value={selectedCashier || ''}
               onChange={(e) => setSelectedCashier(e.target.value ? Number(e.target.value) : null)}
@@ -362,21 +374,21 @@ const SalesReportPage: React.FC = () => {
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               className="w-full p-2 border border-gray-300 rounded-md"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               className="w-full p-2 border border-gray-300 rounded-md"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -384,19 +396,19 @@ const SalesReportPage: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
           <h3 className="text-gray-500 text-sm font-medium">Total Sales</h3>
           <p className="text-2xl font-bold mt-1">{totalSales}</p>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
           <h3 className="text-gray-500 text-sm font-medium">Total Revenue</h3>
           <p className="text-2xl font-bold mt-1">{formatCurrency(totalAmount)}</p>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
           <h3 className="text-gray-500 text-sm font-medium">Average Sale Value</h3>
           <p className="text-2xl font-bold mt-1">
@@ -404,7 +416,7 @@ const SalesReportPage: React.FC = () => {
           </p>
         </div>
       </div>
-      
+
       {/* Branch and Cashier Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Branch Summary */}
@@ -413,7 +425,7 @@ const SalesReportPage: React.FC = () => {
             <BarChart size={18} className="mr-2" />
             Sales by Branch
           </h2>
-          
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
@@ -435,14 +447,14 @@ const SalesReportPage: React.FC = () => {
             </table>
           </div>
         </div>
-        
+
         {/* Cashier Summary */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <BarChart size={18} className="mr-2" />
             Sales by Cashier
           </h2>
-          
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
@@ -465,11 +477,11 @@ const SalesReportPage: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Sales Table */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Sales Transactions</h2>
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -499,7 +511,7 @@ const SalesReportPage: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              
+
               {filteredSales.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-4 text-center text-gray-500">
