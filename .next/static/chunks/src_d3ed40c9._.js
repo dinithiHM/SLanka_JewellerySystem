@@ -7,10 +7,15 @@ var { g: global, d: __dirname, k: __turbopack_refresh__, m: module } = __turbopa
 {
 __turbopack_context__.s({
     "exportReportCSV": (()=>exportReportCSV),
+    "exportReportPDF": (()=>exportReportPDF),
+    "getCurrentStockReport": (()=>getCurrentStockReport),
     "getCustomReport": (()=>getCustomReport),
     "getCustomerReport": (()=>getCustomerReport),
     "getFinancialReport": (()=>getFinancialReport),
+    "getGoldStockReport": (()=>getGoldStockReport),
     "getInventoryReport": (()=>getInventoryReport),
+    "getInventoryValuationReport": (()=>getInventoryValuationReport),
+    "getLowStockReport": (()=>getLowStockReport),
     "getSalesReport": (()=>getSalesReport)
 });
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
@@ -53,6 +58,50 @@ const getInventoryReport = async (params = {})=>{
         throw error;
     }
 };
+const getCurrentStockReport = async (params = {})=>{
+    try {
+        const response = await axiosInstance.get('/inventory/current-stock', {
+            params
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching current stock report:', error);
+        throw error;
+    }
+};
+const getGoldStockReport = async (params = {})=>{
+    try {
+        const response = await axiosInstance.get('/inventory/gold-stock', {
+            params
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching gold stock report:', error);
+        throw error;
+    }
+};
+const getLowStockReport = async (params = {})=>{
+    try {
+        const response = await axiosInstance.get('/inventory/low-stock', {
+            params
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching low stock report:', error);
+        throw error;
+    }
+};
+const getInventoryValuationReport = async (params = {})=>{
+    try {
+        const response = await axiosInstance.get('/inventory/valuation', {
+            params
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching inventory valuation report:', error);
+        throw error;
+    }
+};
 const getCustomerReport = async (params = {})=>{
     try {
         const response = await axiosInstance.get('/customers', {
@@ -80,6 +129,7 @@ const exportReportCSV = async (reportType, params = {})=>{
         const response = await axiosInstance.get('/export', {
             params: {
                 reportType,
+                format: 'csv',
                 ...params
             },
             responseType: 'blob'
@@ -101,6 +151,81 @@ const exportReportCSV = async (reportType, params = {})=>{
         };
     } catch (error) {
         console.error('Error exporting report:', error);
+        throw error;
+    }
+};
+const exportReportPDF = async (reportType, params = {})=>{
+    try {
+        // First get the data in JSON format
+        const response = await axiosInstance.get('/export', {
+            params: {
+                reportType,
+                format: 'json',
+                ...params
+            }
+        });
+        // Import jsPDF and autoTable dynamically
+        const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
+        const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Create a new PDF document
+        const doc = new jsPDF();
+        // Add title
+        let title = 'Report';
+        switch(reportType){
+            case 'current-stock':
+                title = 'Current Stock Report';
+                break;
+            case 'gold-stock':
+                title = 'Gold Stock Report';
+                break;
+            case 'low-stock':
+                title = 'Low Stock Report';
+                break;
+            case 'valuation':
+                title = 'Inventory Valuation Report';
+                break;
+            case 'sales':
+                title = 'Sales Report';
+                break;
+        }
+        // Add report title
+        doc.setFontSize(18);
+        doc.text(title, 14, 22);
+        // Add date
+        doc.setFontSize(11);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+        // Format data for autoTable
+        const tableData = response.data.data.map((item)=>{
+            return Object.values(item);
+        });
+        // Get column headers
+        const headers = Object.keys(response.data.data[0]);
+        // Create table
+        autoTable(doc, {
+            head: [
+                headers
+            ],
+            body: tableData,
+            startY: 35,
+            styles: {
+                fontSize: 8,
+                cellPadding: 2
+            },
+            headStyles: {
+                fillColor: [
+                    60,
+                    60,
+                    60
+                ]
+            }
+        });
+        // Save the PDF
+        doc.save(`${response.data.filename}.pdf`);
+        return {
+            success: true
+        };
+    } catch (error) {
+        console.error('Error exporting report as PDF:', error);
         throw error;
     }
 };

@@ -52,6 +52,66 @@ export const getInventoryReport = async (params = {}) => {
 };
 
 /**
+ * Get current stock report data
+ * @param {Object} params - Query parameters for the report (branchId for filtering)
+ * @returns {Promise} - Promise with report data
+ */
+export const getCurrentStockReport = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get('/inventory/current-stock', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching current stock report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get gold stock report data
+ * @param {Object} params - Query parameters for the report
+ * @returns {Promise} - Promise with report data
+ */
+export const getGoldStockReport = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get('/inventory/gold-stock', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching gold stock report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get low stock report data
+ * @param {Object} params - Query parameters for the report (branchId for filtering)
+ * @returns {Promise} - Promise with report data
+ */
+export const getLowStockReport = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get('/inventory/low-stock', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching low stock report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get inventory valuation report data
+ * @param {Object} params - Query parameters for the report (branchId for filtering)
+ * @returns {Promise} - Promise with report data
+ */
+export const getInventoryValuationReport = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get('/inventory/valuation', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching inventory valuation report:', error);
+    throw error;
+  }
+};
+
+/**
  * Get customer report data
  * @param {Object} params - Query parameters for the report
  * @returns {Promise} - Promise with report data
@@ -90,7 +150,7 @@ export const getFinancialReport = async (params = {}) => {
 export const exportReportCSV = async (reportType, params = {}) => {
   try {
     const response = await axiosInstance.get('/export', {
-      params: { reportType, ...params },
+      params: { reportType, format: 'csv', ...params },
       responseType: 'blob'
     });
 
@@ -110,6 +170,81 @@ export const exportReportCSV = async (reportType, params = {}) => {
     return { success: true };
   } catch (error) {
     console.error('Error exporting report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Export report as PDF
+ * @param {String} reportType - Type of report to export
+ * @param {Object} params - Query parameters for the report
+ * @returns {Promise} - Promise with export result
+ */
+export const exportReportPDF = async (reportType, params = {}) => {
+  try {
+    // First get the data in JSON format
+    const response = await axiosInstance.get('/export', {
+      params: { reportType, format: 'json', ...params }
+    });
+
+    // Import jsPDF and autoTable dynamically
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    // Create a new PDF document
+    const doc = new jsPDF();
+
+    // Add title
+    let title = 'Report';
+    switch (reportType) {
+      case 'current-stock':
+        title = 'Current Stock Report';
+        break;
+      case 'gold-stock':
+        title = 'Gold Stock Report';
+        break;
+      case 'low-stock':
+        title = 'Low Stock Report';
+        break;
+      case 'valuation':
+        title = 'Inventory Valuation Report';
+        break;
+      case 'sales':
+        title = 'Sales Report';
+        break;
+    }
+
+    // Add report title
+    doc.setFontSize(18);
+    doc.text(title, 14, 22);
+
+    // Add date
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+    // Format data for autoTable
+    const tableData = response.data.data.map(item => {
+      return Object.values(item);
+    });
+
+    // Get column headers
+    const headers = Object.keys(response.data.data[0]);
+
+    // Create table
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 35,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [60, 60, 60] }
+    });
+
+    // Save the PDF
+    doc.save(`${response.data.filename}.pdf`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error exporting report as PDF:', error);
     throw error;
   }
 };
