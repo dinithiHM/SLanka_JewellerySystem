@@ -42,12 +42,14 @@ export default function SupplierDashboard() {
     const supplierToken = localStorage.getItem('supplierToken');
 
     if (!supplierData || !supplierToken) {
+      console.log('No supplier data or token found, redirecting to login');
       router.push('/supplier/login');
       return;
     }
 
     try {
       const parsedSupplier = JSON.parse(supplierData);
+      console.log('Supplier data loaded successfully:', parsedSupplier.name);
       setSupplier(parsedSupplier);
       fetchOrders(parsedSupplier.supplier_id);
     } catch (err) {
@@ -62,11 +64,11 @@ export default function SupplierDashboard() {
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:3002/suppliers/my-orders/${supplierId}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
       }
-      
+
       const data = await response.json();
       setOrders(data);
     } catch (err: any) {
@@ -97,7 +99,7 @@ export default function SupplierDashboard() {
 
   const handleUpdateStatus = async () => {
     if (!selectedOrder) return;
-    
+
     try {
       const response = await fetch(`http://localhost:3002/suppliers/update-order-status/${selectedOrder.order_id}`, {
         method: 'PUT',
@@ -109,20 +111,20 @@ export default function SupplierDashboard() {
           supplier_notes: notes,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update order status');
       }
-      
+
       // Update the order in the local state
-      setOrders(orders.map(order => 
-        order.order_id === selectedOrder.order_id 
-          ? { ...order, status: statusUpdate, supplier_notes: notes } 
+      setOrders(orders.map(order =>
+        order.order_id === selectedOrder.order_id
+          ? { ...order, status: statusUpdate, supplier_notes: notes }
           : order
       ));
-      
+
       setShowOrderModal(false);
-      
+
       // Show success message
       alert('Order status updated successfully');
     } catch (err: any) {
@@ -170,14 +172,14 @@ export default function SupplierDashboard() {
             )}
           </div>
           <div className="flex space-x-4">
-            <button 
+            <button
               onClick={handleRefresh}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </button>
-            <button 
+            <button
               onClick={handleLogout}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
             >
@@ -329,7 +331,7 @@ export default function SupplierDashboard() {
                     <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                       Order #{selectedOrder.order_id}
                     </h3>
-                    
+
                     <div className="mt-4 grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-500">Category</p>
@@ -355,8 +357,8 @@ export default function SupplierDashboard() {
                       <div className="mt-4">
                         <p className="text-sm text-gray-500 mb-2">Design Image</p>
                         <div className="relative h-48 w-full">
-                          <Image 
-                            src={selectedOrder.design_image_url} 
+                          <Image
+                            src={selectedOrder.design_image_url}
                             alt={`Design for order #${selectedOrder.order_id}`}
                             fill
                             style={{ objectFit: 'contain' }}

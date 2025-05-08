@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Search, Filter, Plus, Download, RefreshCw, Calendar, Eye } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { exportJewelleryItemsToCSV } from '@/utils/csvExport';
+import { useSearchParams } from 'next/navigation';
 
 
 
@@ -36,6 +37,7 @@ interface Branch {
 }
 
 const JewelleryStockPage = () => {
+  const searchParams = useSearchParams();
   const [jewelleryItems, setJewelleryItems] = useState<JewelleryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -43,6 +45,9 @@ const JewelleryStockPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [userBranchId, setUserBranchId] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string>('');
+
+  // Flag to check if we're coming from the "Add to Stock" action
+  const [isAddingFromOrder, setIsAddingFromOrder] = useState<boolean>(false);
 
   // Advanced filtering
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -73,6 +78,48 @@ const JewelleryStockPage = () => {
   const [weight, setWeight] = useState<number | null>(null);
   const [assayCertificate, setAssayCertificate] = useState<string>('');
   const [isSolidGold, setIsSolidGold] = useState<boolean>(true);
+
+  // State to track the order ID if coming from "Add to Stock"
+  const [sourceOrderId, setSourceOrderId] = useState<number | null>(null);
+
+  // Check for URL parameters from "Add to Stock" action
+  useEffect(() => {
+    // Check if we have URL parameters
+    const category = searchParams.get('category');
+    const inStockParam = searchParams.get('in_stock');
+    const buyingPriceParam = searchParams.get('buying_price');
+    const goldCaratParam = searchParams.get('gold_carat');
+    const weightParam = searchParams.get('weight');
+    const orderIdParam = searchParams.get('order_id');
+
+    // If we have parameters, we're coming from "Add to Stock"
+    if (category || inStockParam || buyingPriceParam || goldCaratParam || weightParam) {
+      setIsAddingFromOrder(true);
+
+      // Set form values from URL parameters
+      if (category) setCategory(category);
+      if (inStockParam) setInStock(parseInt(inStockParam, 10) || 0);
+      if (buyingPriceParam) setBuyingPrice(parseFloat(buyingPriceParam) || 0);
+      if (goldCaratParam) setGoldCarat(parseFloat(goldCaratParam) || null);
+      if (weightParam) setWeight(parseFloat(weightParam) || null);
+
+      // Set solid gold to true if we have gold carat
+      if (goldCaratParam) setIsSolidGold(true);
+
+      // Store the source order ID if available
+      if (orderIdParam) {
+        const orderId = parseInt(orderIdParam, 10);
+        if (!isNaN(orderId)) {
+          setSourceOrderId(orderId);
+          console.log(`Adding item from order #${orderId}`);
+        }
+      }
+
+      // Show the form
+      setFormMode('add');
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   // Get user info from localStorage and fetch items immediately
   useEffect(() => {
@@ -465,8 +512,36 @@ const JewelleryStockPage = () => {
         }
       }
 
+      // If this item was added from an order and we have the source order ID,
+      // update the order status to ensure it doesn't appear in the completed orders list anymore
+      if (formMode === 'add' && isAddingFromOrder && sourceOrderId) {
+        try {
+          // Double-check that the order status is updated to "added_to_stock"
+          const orderResponse = await fetch(`http://localhost:3002/orders/update-status/${sourceOrderId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'added_to_stock' })
+          });
+
+          if (orderResponse.ok) {
+            console.log(`Successfully updated order #${sourceOrderId} status to 'added_to_stock'`);
+          } else {
+            console.error(`Failed to update order #${sourceOrderId} status:`, orderResponse.statusText);
+          }
+        } catch (orderErr) {
+          console.error(`Error updating order #${sourceOrderId} status:`, orderErr);
+          // Continue even if this fails
+        }
+      }
+
       alert(`Item ${formMode === 'add' ? 'added' : 'updated'} successfully`);
       setShowForm(false);
+
+      // Reset the source order ID and isAddingFromOrder flag
+      setSourceOrderId(null);
+      setIsAddingFromOrder(false);
     } catch (err) {
       console.error(`Error ${formMode === 'add' ? 'adding' : 'updating'} item:`, err);
       alert(`Failed to ${formMode} item`);
@@ -476,6 +551,10 @@ const JewelleryStockPage = () => {
   // Cancel form
   const handleCancelForm = () => {
     setShowForm(false);
+
+    // Reset the source order ID and isAddingFromOrder flag
+    setSourceOrderId(null);
+    setIsAddingFromOrder(false);
   };
 
   // View item details

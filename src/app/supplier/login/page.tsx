@@ -32,11 +32,16 @@ export default function SupplierLogin() {
       }
 
       // Store supplier info in localStorage
+      console.log('Login successful, storing supplier data:', data.supplier);
       localStorage.setItem('supplierData', JSON.stringify(data.supplier));
       localStorage.setItem('supplierToken', 'supplier-token'); // In a real app, you'd use a JWT token
 
-      // Redirect to supplier dashboard
-      router.push('/supplier/dashboard');
+      // Add a small delay before redirecting to ensure localStorage is updated
+      setTimeout(() => {
+        // Redirect to supplier dashboard
+        console.log('Redirecting to supplier dashboard');
+        router.push('/supplier/dashboard');
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
     } finally {

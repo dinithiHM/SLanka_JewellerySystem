@@ -23,7 +23,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calendar$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Calendar$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/calendar.js [app-ssr] (ecmascript) <export default as Calendar>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/contexts/LanguageContext.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TranslatedText$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/TranslatedText.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/navigation.js [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -32,6 +34,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Transla
 const StoreManagerDashboard = ()=>{
     // Use language context to trigger re-renders when language changes
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$contexts$2f$LanguageContext$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useLanguage"])();
+    const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRouter"])();
     const [userName, setUserName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [branchName, setBranchName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [branchId, setBranchId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
@@ -42,6 +45,10 @@ const StoreManagerDashboard = ()=>{
     const [sendingEmail, setSendingEmail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [emailSuccess, setEmailSuccess] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [emailError, setEmailError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    // State for completed orders
+    const [completedOrders, setCompletedOrders] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [loadingOrders, setLoadingOrders] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [orderError, setOrderError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [supplierLiabilities, setSupplierLiabilities] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loadingSuppliers, setLoadingSuppliers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
     const [supplierError, setSupplierError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -81,7 +88,7 @@ const StoreManagerDashboard = ()=>{
                     className: "mr-1"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                    lineNumber: 102,
+                    lineNumber: 160,
                     columnNumber: 16
                 }, this);
             case 'Partially Paid':
@@ -90,7 +97,7 @@ const StoreManagerDashboard = ()=>{
                     className: "mr-1"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                    lineNumber: 104,
+                    lineNumber: 162,
                     columnNumber: 16
                 }, this);
             case 'Pending':
@@ -99,7 +106,7 @@ const StoreManagerDashboard = ()=>{
                     className: "mr-1"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                    lineNumber: 106,
+                    lineNumber: 164,
                     columnNumber: 16
                 }, this);
             default:
@@ -307,6 +314,125 @@ const StoreManagerDashboard = ()=>{
         if (supplier.orders && supplier.orders.some((order)=>order.order_id.toString().includes(searchLower))) return true;
         return false;
     });
+    // Fetch completed orders
+    const fetchCompletedOrders = async (branchId)=>{
+        setLoadingOrders(true);
+        setOrderError(null);
+        try {
+            // Construct URL with query parameters for branch filtering
+            let url = 'http://localhost:3002/orders';
+            const params = new URLSearchParams();
+            // Set role parameter (store manager)
+            params.append('role', 'store_manager');
+            // Filter by branch
+            params.append('branch_id', branchId);
+            // Filter by status (completed)
+            params.append('status', 'completed');
+            // Add the parameters to the URL
+            url += `?${params.toString()}`;
+            console.log('Fetching completed orders from:', url);
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch completed orders: ${response.status}`);
+            }
+            const data = await response.json();
+            // Log the data for debugging
+            console.log('Received completed orders:', data);
+            // Process the data
+            const processedOrders = data.map((order)=>{
+                // Process image URL if needed
+                if (order.design_image) {
+                    const imagePath = order.design_image.startsWith('uploads/') ? order.design_image : `uploads/${order.design_image}`;
+                    order.design_image_url = `http://localhost:3002/${imagePath}`;
+                }
+                // Process selected karats if needed
+                if (order.selected_karats && typeof order.selected_karats === 'string') {
+                    try {
+                        const selectedKarats = JSON.parse(order.selected_karats);
+                        if (selectedKarats && selectedKarats.length > 0) {
+                            // Use the first karat as the selectedKarat if not already set
+                            if (!order.selectedKarat) {
+                                order.selectedKarat = selectedKarats[0];
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing selected_karats:', e);
+                    }
+                }
+                return order;
+            });
+            setCompletedOrders(processedOrders);
+        } catch (err) {
+            console.error('Error fetching completed orders:', err);
+            setOrderError(err instanceof Error ? err.message : 'An error occurred while fetching orders');
+            // Use dummy data for development
+            setCompletedOrders([
+                {
+                    order_id: 1,
+                    category: 'Wedding Sets',
+                    supplier_id: '001',
+                    quantity: 5,
+                    offer_gold: 1,
+                    selected_karats: JSON.stringify([
+                        '24KT'
+                    ]),
+                    karat_values: JSON.stringify({
+                        '24KT': 50
+                    }),
+                    design_image: null,
+                    status: 'completed',
+                    created_at: new Date().toISOString(),
+                    gold_price_per_gram: 31771.17,
+                    selectedKarat: '24KT',
+                    weight_in_grams: 15.5,
+                    making_charges: 25000,
+                    estimated_price: 525953.14,
+                    total_amount: 2629765.70
+                },
+                {
+                    order_id: 2,
+                    category: 'Rings',
+                    supplier_id: '002',
+                    quantity: 10,
+                    offer_gold: 1,
+                    selected_karats: JSON.stringify([
+                        '22KT'
+                    ]),
+                    karat_values: JSON.stringify({
+                        '22KT': 40
+                    }),
+                    design_image: null,
+                    status: 'completed',
+                    created_at: new Date(Date.now() - 86400000).toISOString(),
+                    gold_price_per_gram: 29125.24,
+                    selectedKarat: '22KT',
+                    weight_in_grams: 8.2,
+                    making_charges: 12000,
+                    estimated_price: 254326.97,
+                    total_amount: 2543269.70
+                }
+            ]);
+        } finally{
+            setLoadingOrders(false);
+        }
+    };
+    // Handle adding to stock
+    const handleAddToStock = (order)=>{
+        // Create query parameters for auto-filling the form
+        const params = new URLSearchParams();
+        // Map order fields to jewellery item fields
+        if (order.category) params.append('category', order.category);
+        if (order.quantity) params.append('in_stock', order.quantity.toString());
+        if (order.estimated_price) params.append('buying_price', order.estimated_price.toString());
+        if (order.selectedKarat) {
+            // Remove "KT" suffix if present
+            const karat = order.selectedKarat.replace('KT', '');
+            params.append('gold_carat', karat);
+        }
+        if (order.weight_in_grams) params.append('weight', order.weight_in_grams.toString());
+        // Navigate to jewellery-stock page with parameters
+        router.push(`/DashView/jewellery-stock?${params.toString()}`);
+    };
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         // Get user info from localStorage if available
         const storedName = localStorage.getItem('userName');
@@ -339,6 +465,8 @@ const StoreManagerDashboard = ()=>{
             fetchOutstandingPayments(storedBranchId);
             // Fetch supplier liabilities for this branch
             fetchSupplierLiabilities(storedBranchId);
+            // Fetch completed orders for this branch
+            fetchCompletedOrders(storedBranchId);
         }
     }, []);
     // Dashboard card component
@@ -356,12 +484,12 @@ const StoreManagerDashboard = ()=>{
                                     fallback: title
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                    lineNumber: 377,
+                                    lineNumber: 570,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 376,
+                                lineNumber: 569,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -369,13 +497,13 @@ const StoreManagerDashboard = ()=>{
                                 children: value
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 379,
+                                lineNumber: 572,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 375,
+                        lineNumber: 568,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -385,23 +513,23 @@ const StoreManagerDashboard = ()=>{
                             size: 24
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                            lineNumber: 382,
+                            lineNumber: 575,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 381,
+                        lineNumber: 574,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                lineNumber: 374,
+                lineNumber: 567,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-            lineNumber: 373,
+            lineNumber: 566,
             columnNumber: 5
         }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -415,7 +543,7 @@ const StoreManagerDashboard = ()=>{
                         children: "Store Manager Dashboard"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 391,
+                        lineNumber: 584,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -427,7 +555,7 @@ const StoreManagerDashboard = ()=>{
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 392,
+                        lineNumber: 585,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -438,7 +566,7 @@ const StoreManagerDashboard = ()=>{
                                 size: 20
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 398,
+                                lineNumber: 591,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -448,7 +576,7 @@ const StoreManagerDashboard = ()=>{
                                         children: branchName ? `Managing: ${branchName}` : "No branch assigned"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 400,
+                                        lineNumber: 593,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -459,25 +587,25 @@ const StoreManagerDashboard = ()=>{
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 403,
+                                        lineNumber: 596,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 399,
+                                lineNumber: 592,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 397,
+                        lineNumber: 590,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                lineNumber: 390,
+                lineNumber: 583,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -490,7 +618,7 @@ const StoreManagerDashboard = ()=>{
                         color: "border-l-4 border-blue-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 411,
+                        lineNumber: 604,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
@@ -500,7 +628,7 @@ const StoreManagerDashboard = ()=>{
                         color: "border-l-4 border-purple-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 418,
+                        lineNumber: 611,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DashboardCard, {
@@ -510,13 +638,13 @@ const StoreManagerDashboard = ()=>{
                         color: "border-l-4 border-red-500"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 424,
+                        lineNumber: 617,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                lineNumber: 410,
+                lineNumber: 603,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -533,7 +661,7 @@ const StoreManagerDashboard = ()=>{
                                         children: "Customers with Outstanding Payments"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 435,
+                                        lineNumber: 628,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -545,20 +673,20 @@ const StoreManagerDashboard = ()=>{
                                                 size: 16
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 440,
+                                                lineNumber: 633,
                                                 columnNumber: 15
                                             }, this),
                                             "Refresh"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 436,
+                                        lineNumber: 629,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 434,
+                                lineNumber: 627,
                                 columnNumber: 11
                             }, this),
                             emailSuccess && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -566,7 +694,7 @@ const StoreManagerDashboard = ()=>{
                                 children: emailSuccess
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 447,
+                                lineNumber: 640,
                                 columnNumber: 13
                             }, this),
                             emailError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -574,7 +702,7 @@ const StoreManagerDashboard = ()=>{
                                 children: emailError
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 453,
+                                lineNumber: 646,
                                 columnNumber: 13
                             }, this),
                             loadingPayments ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -583,12 +711,12 @@ const StoreManagerDashboard = ()=>{
                                     className: "animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                    lineNumber: 461,
+                                    lineNumber: 654,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 460,
+                                lineNumber: 653,
                                 columnNumber: 13
                             }, this) : paymentError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "p-4 text-center text-red-500",
@@ -598,14 +726,14 @@ const StoreManagerDashboard = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 464,
+                                lineNumber: 657,
                                 columnNumber: 13
                             }, this) : outstandingPayments.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "p-4 text-center text-gray-500",
                                 children: "No customers with outstanding payments found."
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 468,
+                                lineNumber: 661,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "overflow-y-auto max-h-80",
@@ -623,7 +751,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: payment.customer_name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 488,
+                                                            lineNumber: 681,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -631,7 +759,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: payment.is_custom_order ? `Custom Order #${payment.order_reference || payment.order_id}` : `Item: ${payment.item_name}`
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 491,
+                                                            lineNumber: 684,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -641,7 +769,7 @@ const StoreManagerDashboard = ()=>{
                                                                     className: "h-4 w-4 text-gray-400 mr-1"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                    lineNumber: 498,
+                                                                    lineNumber: 691,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -652,19 +780,19 @@ const StoreManagerDashboard = ()=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                    lineNumber: 499,
+                                                                    lineNumber: 692,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 497,
+                                                            lineNumber: 690,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 487,
+                                                    lineNumber: 680,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -679,13 +807,13 @@ const StoreManagerDashboard = ()=>{
                                                                     children: payment.payment_status
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                    lineNumber: 508,
+                                                                    lineNumber: 701,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 506,
+                                                            lineNumber: 699,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -696,7 +824,7 @@ const StoreManagerDashboard = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 512,
+                                                            lineNumber: 705,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -708,42 +836,42 @@ const StoreManagerDashboard = ()=>{
                                                                     className: "h-3 w-3 mr-1"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                    lineNumber: 524,
+                                                                    lineNumber: 717,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 "Send Reminder"
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 515,
+                                                            lineNumber: 708,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 505,
+                                                    lineNumber: 698,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                            lineNumber: 486,
+                                            lineNumber: 679,
                                             columnNumber: 19
                                         }, this)
                                     }, payment.payment_id, false, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 474,
+                                        lineNumber: 667,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 472,
+                                lineNumber: 665,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 433,
+                        lineNumber: 626,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -757,7 +885,7 @@ const StoreManagerDashboard = ()=>{
                                         children: "Supplier Liabilities"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 537,
+                                        lineNumber: 730,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -771,7 +899,7 @@ const StoreManagerDashboard = ()=>{
                                                 onChange: (e)=>setSupplierSearchTerm(e.target.value)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 539,
+                                                lineNumber: 732,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -783,26 +911,26 @@ const StoreManagerDashboard = ()=>{
                                                         size: 16
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 550,
+                                                        lineNumber: 743,
                                                         columnNumber: 17
                                                     }, this),
                                                     "Refresh"
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 546,
+                                                lineNumber: 739,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 538,
+                                        lineNumber: 731,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 536,
+                                lineNumber: 729,
                                 columnNumber: 11
                             }, this),
                             loadingSuppliers ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -811,12 +939,12 @@ const StoreManagerDashboard = ()=>{
                                     className: "animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                    lineNumber: 559,
+                                    lineNumber: 752,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 558,
+                                lineNumber: 751,
                                 columnNumber: 13
                             }, this) : supplierError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "p-4 text-center text-red-500",
@@ -826,14 +954,14 @@ const StoreManagerDashboard = ()=>{
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 562,
+                                lineNumber: 755,
                                 columnNumber: 13
                             }, this) : supplierLiabilities.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "p-4 text-center text-gray-500",
                                 children: "No supplier liabilities found."
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 566,
+                                lineNumber: 759,
                                 columnNumber: 13
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "overflow-x-auto",
@@ -848,7 +976,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Supplier"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 574,
+                                                        lineNumber: 767,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -856,7 +984,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Orders"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 575,
+                                                        lineNumber: 768,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -864,7 +992,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Total Debt"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 576,
+                                                        lineNumber: 769,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -872,18 +1000,18 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Status"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 577,
+                                                        lineNumber: 770,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 573,
+                                                lineNumber: 766,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                            lineNumber: 572,
+                                            lineNumber: 765,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -898,12 +1026,12 @@ const StoreManagerDashboard = ()=>{
                                                                 children: supplier.name
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                lineNumber: 584,
+                                                                lineNumber: 777,
                                                                 columnNumber: 25
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 583,
+                                                            lineNumber: 776,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -911,7 +1039,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: supplier.order_count
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 586,
+                                                            lineNumber: 779,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -922,7 +1050,7 @@ const StoreManagerDashboard = ()=>{
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 589,
+                                                            lineNumber: 782,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -932,46 +1060,46 @@ const StoreManagerDashboard = ()=>{
                                                                 children: supplier.payment_status
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                lineNumber: 593,
+                                                                lineNumber: 786,
                                                                 columnNumber: 25
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 592,
+                                                            lineNumber: 785,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, supplier.supplier_id, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 582,
+                                                    lineNumber: 775,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                            lineNumber: 580,
+                                            lineNumber: 773,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                    lineNumber: 571,
+                                    lineNumber: 764,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 570,
+                                lineNumber: 763,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 535,
+                        lineNumber: 728,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                lineNumber: 432,
+                lineNumber: 625,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -985,7 +1113,7 @@ const StoreManagerDashboard = ()=>{
                                 children: "Inventory Alerts"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 612,
+                                lineNumber: 805,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1001,7 +1129,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Item"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 617,
+                                                        lineNumber: 810,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1009,7 +1137,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 618,
+                                                        lineNumber: 811,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1017,7 +1145,7 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Current Stock"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 619,
+                                                        lineNumber: 812,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1025,18 +1153,18 @@ const StoreManagerDashboard = ()=>{
                                                         children: "Status"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                        lineNumber: 620,
+                                                        lineNumber: 813,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 616,
+                                                lineNumber: 809,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                            lineNumber: 615,
+                                            lineNumber: 808,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1049,7 +1177,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Gold Chain - 22K"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 625,
+                                                            lineNumber: 818,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1057,7 +1185,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Necklaces"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 626,
+                                                            lineNumber: 819,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1065,7 +1193,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "3"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 627,
+                                                            lineNumber: 820,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1075,18 +1203,18 @@ const StoreManagerDashboard = ()=>{
                                                                 children: "Low Stock"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                lineNumber: 628,
+                                                                lineNumber: 821,
                                                                 columnNumber: 63
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 628,
+                                                            lineNumber: 821,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 624,
+                                                    lineNumber: 817,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
@@ -1096,7 +1224,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Diamond Earrings"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 631,
+                                                            lineNumber: 824,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1104,7 +1232,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Earrings"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 632,
+                                                            lineNumber: 825,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1112,7 +1240,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "5"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 633,
+                                                            lineNumber: 826,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1122,18 +1250,18 @@ const StoreManagerDashboard = ()=>{
                                                                 children: "Reorder"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                lineNumber: 634,
+                                                                lineNumber: 827,
                                                                 columnNumber: 63
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 634,
+                                                            lineNumber: 827,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 630,
+                                                    lineNumber: 823,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
@@ -1143,7 +1271,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Silver Anklets"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 637,
+                                                            lineNumber: 830,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1151,7 +1279,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "Anklets"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 638,
+                                                            lineNumber: 831,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1159,7 +1287,7 @@ const StoreManagerDashboard = ()=>{
                                                             children: "2"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 639,
+                                                            lineNumber: 832,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1169,41 +1297,41 @@ const StoreManagerDashboard = ()=>{
                                                                 children: "Low Stock"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                                lineNumber: 640,
+                                                                lineNumber: 833,
                                                                 columnNumber: 63
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                            lineNumber: 640,
+                                                            lineNumber: 833,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                    lineNumber: 636,
+                                                    lineNumber: 829,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                            lineNumber: 623,
+                                            lineNumber: 816,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                    lineNumber: 614,
+                                    lineNumber: 807,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 613,
+                                lineNumber: 806,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 611,
+                        lineNumber: 804,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1214,7 +1342,7 @@ const StoreManagerDashboard = ()=>{
                                 children: "Quick Actions"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 648,
+                                lineNumber: 841,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1228,7 +1356,7 @@ const StoreManagerDashboard = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 651,
+                                                lineNumber: 844,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1236,13 +1364,13 @@ const StoreManagerDashboard = ()=>{
                                                 children: "Inventory"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 652,
+                                                lineNumber: 845,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 650,
+                                        lineNumber: 843,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1253,7 +1381,7 @@ const StoreManagerDashboard = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 655,
+                                                lineNumber: 848,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1261,13 +1389,13 @@ const StoreManagerDashboard = ()=>{
                                                 children: "Staff"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 656,
+                                                lineNumber: 849,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 654,
+                                        lineNumber: 847,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1278,7 +1406,7 @@ const StoreManagerDashboard = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 659,
+                                                lineNumber: 852,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1286,13 +1414,13 @@ const StoreManagerDashboard = ()=>{
                                                 children: "Sales"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 660,
+                                                lineNumber: 853,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 658,
+                                        lineNumber: 851,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1303,7 +1431,7 @@ const StoreManagerDashboard = ()=>{
                                                 size: 24
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 663,
+                                                lineNumber: 856,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1311,37 +1439,37 @@ const StoreManagerDashboard = ()=>{
                                                 children: "Reports"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                                lineNumber: 664,
+                                                lineNumber: 857,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                        lineNumber: 662,
+                                        lineNumber: 855,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                                lineNumber: 649,
+                                lineNumber: 842,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                        lineNumber: 647,
+                        lineNumber: 840,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-                lineNumber: 610,
+                lineNumber: 803,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/storeManager/page.tsx",
-        lineNumber: 389,
+        lineNumber: 582,
         columnNumber: 5
     }, this);
 };

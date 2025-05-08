@@ -82,10 +82,10 @@ const AuthProvider = ({ children })=>{
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         // IMPORTANT: We're completely disabling any redirects for the login page
         // This ensures users can stay on the login page to enter their credentials
-        // Only apply redirects for protected routes, not for the login page
-        if (!isLoading && pathname !== '/login') {
+        // Only apply redirects for protected routes, not for login pages or supplier pages
+        if (!isLoading && pathname !== '/login' && !pathname.startsWith('/supplier/')) {
             const isLandingPage = pathname === '/';
-            const isPublicPage = isLandingPage || pathname === '/unauthorized';
+            const isPublicPage = isLandingPage || pathname === '/unauthorized' || pathname.startsWith('/supplier/');
             if (!isAuthenticated && !isPublicPage) {
                 // Redirect to login if not authenticated and not on a public page
                 router.push('/login');
@@ -317,7 +317,7 @@ const AuthProvider = ({ children })=>{
         children: children
     }, void 0, false, {
         fileName: "[project]/src/contexts/AuthContext.tsx",
-        lineNumber: 336,
+        lineNumber: 340,
         columnNumber: 5
     }, this);
 };

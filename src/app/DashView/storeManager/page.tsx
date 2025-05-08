@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, ShoppingCart, Tag, Coins, Store, Package, TrendingUp, AlertTriangle, Clock, CheckCircle, AlertCircle, Mail, Calendar } from 'lucide-react';
+import { BarChart, Users, ShoppingCart, Tag, Coins, Store, Package, TrendingUp, AlertTriangle, Clock, CheckCircle, AlertCircle, Mail, Calendar, Plus, ArrowRight } from 'lucide-react';
 import { useLanguage } from "@/contexts/LanguageContext";
 import TranslatedText from "@/components/TranslatedText";
+import { useRouter } from 'next/navigation';
 
 // Define types for advance payments
 interface AdvancePayment {
@@ -29,9 +30,61 @@ interface AdvancePayment {
   created_by_last_name: string;
 }
 
+// Define types for orders
+interface PaymentRecord {
+  payment_id: number;
+  order_id: number;
+  amount_paid: number;
+  payment_date: string;
+  payment_method: string;
+  notes?: string;
+  created_by?: number;
+}
+
+interface Order {
+  order_id: number;
+  category: string;
+  supplier_id: string;
+  quantity: number;
+  offer_gold: number;
+  selected_karats: string;
+  karat_values: string;
+  design_image: string | null;
+  design_image_url?: string;
+  status: string;
+  created_at: string;
+  branch_id?: number;
+  branch_name?: string;
+  created_by?: number;
+  store_manager_name?: string;
+
+  // Gold and pricing details
+  gold_price_per_gram?: number;
+  selectedKarat?: string;
+  goldPurity?: number;
+  weight_in_grams?: number;
+  making_charges?: number;
+  additional_materials_charges?: number;
+  base_estimated_price?: number;
+  estimated_price?: number;
+  total_amount?: number;
+  useCustomPrice?: boolean;
+
+  // Payment details
+  advance_payment_amount?: number;
+  total_payment_amount?: number;
+  payment_status?: string;
+  payment_method?: string;
+  payment_notes?: string;
+
+  // Payment history
+  payment_history?: PaymentRecord[];
+}
+
 const StoreManagerDashboard = () => {
   // Use language context to trigger re-renders when language changes
   useLanguage();
+  const router = useRouter();
   const [userName, setUserName] = useState<string>('');
   const [branchName, setBranchName] = useState<string>('');
   const [branchId, setBranchId] = useState<string>('');
@@ -43,6 +96,11 @@ const StoreManagerDashboard = () => {
   const [sendingEmail, setSendingEmail] = useState<boolean>(false);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  // State for completed orders
+  const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState<boolean>(true);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   // State for supplier liabilities
   interface SupplierLiability {
@@ -150,7 +208,7 @@ const StoreManagerDashboard = () => {
       const uniquePayments = new Map();
 
       // Process each payment
-      data.forEach(payment => {
+      data.forEach((payment: AdvancePayment) => {
         // Create a unique key for each customer-order combination
         const key = payment.is_custom_order
           ? `${payment.customer_name}-${payment.order_id}`
@@ -326,6 +384,182 @@ const StoreManagerDashboard = () => {
     return false;
   });
 
+  // Fetch completed orders
+  const fetchCompletedOrders = async (branchId: string) => {
+    setLoadingOrders(true);
+    setOrderError(null);
+
+    try {
+      // Construct URL with query parameters for branch filtering
+      let url = 'http://localhost:3002/orders';
+      const params = new URLSearchParams();
+
+      // Set role parameter (store manager)
+      params.append('role', 'store_manager');
+
+      // Filter by branch
+      params.append('branch_id', branchId);
+
+      // Filter by status (completed) - make sure this parameter is correctly handled by the backend
+      params.append('status', 'completed');
+
+      // Add the parameters to the URL
+      url += `?${params.toString()}`;
+
+      console.log('Fetching completed orders with status filter:', url);
+
+      console.log('Fetching completed orders from:', url);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch completed orders: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Log the data for debugging
+      console.log('Received completed orders:', data);
+
+      // Process the data
+      const processedOrders = data.map((order: Order) => {
+        // Process image URL if needed
+        if (order.design_image) {
+          const imagePath = order.design_image.startsWith('uploads/')
+            ? order.design_image
+            : `uploads/${order.design_image}`;
+
+          order.design_image_url = `http://localhost:3002/${imagePath}`;
+        }
+
+        // Process selected karats if needed
+        if (order.selected_karats && typeof order.selected_karats === 'string') {
+          try {
+            const selectedKarats = JSON.parse(order.selected_karats);
+            if (selectedKarats && selectedKarats.length > 0) {
+              // Use the first karat as the selectedKarat if not already set
+              if (!order.selectedKarat) {
+                order.selectedKarat = selectedKarats[0];
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing selected_karats:', e);
+          }
+        }
+
+        // Ensure numeric values are properly converted to numbers
+        if (order.weight_in_grams) {
+          order.weight_in_grams = Number(order.weight_in_grams);
+        }
+
+        if (order.estimated_price) {
+          order.estimated_price = Number(order.estimated_price);
+        }
+
+        if (order.quantity) {
+          order.quantity = Number(order.quantity);
+        }
+
+        return order;
+      });
+
+      setCompletedOrders(processedOrders);
+    } catch (err) {
+      console.error('Error fetching completed orders:', err);
+      setOrderError(err instanceof Error ? err.message : 'An error occurred while fetching orders');
+
+      // Use dummy data for development
+      setCompletedOrders([
+        {
+          order_id: 1,
+          category: 'Wedding Sets',
+          supplier_id: '001',
+          quantity: Number(5),
+          offer_gold: 1,
+          selected_karats: JSON.stringify(['24KT']),
+          karat_values: JSON.stringify({ '24KT': 50 }),
+          design_image: null,
+          status: 'completed',
+          created_at: new Date().toISOString(),
+          gold_price_per_gram: Number(31771.17),
+          selectedKarat: '24KT',
+          weight_in_grams: Number(15.5),
+          making_charges: Number(25000),
+          estimated_price: Number(525953.14),
+          total_amount: Number(2629765.70)
+        },
+        {
+          order_id: 2,
+          category: 'Rings',
+          supplier_id: '002',
+          quantity: Number(10),
+          offer_gold: 1,
+          selected_karats: JSON.stringify(['22KT']),
+          karat_values: JSON.stringify({ '22KT': 40 }),
+          design_image: null,
+          status: 'completed',
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          gold_price_per_gram: Number(29125.24),
+          selectedKarat: '22KT',
+          weight_in_grams: Number(8.2),
+          making_charges: Number(12000),
+          estimated_price: Number(254326.97),
+          total_amount: Number(2543269.70)
+        }
+      ]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Handle adding to stock
+  const handleAddToStock = async (order: Order) => {
+    // First, update the order status to "added_to_stock"
+    try {
+      const response = await fetch(`http://localhost:3002/orders/update-status/${order.order_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'added_to_stock' })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to update order status:', response.statusText);
+        // Continue with navigation even if status update fails
+      } else {
+        console.log(`Order #${order.order_id} status updated to 'added_to_stock'`);
+
+        // Remove the order from the local state
+        setCompletedOrders(prevOrders =>
+          prevOrders.filter(o => o.order_id !== order.order_id)
+        );
+      }
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      // Continue with navigation even if status update fails
+    }
+
+    // Create query parameters for auto-filling the form
+    const params = new URLSearchParams();
+
+    // Map order fields to jewellery item fields
+    if (order.category) params.append('category', order.category);
+    if (order.quantity) params.append('in_stock', order.quantity.toString());
+    if (order.estimated_price) params.append('buying_price', order.estimated_price.toString());
+    if (order.selectedKarat) {
+      // Remove "KT" suffix if present
+      const karat = order.selectedKarat.replace('KT', '');
+      params.append('gold_carat', karat);
+    }
+    if (order.weight_in_grams) params.append('weight', order.weight_in_grams.toString());
+
+    // Add order ID to track which order this came from
+    params.append('order_id', order.order_id.toString());
+
+    // Navigate to jewellery-stock page with parameters
+    router.push(`/DashView/jewellery-stock?${params.toString()}`);
+  };
+
   useEffect(() => {
     // Get user info from localStorage if available
     const storedName = localStorage.getItem('userName');
@@ -365,6 +599,9 @@ const StoreManagerDashboard = () => {
 
       // Fetch supplier liabilities for this branch
       fetchSupplierLiabilities(storedBranchId);
+
+      // Fetch completed orders for this branch
+      fetchCompletedOrders(storedBranchId);
     }
   }, []);
 
@@ -609,39 +846,70 @@ const StoreManagerDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
-          <h2 className="text-xl font-bold mb-4">Inventory Alerts</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Stock</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Gold Chain - 22K</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Necklaces</td>
-                  <td className="px-4 py-3 whitespace-nowrap">3</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Low Stock</span></td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Diamond Earrings</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Earrings</td>
-                  <td className="px-4 py-3 whitespace-nowrap">5</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Reorder</span></td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 whitespace-nowrap">Silver Anklets</td>
-                  <td className="px-4 py-3 whitespace-nowrap">Anklets</td>
-                  <td className="px-4 py-3 whitespace-nowrap">2</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Low Stock</span></td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Completed Orders</h2>
+            <button
+              onClick={() => fetchCompletedOrders(branchId)}
+              className="text-blue-500 hover:text-blue-700 flex items-center"
+            >
+              <Clock className="mr-1" size={16} />
+              Refresh
+            </button>
           </div>
+
+          {/* Loading state */}
+          {loadingOrders ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : orderError ? (
+            <div className="p-4 text-center text-red-500">
+              Error loading data: {orderError}
+            </div>
+          ) : completedOrders.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No completed orders found.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gold Karat</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight (g)</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {completedOrders.map((order) => (
+                    <tr key={order.order_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">#{order.order_id}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{order.category}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{order.quantity}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{order.selectedKarat || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{order.weight_in_grams && typeof order.weight_in_grams === 'number' ? order.weight_in_grams.toFixed(2) : 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {order.estimated_price && typeof order.estimated_price === 'number' ? `LKR ${order.estimated_price.toLocaleString()}` : 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          onClick={() => handleAddToStock(order)}
+                          className="px-3 py-1 bg-green-100 text-green-800 rounded-md flex items-center text-sm hover:bg-green-200"
+                        >
+                          <Plus size={14} className="mr-1" />
+                          Add to Stock
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md">
