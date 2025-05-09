@@ -6,11 +6,6 @@
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/DashView/reports/page": "app/DashView/reports/page.js",
   "/DashView/reports/sales/page": "app/DashView/reports/sales/page.js",
-  "/DashView/reports/inventory/page": "app/DashView/reports/inventory/page.js",
-  "/DashView/reports/inventory/current-stock/page": "app/DashView/reports/inventory/current-stock/page.js",
-  "/DashView/reports/inventory/gold-stock/page": "app/DashView/reports/inventory/gold-stock/page.js",
-  "/DashView/reports/inventory/low-stock/page": "app/DashView/reports/inventory/low-stock/page.js",
-  "/DashView/reports/inventory/valuation/page": "app/DashView/reports/inventory/valuation/page.js",
   "/DashView/reports/sales/daily/page": "app/DashView/reports/sales/daily/page.js",
   "/DashView/reports/sales/monthly/page": "app/DashView/reports/sales/monthly/page.js"
 }

@@ -257,7 +257,7 @@ const exportReportCSV = async (reportType, params = {})=>{
         throw error;
     }
 };
-const exportReportPDF = async (reportType, params = {})=>{
+const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
     try {
         // First get the data in JSON format
         const response = await axiosInstance.get('/export', {
@@ -267,59 +267,250 @@ const exportReportPDF = async (reportType, params = {})=>{
                 ...params
             }
         });
+        // Get current user info
+        const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
+            name: 'System User'
+        };
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
         // Create a new PDF document
         const doc = new jsPDF();
+        // Add company header
+        doc.setFontSize(22);
+        doc.setTextColor(184, 134, 11); // Gold color
+        doc.text("S Lanaka Jewellery", 105, 15, {
+            align: 'center'
+        });
         // Add title
         let title = 'Report';
+        let titleColor = [
+            184,
+            134,
+            11
+        ]; // Default gold color
         switch(reportType){
             case 'current-stock':
                 title = 'Current Stock Report';
+                titleColor = [
+                    0,
+                    128,
+                    0
+                ]; // Green
                 break;
             case 'gold-stock':
                 title = 'Gold Stock Report';
+                titleColor = [
+                    184,
+                    134,
+                    11
+                ]; // Gold
                 break;
             case 'low-stock':
                 title = 'Low Stock Report';
+                titleColor = [
+                    255,
+                    0,
+                    0
+                ]; // Red
                 break;
             case 'valuation':
                 title = 'Inventory Valuation Report';
+                titleColor = [
+                    0,
+                    0,
+                    128
+                ]; // Navy
                 break;
-            case 'sales':
-                title = 'Sales Report';
+            case 'sales-daily':
+                title = 'Daily Sales Report';
+                titleColor = [
+                    75,
+                    0,
+                    130
+                ]; // Indigo
+                break;
+            case 'sales-monthly':
+                title = 'Monthly Sales Report';
+                titleColor = [
+                    75,
+                    0,
+                    130
+                ]; // Indigo
+                break;
+            case 'sales-category':
+                title = 'Sales by Category Report';
+                titleColor = [
+                    75,
+                    0,
+                    130
+                ]; // Indigo
+                break;
+            case 'sales-branch':
+                title = 'Sales by Branch Report';
+                titleColor = [
+                    75,
+                    0,
+                    130
+                ]; // Indigo
                 break;
         }
         // Add report title
         doc.setFontSize(18);
-        doc.text(title, 14, 22);
-        // Add date
-        doc.setFontSize(11);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+        doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
+        doc.text(title, 105, 25, {
+            align: 'center'
+        });
+        // Add date and user info
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userInfo.name}`, 105, 32, {
+            align: 'center'
+        });
+        // Add decorative line
+        doc.setDrawColor(titleColor[0], titleColor[1], titleColor[2]);
+        doc.setLineWidth(0.5);
+        doc.line(14, 35, 196, 35);
+        // Set starting Y position
+        let yPos = 40;
+        // Add chart if available
+        if (chartRef && chartRef.current) {
+            try {
+                // Get chart canvas and convert to image
+                const canvas = chartRef.current.querySelector('canvas');
+                if (canvas) {
+                    const chartImg = canvas.toDataURL('image/png');
+                    // Add chart image to PDF
+                    doc.addImage(chartImg, 'PNG', 14, yPos, 182, 80);
+                    yPos += 85; // Move down for table
+                }
+            } catch (chartErr) {
+                console.error('Error adding chart to PDF:', chartErr);
+            // Continue without chart if there's an error
+            }
+        }
         // Format data for autoTable
         const tableData = response.data.data.map((item)=>{
             return Object.values(item);
         });
-        // Get column headers
-        const headers = Object.keys(response.data.data[0]);
-        // Create table
+        // Get column headers and format them
+        const headers = Object.keys(response.data.data[0]).map((header)=>{
+            // Convert camelCase or snake_case to Title Case with spaces
+            return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
+        });
+        // Define gold-themed colors for different report types
+        let headColor, alternateColor;
+        switch(reportType){
+            case 'gold-stock':
+                headColor = [
+                    184,
+                    134,
+                    11
+                ]; // Gold
+                alternateColor = [
+                    255,
+                    248,
+                    220
+                ]; // Cornsilk
+                break;
+            case 'current-stock':
+                headColor = [
+                    0,
+                    128,
+                    0
+                ]; // Green
+                alternateColor = [
+                    240,
+                    255,
+                    240
+                ]; // Honeydew
+                break;
+            case 'low-stock':
+                headColor = [
+                    178,
+                    34,
+                    34
+                ]; // Firebrick
+                alternateColor = [
+                    255,
+                    240,
+                    240
+                ]; // Light red
+                break;
+            case 'valuation':
+                headColor = [
+                    0,
+                    0,
+                    128
+                ]; // Navy
+                alternateColor = [
+                    240,
+                    248,
+                    255
+                ]; // Alice blue
+                break;
+            default:
+                headColor = [
+                    75,
+                    0,
+                    130
+                ]; // Indigo
+                alternateColor = [
+                    248,
+                    240,
+                    255
+                ]; // Light purple
+                break;
+        }
+        // Create table with gold-themed styling
         autoTable(doc, {
             head: [
                 headers
             ],
             body: tableData,
-            startY: 35,
+            startY: yPos,
             styles: {
                 fontSize: 8,
-                cellPadding: 2
+                cellPadding: 3,
+                lineColor: [
+                    200,
+                    200,
+                    200
+                ]
             },
             headStyles: {
-                fillColor: [
-                    60,
-                    60,
-                    60
-                ]
+                fillColor: headColor,
+                textColor: [
+                    255,
+                    255,
+                    255
+                ],
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            alternateRowStyles: {
+                fillColor: alternateColor
+            },
+            columnStyles: {
+                // Apply currency formatting to price/value columns
+                // This is a generic approach - adjust indices based on actual data
+                2: {
+                    halign: 'right'
+                },
+                3: {
+                    halign: 'right'
+                },
+                4: {
+                    halign: 'right'
+                } // Assuming column 4 is often a total
+            },
+            didDrawPage: (data)=>{
+                // Add footer with page numbers
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                    align: 'center'
+                });
             }
         });
         // Save the PDF
