@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Filter, Download, Printer, PieChart as PieChartIcon, RefreshCw, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { getSalesReport } from '@/services/reportService';
+import { getSalesReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 interface SalesData {
@@ -61,6 +61,7 @@ export default function SalesByCategoryReportPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const chartRef = useRef(null);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -95,6 +96,19 @@ export default function SalesByCategoryReportPage() {
     fetchSalesData();
   }, [dateRange, selectedBranch]);
 
+  // Force re-render of chart when data changes
+  useEffect(() => {
+    if (salesData && salesData.topCategories && salesData.topCategories.length > 0) {
+      // Store chart data in window object for PDF export
+      if (typeof window !== 'undefined') {
+        window.chartData = salesData.topCategories.map(category => ({
+          name: category.category_name,
+          value: category.totalAmount
+        }));
+      }
+    }
+  }, [salesData]);
+
   const handleRefresh = () => {
     fetchSalesData();
   };
@@ -104,11 +118,39 @@ export default function SalesByCategoryReportPage() {
     if (!salesData?.topCategories || salesData.topCategories.length === 0) {
       return [{ name: 'No Data', value: 1 }];
     }
-    
+
     return salesData.topCategories.map(category => ({
       name: category.category_name,
       value: category.totalAmount
     }));
+  };
+
+  // Handle export to CSV
+  const handleExportCSV = async () => {
+    try {
+      setError(null);
+      await exportReportCSV('sales-category', {
+        period: dateRange,
+        branchId: selectedBranch || undefined
+      });
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      setError('Failed to export report. Please try again.');
+    }
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      setError(null);
+      await exportReportPDF('sales-category', {
+        period: dateRange,
+        branchId: selectedBranch || undefined
+      }, chartRef);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      setError('Failed to export report. Please try again.');
+    }
   };
 
   // Custom tooltip for the pie chart
@@ -183,15 +225,23 @@ export default function SalesByCategoryReportPage() {
 
         <div className="flex items-center space-x-2">
           {/* Export Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </button>
-          
-          {/* Print Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+          <div className="relative inline-block text-left">
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
+            </button>
+          </div>
+
+          {/* PDF Button */}
+          <button
+            onClick={handleExportPDF}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+          >
             <Printer className="h-4 w-4 mr-1" />
-            Print
+            Export PDF
           </button>
         </div>
       </div>
@@ -222,22 +272,22 @@ export default function SalesByCategoryReportPage() {
                 {salesData?.dateRange?.startDate} to {salesData?.dateRange?.endDate}
               </p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
               <h3 className="text-gray-500 text-sm font-medium">Categories</h3>
               <p className="text-2xl font-bold mt-1">{salesData?.topCategories?.length || 0}</p>
               <p className="text-sm text-gray-500 mt-1">Total categories with sales</p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
               <h3 className="text-gray-500 text-sm font-medium">Top Category</h3>
               <p className="text-2xl font-bold mt-1">
-                {salesData?.topCategories && salesData.topCategories.length > 0 
-                  ? salesData.topCategories[0].category_name 
+                {salesData?.topCategories && salesData.topCategories.length > 0
+                  ? salesData.topCategories[0].category_name
                   : 'No data'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                {salesData?.topCategories && salesData.topCategories.length > 0 
+                {salesData?.topCategories && salesData.topCategories.length > 0
                   ? formatCurrency(salesData.topCategories[0].totalAmount)
                   : ''}
               </p>
@@ -248,13 +298,13 @@ export default function SalesByCategoryReportPage() {
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Sales Distribution by Category</h2>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" ref={chartRef}>
                 <PieChart>
                   <Pie
                     data={prepareCategoryChartData()}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
+                    labelLine={true}
                     outerRadius={120}
                     fill="#8884d8"
                     dataKey="value"
