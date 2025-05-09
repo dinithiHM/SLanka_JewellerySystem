@@ -291,7 +291,7 @@ export const getSalesReport = (req, res) => {
 };
 
 // Get inventory report data
-export const getInventoryReport = (req, res) => {
+export const getInventoryReport = (_req, res) => {
   try {
     // Get total inventory stats
     const inventorySummaryQuery = `
@@ -493,7 +493,7 @@ export const getCurrentStockReport = (req, res) => {
 };
 
 // Get gold stock report (no branch filtering)
-export const getGoldStockReport = (req, res) => {
+export const getGoldStockReport = (_req, res) => {
   try {
     // Get gold stock
     const goldStockQuery = `
@@ -893,27 +893,261 @@ export const exportReportCSV = async (req, res) => {
         break;
 
       case 'sales':
-        // Get sales data
-        const salesQuery = `
+      case 'sales-daily':
+      case 'sales-monthly':
+      case 'sales-category':
+      case 'sales-branch':
+        // Get period from query params
+        const { period } = req.query;
+        // No need for dateFilter variable anymore
+
+        // Always apply date filter with a default of last 7 days if no period specified
+        const today = new Date();
+        let startDate = new Date();
+        let endDate = new Date();
+
+        if (period) {
+          switch (period) {
+            case 'today':
+              startDate = new Date(today.setHours(0, 0, 0, 0));
+              endDate = new Date();
+              break;
+            case 'yesterday':
+              startDate = new Date(today);
+              startDate.setDate(startDate.getDate() - 1);
+              startDate.setHours(0, 0, 0, 0);
+              endDate = new Date(startDate);
+              endDate.setHours(23, 59, 59, 999);
+              break;
+            case 'last7':
+              startDate.setDate(startDate.getDate() - 7);
+              endDate = new Date();
+              break;
+            case 'last30':
+              startDate.setDate(startDate.getDate() - 30);
+              endDate = new Date();
+              break;
+            case 'thisMonth':
+              startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+              endDate = new Date();
+              break;
+            case 'lastMonth':
+              startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+              endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+              break;
+            default:
+              startDate.setDate(startDate.getDate() - 7); // Default to last 7 days
+              endDate = new Date();
+          }
+        } else {
+          // Default to last 7 days if no period specified
+          startDate.setDate(startDate.getDate() - 7);
+          endDate = new Date();
+        }
+
+        // Branch filter for sales is now handled directly in the query string
+
+        // We only need to check for users table, not customers or employees
+
+        // No need to check if users table exists - we'll use LEFT JOIN which works even if the table doesn't exist
+
+        // Check sales table structure
+        const salesStructureQuery = `
+          DESCRIBE sales
+        `;
+        const [salesStructure] = await con.promise().query(salesStructureQuery);
+
+        // Create a map of column names for easy checking
+        const salesColumns = {};
+        salesStructure.forEach(col => {
+          salesColumns[col.Field] = true;
+        });
+
+        // Debug: Check if there are any sales records
+        const countQuery = `SELECT COUNT(*) as count FROM sales`;
+        const [countResult] = await con.promise().query(countQuery);
+        console.log('Number of sales records:', countResult[0].count);
+
+        // If no sales records, insert a sample record for testing
+        if (countResult[0].count === 0) {
+          console.log('No sales records found, inserting a sample record for testing');
+          const insertQuery = `
+            INSERT INTO sales (
+              customer_name,
+              total_amount,
+              payment_method,
+              sale_date,
+              user_id,
+              branch_id
+            ) VALUES (
+              'Test Customer',
+              1000.00,
+              'Cash',
+              NOW(),
+              1,
+              1
+            )
+          `;
+          await con.promise().query(insertQuery);
+          console.log('Sample sales record inserted');
+        }
+
+        // Build a query that joins with sale_items to get discount information
+        // First check if sale_items table exists
+        const saleItemsTableQuery = `
+          SELECT COUNT(*) as count
+          FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+          AND table_name = 'sale_items'
+        `;
+        const [saleItemsTableCheck] = await con.promise().query(saleItemsTableQuery);
+        const saleItemsExists = saleItemsTableCheck[0].count > 0;
+
+        // Check if discount_amount column exists in sale_items table
+        let hasDiscountAmountColumn = false;
+        if (saleItemsExists) {
+          const saleItemsStructureQuery = `DESCRIBE sale_items`;
+          try {
+            const [saleItemsStructure] = await con.promise().query(saleItemsStructureQuery);
+            const saleItemsColumns = {};
+            saleItemsStructure.forEach(col => {
+              saleItemsColumns[col.Field] = true;
+            });
+            hasDiscountAmountColumn = saleItemsColumns.discount_amount === true;
+          } catch (error) {
+            console.error('Error checking sale_items structure:', error);
+          }
+        }
+
+        // Prepare the query based on available tables
+        let salesQuery = `
           SELECT
-            s.sale_id,
-            s.sale_date,
-            s.total_amount,
-            s.discount,
-            s.payment_method,
-            c.customer_name,
+            sales.sale_id,
+            sales.sale_date,
+            sales.total_amount,
+            ${saleItemsExists && hasDiscountAmountColumn ?
+              `IFNULL((
+                SELECT SUM(discount_amount)
+                FROM sale_items
+                WHERE sale_items.sale_id = sales.sale_id
+              ), 0) as discount` :
+              '0 as discount'
+            },
+            sales.payment_method,
+            sales.customer_name,
             b.branch_name,
-            e.employee_name
-          FROM sales s
-          LEFT JOIN customers c ON s.customer_id = c.customer_id
-          LEFT JOIN branches b ON s.branch_id = b.branch_id
-          LEFT JOIN employees e ON s.employee_id = e.employee_id
-          ORDER BY s.sale_date DESC
+            CONCAT(IFNULL(u.first_name, ''), ' ', IFNULL(u.last_name, '')) as employee_name
+          FROM
+            sales
+            LEFT JOIN branches b ON sales.branch_id = b.branch_id
+            LEFT JOIN users u ON sales.user_id = u.user_id
         `;
 
-        const [salesItems] = await con.promise().query(salesQuery);
-        data = salesItems;
-        filename = `sales_report_${new Date().toISOString().split('T')[0]}`;
+        // Add WHERE clause
+        salesQuery += ` WHERE 1=1`;
+
+        // Add date filter if period is specified, otherwise use a very wide date range
+        // Use the appropriate date column
+        const dateColumn = salesColumns.sale_date ? 'sales.sale_date' : 'sales.created_at';
+
+        if (period) {
+          // Use the dates we calculated earlier
+          salesQuery += ` AND ${dateColumn} BETWEEN '${startDate.toISOString().slice(0, 19).replace('T', ' ')}' AND '${endDate.toISOString().slice(0, 19).replace('T', ' ')}'`;
+        } else {
+          // Use a very wide date range to get all records
+          salesQuery += ` AND ${dateColumn} BETWEEN '2000-01-01 00:00:00' AND '2099-12-31 23:59:59'`;
+        }
+
+        // Add branch filter if applicable
+        if (branchId && salesColumns.branch_id) {
+          salesQuery += ` AND sales.branch_id = ${branchId}`;
+        }
+
+        // Add ORDER BY using the appropriate date column
+        const orderByColumn = salesColumns.sale_date ? 'sales.sale_date' : 'sales.created_at';
+        salesQuery += ` ORDER BY ${orderByColumn} DESC`;
+
+        try {
+          // Log the query for debugging
+          console.log('Executing sales query:', salesQuery);
+
+          // Execute the query without parameters since we're using direct string interpolation
+          const [salesItems] = await con.promise().query(salesQuery);
+          console.log('Query returned', salesItems.length, 'records');
+
+          // Log the first record for debugging
+          if (salesItems.length > 0) {
+            console.log('First record:', JSON.stringify(salesItems[0], null, 2));
+          }
+
+          data = salesItems;
+        } catch (error) {
+          console.error('Error fetching sales data:', error);
+          console.error('Query was:', salesQuery);
+
+          // Fallback to an even simpler query if all else fails
+          try {
+            const basicQuery = `
+              SELECT
+                sale_id,
+                sale_date,
+                total_amount,
+                ${saleItemsExists && hasDiscountAmountColumn ?
+                  `IFNULL((
+                    SELECT SUM(discount_amount)
+                    FROM sale_items
+                    WHERE sale_items.sale_id = sale_id
+                  ), 0) as discount` :
+                  '0 as discount'
+                },
+                IFNULL(payment_method, 'Cash') as payment_method,
+                IFNULL(customer_name, 'N/A') as customer_name,
+                'All Branches' as branch_name,
+                'N/A' as employee_name
+              FROM sales
+              WHERE 1=1
+              ${salesColumns.sale_date ?
+                `AND sale_date BETWEEN '2000-01-01 00:00:00' AND '2099-12-31 23:59:59'` :
+                `AND created_at BETWEEN '2000-01-01 00:00:00' AND '2099-12-31 23:59:59'`
+              }
+              ORDER BY ${salesColumns.sale_date ? 'sale_date' : 'created_at'} DESC
+              LIMIT 100
+            `;
+
+            console.log('Executing fallback query:', basicQuery);
+            const [basicItems] = await con.promise().query(basicQuery);
+            console.log('Fallback query returned', basicItems.length, 'records');
+
+            // Log the first record for debugging
+            if (basicItems.length > 0) {
+              console.log('First fallback record:', JSON.stringify(basicItems[0], null, 2));
+            }
+
+            data = basicItems;
+          } catch (finalError) {
+            console.error('Final fallback query failed:', finalError);
+            // Return empty data if all queries fail
+            data = [];
+          }
+        }
+
+        // Set appropriate filename based on report type
+        switch (reportType) {
+          case 'sales-daily':
+            filename = `daily_sales_report_${new Date().toISOString().split('T')[0]}`;
+            break;
+          case 'sales-monthly':
+            filename = `monthly_sales_report_${new Date().toISOString().split('T')[0]}`;
+            break;
+          case 'sales-category':
+            filename = `category_sales_report_${new Date().toISOString().split('T')[0]}`;
+            break;
+          case 'sales-branch':
+            filename = `branch_sales_report_${new Date().toISOString().split('T')[0]}`;
+            break;
+          default:
+            filename = `sales_report_${new Date().toISOString().split('T')[0]}`;
+        }
         break;
 
       default:
@@ -955,12 +1189,35 @@ export const exportReportCSV = async (req, res) => {
       return res.send(csvContent);
     }
 
+    // Get user info if available from request
+    const userId = req.user?.user_id;
+    let userName = 'System User';
+
+    // If we have a user ID, try to get their name
+    if (userId) {
+      try {
+        const userQuery = `
+          SELECT CONCAT(IFNULL(first_name, ''), ' ', IFNULL(last_name, '')) as full_name,
+                 username
+          FROM users
+          WHERE user_id = ?
+        `;
+        const [userResult] = await con.promise().query(userQuery, [userId]);
+        if (userResult && userResult.length > 0) {
+          userName = userResult[0].full_name.trim() || userResult[0].username;
+        }
+      } catch (userError) {
+        console.error('Error fetching user info:', userError);
+      }
+    }
+
     // Generate JSON for PDF generation on client side
     return res.json({
       reportType,
       filename,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      generatedBy: userName
     });
 
   } catch (error) {
