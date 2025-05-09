@@ -10,10 +10,29 @@ const axiosInstance = axios.create({
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+      const userInfo = localStorage.getItem('userInfo');
+      if (userInfo) {
+        try {
+          const parsedUserInfo = JSON.parse(userInfo);
+          token = parsedUserInfo.token;
+        } catch (e) {
+          console.error('Error parsing userInfo:', e);
+        }
+      }
+    }
+
+    // If token found, add it to headers
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn('No authentication token found for API request');
     }
+
     return config;
   },
   (error) => {
@@ -401,7 +420,7 @@ export const exportReportPDF = async (reportType, params = {}, chartRef = null) 
         },
         columnStyles: {
           // Apply specific formatting based on report type
-          ...(reportType.startsWith('sales-') ? {
+          ...(reportType === 'sales-daily' ? {
             0: { halign: 'center' },  // Sale ID
             1: { halign: 'center' },  // Sale Date
             2: { halign: 'right' },   // Total Amount
@@ -410,6 +429,11 @@ export const exportReportPDF = async (reportType, params = {}, chartRef = null) 
             5: { halign: 'left' },    // Customer Name
             6: { halign: 'left' },    // Branch Name
             7: { halign: 'left' }     // Employee Name
+          } : reportType === 'sales-monthly' ? {
+            0: { halign: 'center' },  // Month
+            1: { halign: 'right' },   // Sales Amount
+            2: { halign: 'center' },  // Transactions
+            3: { halign: 'right' }    // Average
           } : {
             // Default formatting for other reports
             2: { halign: 'right' },
@@ -454,7 +478,7 @@ export const exportReportPDF = async (reportType, params = {}, chartRef = null) 
     doc.addPage();
 
     // Add chart after the table if available (for sales reports)
-    if (reportType.startsWith('sales-') && chartRef && chartRef.current) {
+    if (reportType.startsWith('sales-')) {
       try {
         console.log('Adding chart to PDF on new page');
 
@@ -463,17 +487,359 @@ export const exportReportPDF = async (reportType, params = {}, chartRef = null) 
         doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
         doc.text("Sales Trend Chart", 105, 20, { align: 'center' });
 
-        // Get chart canvas and convert to image
-        const canvas = chartRef.current.querySelector('canvas');
-        console.log('Chart canvas found:', !!canvas);
+        // Create a simple chart directly in the PDF
+        if (typeof window !== 'undefined' && window.chartData) {
+          // Validate chart data
+          if (!Array.isArray(window.chartData)) {
+            console.error('Chart data is not an array:', window.chartData);
+            throw new Error('Invalid chart data format');
+          }
 
-        if (canvas) {
-          // Convert canvas to image
-          const chartImg = canvas.toDataURL('image/png');
-          console.log('Chart image created successfully');
+          if (window.chartData.length === 0) {
+            console.warn('Chart data array is empty');
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text(
+              "No data available for chart visualization",
+              105,
+              60,
+              { align: 'center' }
+            );
+            return;
+          }
 
-          // Add chart image to PDF on new page
-          doc.addImage(chartImg, 'PNG', 14, 30, 182, 80);
+          const chartData = window.chartData;
+          console.log('Using chart data from window object:', chartData.length, 'data points');
+
+          // Set up chart dimensions for A4 page (210 x 297 mm)
+          const pageWidth = doc.internal.pageSize.width;
+
+          // Center the chart on the page with proper margins
+          const chartX = 25;
+          const chartY = 40;
+          const chartWidth = pageWidth - 50; // 25mm margins on each side
+          const chartHeight = 120; // Taller chart
+
+          // Calculate bar spacing and width based on data points
+          // Adjust based on number of data points to prevent overcrowding
+          const maxBars = Math.min(chartData.length, 15); // Limit to 15 data points max
+          const barSpacing = chartWidth / (maxBars * 2);
+          const barWidth = Math.min(barSpacing * 0.8, 12); // Limit max width
+
+          // Find max values for scaling
+          let maxAmount = 0;
+          let maxTransactions = 0;
+
+          // Validate and find max values
+          chartData.forEach(item => {
+            // Ensure values are numbers and valid
+            if (item && typeof item.amount !== 'undefined') {
+              const amount = typeof item.amount === 'number' ? item.amount : parseFloat(item.amount) || 0;
+              maxAmount = Math.max(maxAmount, amount);
+            }
+
+            if (item && typeof item.transactions !== 'undefined') {
+              const transactions = typeof item.transactions === 'number' ? item.transactions : parseFloat(item.transactions) || 0;
+              maxTransactions = Math.max(maxTransactions, transactions);
+            }
+          });
+
+          console.log('Chart max values:', { maxAmount, maxTransactions });
+
+          // Ensure we have non-zero max values
+          if (maxAmount <= 0) maxAmount = 1000;
+          if (maxTransactions <= 0) maxTransactions = 10;
+
+          // Add some padding to max values
+          maxAmount = maxAmount * 1.1;
+          maxTransactions = maxTransactions * 1.1;
+
+          // Draw chart axes
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.5);
+
+          // Y-axis
+          doc.line(chartX, chartY, chartX, chartY + chartHeight);
+
+          // X-axis
+          doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+
+          // Determine which data points to show if we have too many
+          let dataToShow = chartData;
+          if (chartData.length > maxBars) {
+            // If we have too many data points, sample them evenly
+            const step = Math.ceil(chartData.length / maxBars);
+            dataToShow = [];
+            for (let i = 0; i < chartData.length; i += step) {
+              dataToShow.push(chartData[i]);
+            }
+            // Always include the last data point
+            if (dataToShow[dataToShow.length - 1] !== chartData[chartData.length - 1]) {
+              dataToShow.push(chartData[chartData.length - 1]);
+            }
+          }
+
+          // Draw chart based on report type
+          if (reportType === 'sales-monthly') {
+            // Check if we have enough data points for a line chart
+            if (dataToShow.length <= 1) {
+              // Not enough data for a line chart
+              doc.setFontSize(12);
+              doc.setTextColor(100, 100, 100);
+              doc.text(
+                "Not enough data points for chart visualization",
+                chartX + chartWidth / 2,
+                chartY + chartHeight / 2,
+                { align: 'center' }
+              );
+              return; // Exit early
+            }
+
+            // Draw line chart for monthly data
+            const pointSpacing = chartWidth / (Math.max(dataToShow.length - 1, 1));
+
+            // Draw lines
+            // Amount line (dark gold)
+            doc.setDrawColor(184, 134, 11); // DarkGoldenRod
+            doc.setLineWidth(2);
+
+            // Draw amount line
+            let prevX, prevY;
+            dataToShow.forEach((item, index) => {
+              // Skip items with invalid data
+              if (typeof item.amount !== 'number' || isNaN(item.amount)) {
+                console.warn('Invalid amount value in chart data:', item);
+                return;
+              }
+
+              const x = chartX + (index * pointSpacing);
+              const y = chartY + chartHeight - ((item.amount / maxAmount) * chartHeight);
+
+              // Draw point
+              doc.setFillColor(184, 134, 11); // DarkGoldenRod
+              doc.circle(x, y, 3, 'F');
+
+              // Draw line segment
+              if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                doc.line(prevX, prevY, x, y);
+              }
+
+              prevX = x;
+              prevY = y;
+            });
+
+            // Transactions line (gold)
+            doc.setDrawColor(218, 165, 32); // GoldenRod
+            doc.setLineWidth(2);
+
+            // Draw transactions line
+            prevX = undefined;
+            prevY = undefined;
+            dataToShow.forEach((item, index) => {
+              // Skip items with invalid data
+              if (typeof item.transactions !== 'number' || isNaN(item.transactions)) {
+                console.warn('Invalid transactions value in chart data:', item);
+                return;
+              }
+
+              const x = chartX + (index * pointSpacing);
+              const y = chartY + chartHeight - ((item.transactions / maxTransactions) * chartHeight);
+
+              // Draw point
+              doc.setFillColor(218, 165, 32); // GoldenRod
+              doc.circle(x, y, 3, 'F');
+
+              // Draw line segment
+              if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                doc.line(prevX, prevY, x, y);
+              }
+
+              prevX = x;
+              prevY = y;
+
+              // Add month label
+              doc.setFontSize(7);
+              doc.setTextColor(100, 100, 100);
+
+              // Rotate labels if we have many data points
+              if (dataToShow.length > 7) {
+                doc.text(
+                  item.month || item.date,
+                  x,
+                  chartY + chartHeight + 10,
+                  {
+                    align: 'right',
+                    angle: 45
+                  }
+                );
+              } else {
+                doc.text(
+                  item.month || item.date,
+                  x,
+                  chartY + chartHeight + 8,
+                  { align: 'center' }
+                );
+              }
+            });
+          } else {
+            // Draw bar chart for daily data
+            dataToShow.forEach((item, index) => {
+              const x = chartX + (index * barSpacing * 2) + barSpacing;
+
+              // Amount bar (dark gold)
+              const amountHeight = (item.amount / maxAmount) * chartHeight;
+              doc.setFillColor(184, 134, 11); // DarkGoldenRod
+              doc.rect(
+                x,
+                chartY + chartHeight - amountHeight,
+                barWidth,
+                amountHeight,
+                'F'
+              );
+
+              // Transactions bar (gold)
+              const transactionsHeight = (item.transactions / maxTransactions) * chartHeight;
+              doc.setFillColor(218, 165, 32); // GoldenRod
+              doc.rect(
+                x + barWidth,
+                chartY + chartHeight - transactionsHeight,
+                barWidth,
+                transactionsHeight,
+                'F'
+              );
+
+              // Add date label
+              doc.setFontSize(7);
+              doc.setTextColor(100, 100, 100);
+
+              // Rotate labels if we have many data points
+              if (dataToShow.length > 7) {
+                doc.text(
+                  item.date,
+                  x + barWidth / 2,
+                  chartY + chartHeight + 10,
+                  {
+                    align: 'right',
+                    angle: 45
+                  }
+                );
+              } else {
+                doc.text(
+                  item.date,
+                  x + barWidth / 2,
+                  chartY + chartHeight + 8,
+                  { align: 'center' }
+                );
+              }
+            });
+          }
+
+          // Calculate legend position based on chart dimensions
+          const legendY = chartY + chartHeight + (dataToShow.length > 7 ? 25 : 15);
+
+          // Add legend with better spacing
+          doc.setFillColor(184, 134, 11); // DarkGoldenRod
+          doc.rect(chartX, legendY, 10, 5, 'F');
+          doc.setFontSize(9);
+          doc.setTextColor(50, 50, 50);
+          doc.text('Sales Amount', chartX + 15, legendY + 4);
+
+          doc.setFillColor(218, 165, 32); // GoldenRod
+          doc.rect(chartX + 80, legendY, 10, 5, 'F');
+          doc.text('Transactions', chartX + 95, legendY + 4);
+
+          // Add grid lines for better readability
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.2);
+
+          // Horizontal grid lines
+          for (let i = 1; i < 4; i++) {
+            const y = chartY + (chartHeight / 4) * i;
+            doc.line(chartX, y, chartX + chartWidth, y);
+          }
+
+          // Add Y-axis labels with better formatting
+          doc.setFontSize(8);
+          doc.setTextColor(80, 80, 80);
+
+          // Format large numbers with K/M suffix
+          const formatLargeNumber = (num) => {
+            if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+            if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+            return num.toString();
+          };
+
+          // Amount labels (left)
+          doc.text(
+            formatLargeNumber(maxAmount),
+            chartX - 3,
+            chartY + 5,
+            { align: 'right' }
+          );
+          doc.text(
+            formatLargeNumber(maxAmount * 0.75),
+            chartX - 3,
+            chartY + (chartHeight * 0.25),
+            { align: 'right' }
+          );
+          doc.text(
+            formatLargeNumber(maxAmount * 0.5),
+            chartX - 3,
+            chartY + (chartHeight * 0.5),
+            { align: 'right' }
+          );
+          doc.text(
+            formatLargeNumber(maxAmount * 0.25),
+            chartX - 3,
+            chartY + (chartHeight * 0.75),
+            { align: 'right' }
+          );
+          doc.text('0', chartX - 3, chartY + chartHeight, { align: 'right' });
+
+          // Transactions labels (right)
+          doc.text(
+            formatLargeNumber(maxTransactions),
+            chartX + chartWidth + 3,
+            chartY + 5,
+            { align: 'left' }
+          );
+          doc.text(
+            formatLargeNumber(maxTransactions * 0.75),
+            chartX + chartWidth + 3,
+            chartY + (chartHeight * 0.25),
+            { align: 'left' }
+          );
+          doc.text(
+            formatLargeNumber(maxTransactions * 0.5),
+            chartX + chartWidth + 3,
+            chartY + (chartHeight * 0.5),
+            { align: 'left' }
+          );
+          doc.text(
+            formatLargeNumber(maxTransactions * 0.25),
+            chartX + chartWidth + 3,
+            chartY + (chartHeight * 0.75),
+            { align: 'left' }
+          );
+          doc.text('0', chartX + chartWidth + 3, chartY + chartHeight, { align: 'left' });
+
+          // Add axis titles
+          doc.setFontSize(8);
+          doc.setTextColor(184, 134, 11); // DarkGoldenRod
+          doc.text(
+            "Sales Amount (LKR)",
+            chartX - 15,
+            chartY - 10,
+            { angle: 90 }
+          );
+
+          doc.setTextColor(218, 165, 32); // GoldenRod
+          doc.text(
+            "Transactions",
+            chartX + chartWidth + 15,
+            chartY - 10,
+            { angle: 270 }
+          );
 
           // Add a note about the chart
           doc.setFontSize(8);
@@ -481,21 +847,35 @@ export const exportReportPDF = async (reportType, params = {}, chartRef = null) 
           doc.text(
             "Chart shows sales amount and transaction count trends over the selected period",
             105,
-            120,
+            legendY + 20,
             { align: 'center' }
           );
         } else {
-          console.log('No canvas element found in chart reference');
+          // If no chart data is available, add a message
+          doc.setFontSize(12);
+          doc.setTextColor(100, 100, 100);
+          doc.text(
+            "Chart visualization not available - no data",
+            105,
+            60,
+            { align: 'center' }
+          );
+          console.log('No chart data available in window.chartData');
         }
       } catch (chartErr) {
         console.error('Error adding chart to PDF:', chartErr);
+        // If there's an error, add a message
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(
+          "Chart visualization not available - error occurred",
+          105,
+          60,
+          { align: 'center' }
+        );
       }
     } else {
-      console.log('Chart not added to PDF:', {
-        isSalesReport: reportType.startsWith('sales-'),
-        hasChartRef: !!chartRef,
-        hasCurrentProperty: chartRef && !!chartRef.current
-      });
+      console.log('Chart not added to PDF - not a sales report');
     }
 
     // Save the PDF
