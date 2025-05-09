@@ -28,9 +28,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -464,7 +480,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 },
                 columnStyles: {
                     // Apply specific formatting based on report type
-                    ...reportType.startsWith('sales-') ? {
+                    ...reportType === 'sales-daily' ? {
                         0: {
                             halign: 'center'
                         },
@@ -489,6 +505,19 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                         7: {
                             halign: 'left'
                         } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
                     } : {
                         // Default formatting for other reports
                         2: {
@@ -534,7 +563,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Always add a page break for the chart
         doc.addPage();
         // Add chart after the table if available (for sales reports)
-        if (reportType.startsWith('sales-') && chartRef && chartRef.current) {
+        if (reportType.startsWith('sales-')) {
             try {
                 console.log('Adding chart to PDF on new page');
                 // Add a title for the chart section
@@ -543,33 +572,282 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 doc.text("Sales Trend Chart", 105, 20, {
                     align: 'center'
                 });
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                console.log('Chart canvas found:', !!canvas);
-                if (canvas) {
-                    // Convert canvas to image
-                    const chartImg = canvas.toDataURL('image/png');
-                    console.log('Chart image created successfully');
-                    // Add chart image to PDF on new page
-                    doc.addImage(chartImg, 'PNG', 14, 30, 182, 80);
+                // Create a simple chart directly in the PDF
+                if ("object" !== 'undefined' && window.chartData) {
+                    // Validate chart data
+                    if (!Array.isArray(window.chartData)) {
+                        console.error('Chart data is not an array:', window.chartData);
+                        throw new Error('Invalid chart data format');
+                    }
+                    if (window.chartData.length === 0) {
+                        console.warn('Chart data array is empty');
+                        doc.setFontSize(12);
+                        doc.setTextColor(100, 100, 100);
+                        doc.text("No data available for chart visualization", 105, 60, {
+                            align: 'center'
+                        });
+                        return;
+                    }
+                    const chartData = window.chartData;
+                    console.log('Using chart data from window object:', chartData.length, 'data points');
+                    // Set up chart dimensions for A4 page (210 x 297 mm)
+                    const pageWidth = doc.internal.pageSize.width;
+                    // Center the chart on the page with proper margins
+                    const chartX = 25;
+                    const chartY = 40;
+                    const chartWidth = pageWidth - 50; // 25mm margins on each side
+                    const chartHeight = 120; // Taller chart
+                    // Calculate bar spacing and width based on data points
+                    // Adjust based on number of data points to prevent overcrowding
+                    const maxBars = Math.min(chartData.length, 15); // Limit to 15 data points max
+                    const barSpacing = chartWidth / (maxBars * 2);
+                    const barWidth = Math.min(barSpacing * 0.8, 12); // Limit max width
+                    // Find max values for scaling
+                    let maxAmount = 0;
+                    let maxTransactions = 0;
+                    // Validate and find max values
+                    chartData.forEach((item)=>{
+                        // Ensure values are numbers and valid
+                        if (item && typeof item.amount !== 'undefined') {
+                            const amount = typeof item.amount === 'number' ? item.amount : parseFloat(item.amount) || 0;
+                            maxAmount = Math.max(maxAmount, amount);
+                        }
+                        if (item && typeof item.transactions !== 'undefined') {
+                            const transactions = typeof item.transactions === 'number' ? item.transactions : parseFloat(item.transactions) || 0;
+                            maxTransactions = Math.max(maxTransactions, transactions);
+                        }
+                    });
+                    console.log('Chart max values:', {
+                        maxAmount,
+                        maxTransactions
+                    });
+                    // Ensure we have non-zero max values
+                    if (maxAmount <= 0) maxAmount = 1000;
+                    if (maxTransactions <= 0) maxTransactions = 10;
+                    // Add some padding to max values
+                    maxAmount = maxAmount * 1.1;
+                    maxTransactions = maxTransactions * 1.1;
+                    // Draw chart axes
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.5);
+                    // Y-axis
+                    doc.line(chartX, chartY, chartX, chartY + chartHeight);
+                    // X-axis
+                    doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+                    // Determine which data points to show if we have too many
+                    let dataToShow = chartData;
+                    if (chartData.length > maxBars) {
+                        // If we have too many data points, sample them evenly
+                        const step = Math.ceil(chartData.length / maxBars);
+                        dataToShow = [];
+                        for(let i = 0; i < chartData.length; i += step){
+                            dataToShow.push(chartData[i]);
+                        }
+                        // Always include the last data point
+                        if (dataToShow[dataToShow.length - 1] !== chartData[chartData.length - 1]) {
+                            dataToShow.push(chartData[chartData.length - 1]);
+                        }
+                    }
+                    // Draw chart based on report type
+                    if (reportType === 'sales-monthly') {
+                        // Check if we have enough data points for a line chart
+                        if (dataToShow.length <= 1) {
+                            // Not enough data for a line chart
+                            doc.setFontSize(12);
+                            doc.setTextColor(100, 100, 100);
+                            doc.text("Not enough data points for chart visualization", chartX + chartWidth / 2, chartY + chartHeight / 2, {
+                                align: 'center'
+                            });
+                            return; // Exit early
+                        }
+                        // Draw line chart for monthly data
+                        const pointSpacing = chartWidth / Math.max(dataToShow.length - 1, 1);
+                        // Draw lines
+                        // Amount line (dark gold)
+                        doc.setDrawColor(184, 134, 11); // DarkGoldenRod
+                        doc.setLineWidth(2);
+                        // Draw amount line
+                        let prevX, prevY;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.amount !== 'number' || isNaN(item.amount)) {
+                                console.warn('Invalid amount value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.amount / maxAmount * chartHeight;
+                            // Draw point
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                        });
+                        // Transactions line (gold)
+                        doc.setDrawColor(218, 165, 32); // GoldenRod
+                        doc.setLineWidth(2);
+                        // Draw transactions line
+                        prevX = undefined;
+                        prevY = undefined;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.transactions !== 'number' || isNaN(item.transactions)) {
+                                console.warn('Invalid transactions value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.transactions / maxTransactions * chartHeight;
+                            // Draw point
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                            // Add month label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
+                        });
+                    } else {
+                        // Draw bar chart for daily data
+                        dataToShow.forEach((item, index)=>{
+                            const x = chartX + index * barSpacing * 2 + barSpacing;
+                            // Amount bar (dark gold)
+                            const amountHeight = item.amount / maxAmount * chartHeight;
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.rect(x, chartY + chartHeight - amountHeight, barWidth, amountHeight, 'F');
+                            // Transactions bar (gold)
+                            const transactionsHeight = item.transactions / maxTransactions * chartHeight;
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.rect(x + barWidth, chartY + chartHeight - transactionsHeight, barWidth, transactionsHeight, 'F');
+                            // Add date label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
+                        });
+                    }
+                    // Calculate legend position based on chart dimensions
+                    const legendY = chartY + chartHeight + (dataToShow.length > 7 ? 25 : 15);
+                    // Add legend with better spacing
+                    doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                    doc.rect(chartX, legendY, 10, 5, 'F');
+                    doc.setFontSize(9);
+                    doc.setTextColor(50, 50, 50);
+                    doc.text('Sales Amount', chartX + 15, legendY + 4);
+                    doc.setFillColor(218, 165, 32); // GoldenRod
+                    doc.rect(chartX + 80, legendY, 10, 5, 'F');
+                    doc.text('Transactions', chartX + 95, legendY + 4);
+                    // Add grid lines for better readability
+                    doc.setDrawColor(220, 220, 220);
+                    doc.setLineWidth(0.2);
+                    // Horizontal grid lines
+                    for(let i = 1; i < 4; i++){
+                        const y = chartY + chartHeight / 4 * i;
+                        doc.line(chartX, y, chartX + chartWidth, y);
+                    }
+                    // Add Y-axis labels with better formatting
+                    doc.setFontSize(8);
+                    doc.setTextColor(80, 80, 80);
+                    // Format large numbers with K/M suffix
+                    const formatLargeNumber = (num)=>{
+                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                        return num.toString();
+                    };
+                    // Amount labels (left)
+                    doc.text(formatLargeNumber(maxAmount), chartX - 3, chartY + 5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.75), chartX - 3, chartY + chartHeight * 0.25, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.5), chartX - 3, chartY + chartHeight * 0.5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.25), chartX - 3, chartY + chartHeight * 0.75, {
+                        align: 'right'
+                    });
+                    doc.text('0', chartX - 3, chartY + chartHeight, {
+                        align: 'right'
+                    });
+                    // Transactions labels (right)
+                    doc.text(formatLargeNumber(maxTransactions), chartX + chartWidth + 3, chartY + 5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.75), chartX + chartWidth + 3, chartY + chartHeight * 0.25, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.5), chartX + chartWidth + 3, chartY + chartHeight * 0.5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.25), chartX + chartWidth + 3, chartY + chartHeight * 0.75, {
+                        align: 'left'
+                    });
+                    doc.text('0', chartX + chartWidth + 3, chartY + chartHeight, {
+                        align: 'left'
+                    });
+                    // Add axis titles
+                    doc.setFontSize(8);
+                    doc.setTextColor(184, 134, 11); // DarkGoldenRod
+                    doc.text("Sales Amount (LKR)", chartX - 15, chartY - 10, {
+                        angle: 90
+                    });
+                    doc.setTextColor(218, 165, 32); // GoldenRod
+                    doc.text("Transactions", chartX + chartWidth + 15, chartY - 10, {
+                        angle: 270
+                    });
                     // Add a note about the chart
                     doc.setFontSize(8);
                     doc.setTextColor(100, 100, 100);
-                    doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, 120, {
+                    doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, legendY + 20, {
                         align: 'center'
                     });
                 } else {
-                    console.log('No canvas element found in chart reference');
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
                 }
             } catch (chartErr) {
                 console.error('Error adding chart to PDF:', chartErr);
+                // If there's an error, add a message
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
+                    align: 'center'
+                });
             }
         } else {
-            console.log('Chart not added to PDF:', {
-                isSalesReport: reportType.startsWith('sales-'),
-                hasChartRef: !!chartRef,
-                hasCurrentProperty: chartRef && !!chartRef.current
-            });
+            console.log('Chart not added to PDF - not a sales report');
         }
         // Save the PDF
         doc.save(`${filename}.pdf`);
@@ -706,15 +984,14 @@ function DailySalesReportPage() {
     const handleExportPDF = async ()=>{
         try {
             setIsExporting(true);
-            // Log chart reference for debugging
-            console.log('Chart reference before export:', {
-                chartRef: chartRef,
-                hasCurrentProperty: chartRef && !!chartRef.current,
-                hasCanvas: chartRef && chartRef.current && !!chartRef.current.querySelector('canvas')
-            });
-            // Prepare chart data
+            // Prepare chart data and ensure it's stored in window object
             const chartData = prepareChartData();
-            // Force chart to render completely before exporting
+            console.log('Chart data for PDF export:', chartData);
+            // Make sure the chart data is stored in the window object
+            if ("TURBOPACK compile-time truthy", 1) {
+                window.chartData = chartData;
+            }
+            // Set a small delay to ensure data is ready
             setTimeout(async ()=>{
                 try {
                     const params = {
@@ -723,15 +1000,16 @@ function DailySalesReportPage() {
                             branchId: selectedBranch
                         } : {}
                     };
-                    // Export the PDF with chart reference
+                    // Export the PDF with chart data
                     await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["exportReportPDF"])('sales-daily', params, chartRef);
+                    console.log('PDF export completed');
                 } catch (exportErr) {
                     console.error('Error in export after timeout:', exportErr);
                     setError('Failed to export PDF. Please try again.');
                 } finally{
                     setIsExporting(false);
                 }
-            }, 500);
+            }, 100);
         } catch (err) {
             console.error('Error exporting PDF:', err);
             setError('Failed to export PDF. Please try again.');
@@ -745,7 +1023,11 @@ function DailySalesReportPage() {
     // Prepare chart data
     const prepareChartData = ()=>{
         if (!salesData?.salesByDay) return [];
-        const chartData = salesData.salesByDay.map((day)=>({
+        // Sort data by date to ensure chronological order
+        const sortedData = [
+            ...salesData.salesByDay
+        ].sort((a, b)=>new Date(a.date).getTime() - new Date(b.date).getTime());
+        const chartData = sortedData.map((day)=>({
                 date: new Date(day.date).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric'
@@ -753,9 +1035,11 @@ function DailySalesReportPage() {
                 amount: day.amount,
                 transactions: day.transactions
             }));
+        console.log('Chart data prepared:', chartData);
         // Store chart data in window object for PDF export
         if ("TURBOPACK compile-time truthy", 1) {
             window.chartData = chartData;
+            console.log('Chart data stored in window object for PDF export');
         }
         // Force chart to render completely
         if (chartRef && chartRef.current) {
@@ -780,12 +1064,12 @@ function DailySalesReportPage() {
                             className: "h-5 w-5 text-gray-500 hover:text-gray-700"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                            lineNumber: 201,
+                            lineNumber: 210,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 200,
+                        lineNumber: 209,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -793,13 +1077,13 @@ function DailySalesReportPage() {
                         children: "Daily Sales Report"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 203,
+                        lineNumber: 212,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                lineNumber: 199,
+                lineNumber: 208,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -821,7 +1105,7 @@ function DailySalesReportPage() {
                                                 children: "Today"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 216,
+                                                lineNumber: 225,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -829,7 +1113,7 @@ function DailySalesReportPage() {
                                                 children: "Yesterday"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 217,
+                                                lineNumber: 226,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -837,7 +1121,7 @@ function DailySalesReportPage() {
                                                 children: "Last 7 Days"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 218,
+                                                lineNumber: 227,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -845,7 +1129,7 @@ function DailySalesReportPage() {
                                                 children: "Last 30 Days"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 219,
+                                                lineNumber: 228,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -853,7 +1137,7 @@ function DailySalesReportPage() {
                                                 children: "This Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 220,
+                                                lineNumber: 229,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -861,26 +1145,26 @@ function DailySalesReportPage() {
                                                 children: "Last Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 221,
+                                                lineNumber: 230,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 211,
+                                        lineNumber: 220,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calendar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Calendar$3e$__["Calendar"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 223,
+                                        lineNumber: 232,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 210,
+                                lineNumber: 219,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -896,7 +1180,7 @@ function DailySalesReportPage() {
                                                 children: "All Branches"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 233,
+                                                lineNumber: 242,
                                                 columnNumber: 15
                                             }, this),
                                             salesData?.branches?.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -904,26 +1188,26 @@ function DailySalesReportPage() {
                                                     children: branch.branch_name
                                                 }, branch.branch_id, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                    lineNumber: 235,
+                                                    lineNumber: 244,
                                                     columnNumber: 17
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 228,
+                                        lineNumber: 237,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$filter$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Filter$3e$__["Filter"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 240,
+                                        lineNumber: 249,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 227,
+                                lineNumber: 236,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -934,20 +1218,20 @@ function DailySalesReportPage() {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 248,
+                                        lineNumber: 257,
                                         columnNumber: 13
                                     }, this),
                                     "Refresh"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 244,
+                                lineNumber: 253,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 208,
+                        lineNumber: 217,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -961,14 +1245,14 @@ function DailySalesReportPage() {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 259,
+                                        lineNumber: 268,
                                         columnNumber: 13
                                     }, this),
                                     "Print"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 255,
+                                lineNumber: 264,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -987,19 +1271,19 @@ function DailySalesReportPage() {
                                                     className: "h-4 w-4 mr-1"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                    lineNumber: 274,
+                                                    lineNumber: 283,
                                                     columnNumber: 17
                                                 }, this),
                                                 isExporting ? 'Exporting...' : 'Export'
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                            lineNumber: 266,
+                                            lineNumber: 275,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 265,
+                                        lineNumber: 274,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1027,19 +1311,19 @@ function DailySalesReportPage() {
                                                                 className: "h-4 w-4 mr-2"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                                lineNumber: 296,
+                                                                lineNumber: 305,
                                                                 columnNumber: 21
                                                             }, this),
                                                             "Export as CSV"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 295,
+                                                        lineNumber: 304,
                                                         columnNumber: 19
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                    lineNumber: 287,
+                                                    lineNumber: 296,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1056,48 +1340,48 @@ function DailySalesReportPage() {
                                                                 className: "h-4 w-4 mr-2"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                                lineNumber: 309,
+                                                                lineNumber: 318,
                                                                 columnNumber: 21
                                                             }, this),
                                                             "Export as PDF"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 308,
+                                                        lineNumber: 317,
                                                         columnNumber: 19
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                    lineNumber: 300,
+                                                    lineNumber: 309,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                            lineNumber: 286,
+                                            lineNumber: 295,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 278,
+                                        lineNumber: 287,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 264,
+                                lineNumber: 273,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 253,
+                        lineNumber: 262,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                lineNumber: 207,
+                lineNumber: 216,
                 columnNumber: 7
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1111,22 +1395,22 @@ function DailySalesReportPage() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                            lineNumber: 324,
+                            lineNumber: 333,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 323,
+                        lineNumber: 332,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                    lineNumber: 322,
+                    lineNumber: 331,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                lineNumber: 321,
+                lineNumber: 330,
                 columnNumber: 9
             }, this),
             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1135,12 +1419,12 @@ function DailySalesReportPage() {
                     className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                    lineNumber: 332,
+                    lineNumber: 341,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                lineNumber: 331,
+                lineNumber: 340,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: [
@@ -1155,7 +1439,7 @@ function DailySalesReportPage() {
                                         children: "Total Sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 339,
+                                        lineNumber: 348,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1163,7 +1447,7 @@ function DailySalesReportPage() {
                                         children: formatCurrency(salesData?.summary?.totalSales || 0)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 340,
+                                        lineNumber: 349,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1175,13 +1459,13 @@ function DailySalesReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 341,
+                                        lineNumber: 350,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 338,
+                                lineNumber: 347,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1192,7 +1476,7 @@ function DailySalesReportPage() {
                                         children: "Transactions"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 347,
+                                        lineNumber: 356,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1200,7 +1484,7 @@ function DailySalesReportPage() {
                                         children: salesData?.summary?.totalTransactions || 0
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 348,
+                                        lineNumber: 357,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1208,13 +1492,13 @@ function DailySalesReportPage() {
                                         children: "Total number of sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 349,
+                                        lineNumber: 358,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 346,
+                                lineNumber: 355,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1225,7 +1509,7 @@ function DailySalesReportPage() {
                                         children: "Average Order Value"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 353,
+                                        lineNumber: 362,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1233,7 +1517,7 @@ function DailySalesReportPage() {
                                         children: formatCurrency(salesData?.summary?.averageOrderValue || 0)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 354,
+                                        lineNumber: 363,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1241,19 +1525,19 @@ function DailySalesReportPage() {
                                         children: "Per transaction"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 355,
+                                        lineNumber: 364,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 352,
+                                lineNumber: 361,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 337,
+                        lineNumber: 346,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1264,7 +1548,7 @@ function DailySalesReportPage() {
                                 children: "Daily Sales Trend"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 361,
+                                lineNumber: 370,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1286,14 +1570,14 @@ function DailySalesReportPage() {
                                                 strokeDasharray: "3 3"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 368,
+                                                lineNumber: 377,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$XAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XAxis"], {
                                                 dataKey: "date"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 369,
+                                                lineNumber: 378,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$YAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["YAxis"], {
@@ -1311,7 +1595,7 @@ function DailySalesReportPage() {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 370,
+                                                lineNumber: 379,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$YAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["YAxis"], {
@@ -1329,7 +1613,7 @@ function DailySalesReportPage() {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 381,
+                                                lineNumber: 390,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
@@ -1357,12 +1641,12 @@ function DailySalesReportPage() {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 392,
+                                                lineNumber: 401,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Legend"], {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 405,
+                                                lineNumber: 414,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Bar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Bar"], {
@@ -1379,7 +1663,7 @@ function DailySalesReportPage() {
                                                 ]
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 406,
+                                                lineNumber: 415,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Bar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Bar"], {
@@ -1396,29 +1680,29 @@ function DailySalesReportPage() {
                                                 ]
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 413,
+                                                lineNumber: 422,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 364,
+                                        lineNumber: 373,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                    lineNumber: 363,
+                                    lineNumber: 372,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 362,
+                                lineNumber: 371,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 360,
+                        lineNumber: 369,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1432,7 +1716,7 @@ function DailySalesReportPage() {
                                         children: "Daily Sales Details"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 428,
+                                        lineNumber: 437,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1443,13 +1727,13 @@ function DailySalesReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                        lineNumber: 429,
+                                        lineNumber: 438,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 427,
+                                lineNumber: 436,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1467,7 +1751,7 @@ function DailySalesReportPage() {
                                                         children: "Date"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 437,
+                                                        lineNumber: 446,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1476,7 +1760,7 @@ function DailySalesReportPage() {
                                                         children: "Sales Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 440,
+                                                        lineNumber: 449,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1485,7 +1769,7 @@ function DailySalesReportPage() {
                                                         children: "Transactions"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 443,
+                                                        lineNumber: 452,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1494,18 +1778,18 @@ function DailySalesReportPage() {
                                                         children: "Average"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                        lineNumber: 446,
+                                                        lineNumber: 455,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                lineNumber: 436,
+                                                lineNumber: 445,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                            lineNumber: 435,
+                                            lineNumber: 444,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1518,7 +1802,7 @@ function DailySalesReportPage() {
                                                             children: new Date(day.date).toLocaleDateString()
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                            lineNumber: 454,
+                                                            lineNumber: 463,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1526,7 +1810,7 @@ function DailySalesReportPage() {
                                                             children: formatCurrency(day.amount)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                            lineNumber: 457,
+                                                            lineNumber: 466,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1534,7 +1818,7 @@ function DailySalesReportPage() {
                                                             children: day.transactions
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                            lineNumber: 460,
+                                                            lineNumber: 469,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1542,35 +1826,35 @@ function DailySalesReportPage() {
                                                             children: formatCurrency(day.amount / day.transactions)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                            lineNumber: 463,
+                                                            lineNumber: 472,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, day.date, true, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                                    lineNumber: 453,
+                                                    lineNumber: 462,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                            lineNumber: 451,
+                                            lineNumber: 460,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                    lineNumber: 434,
+                                    lineNumber: 443,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                                lineNumber: 433,
+                                lineNumber: 442,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-                        lineNumber: 426,
+                        lineNumber: 435,
                         columnNumber: 11
                     }, this)
                 ]
@@ -1578,7 +1862,7 @@ function DailySalesReportPage() {
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/reports/sales/daily/page.tsx",
-        lineNumber: 197,
+        lineNumber: 206,
         columnNumber: 5
     }, this);
 }

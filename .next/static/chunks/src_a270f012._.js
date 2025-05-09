@@ -28,9 +28,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -430,143 +446,408 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 ]; // Light gold
                 break;
         }
-        // Create table with gold-themed styling
-        autoTable(doc, {
-            head: [
-                headers
-            ],
-            body: tableData,
-            startY: yPos,
-            styles: {
-                fontSize: 8,
-                cellPadding: 3,
-                lineColor: [
-                    200,
-                    200,
-                    200
-                ]
-            },
-            headStyles: {
-                fillColor: headColor,
-                textColor: [
-                    255,
-                    255,
-                    255
+        // Check if we have data to display in the table
+        if (tableData.length > 0) {
+            console.log('Creating table with data:', tableData.length, 'rows');
+            // Create table with gold-themed styling
+            autoTable(doc, {
+                head: [
+                    headers
                 ],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            alternateRowStyles: {
-                fillColor: alternateColor
-            },
-            columnStyles: {
-                // Apply specific formatting based on report type
-                ...reportType.startsWith('sales-') ? {
-                    0: {
-                        halign: 'center'
-                    },
-                    1: {
-                        halign: 'center'
-                    },
-                    2: {
-                        halign: 'right'
-                    },
-                    3: {
-                        halign: 'right'
-                    },
-                    4: {
-                        halign: 'center'
-                    },
-                    5: {
-                        halign: 'left'
-                    },
-                    6: {
-                        halign: 'left'
-                    },
-                    7: {
-                        halign: 'left'
-                    } // Employee Name
-                } : {
-                    // Default formatting for other reports
-                    2: {
-                        halign: 'right'
-                    },
-                    3: {
-                        halign: 'right'
-                    },
-                    4: {
-                        halign: 'right'
+                body: tableData,
+                startY: yPos,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [
+                        200,
+                        200,
+                        200
+                    ]
+                },
+                headStyles: {
+                    fillColor: headColor,
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ],
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                alternateRowStyles: {
+                    fillColor: alternateColor
+                },
+                columnStyles: {
+                    // Apply specific formatting based on report type
+                    ...reportType === 'sales-daily' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'center'
+                        },
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'center'
+                        },
+                        5: {
+                            halign: 'left'
+                        },
+                        6: {
+                            halign: 'left'
+                        },
+                        7: {
+                            halign: 'left'
+                        } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
+                    } : {
+                        // Default formatting for other reports
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'right'
+                        }
                     }
+                },
+                didDrawPage: ()=>{
+                    // Add footer with page numbers
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                        align: 'center'
+                    });
                 }
-            },
-            didDrawPage: ()=>{
-                // Add footer with page numbers
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
-                    align: 'center'
-                });
-            }
-        });
+            });
+        } else {
+            console.log('No data for table, skipping table creation');
+            // Add a message indicating no data
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text("No data available for the selected filters", 105, yPos + 20, {
+                align: 'center'
+            });
+            // Update yPos for chart placement
+            yPos += 30;
+        }
         // Get the final Y position after the table
-        const finalY = doc.autoTable.previous.finalY || 40;
+        // Use the current yPos if no table was created or autoTable is not available
+        let finalY = yPos;
+        if (doc.autoTable && doc.autoTable.previous) {
+            finalY = doc.autoTable.previous.finalY;
+            console.log('Final Y position from autoTable:', finalY);
+        } else {
+            console.log('Using default Y position:', finalY);
+        }
+        // Always add a page break for the chart
+        doc.addPage();
         // Add chart after the table if available (for sales reports)
-        if (reportType.startsWith('sales-') && chartRef && chartRef.current) {
+        if (reportType.startsWith('sales-')) {
             try {
-                console.log('Adding chart to PDF after table at Y position:', finalY);
+                console.log('Adding chart to PDF on new page');
                 // Add a title for the chart section
-                doc.setFontSize(14);
+                doc.setFontSize(16);
                 doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-                doc.text("Sales Trend Chart", 105, finalY + 20, {
+                doc.text("Sales Trend Chart", 105, 20, {
                     align: 'center'
                 });
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                console.log('Chart canvas found:', !!canvas);
-                if (canvas) {
-                    // Add a page break if we're too far down the page
-                    if (finalY > 180) {
-                        doc.addPage();
-                        // Reset Y position for new page
-                        doc.text("Sales Trend Chart", 105, 20, {
+                // Create a simple chart directly in the PDF
+                if ("object" !== 'undefined' && window.chartData) {
+                    // Validate chart data
+                    if (!Array.isArray(window.chartData)) {
+                        console.error('Chart data is not an array:', window.chartData);
+                        throw new Error('Invalid chart data format');
+                    }
+                    if (window.chartData.length === 0) {
+                        console.warn('Chart data array is empty');
+                        doc.setFontSize(12);
+                        doc.setTextColor(100, 100, 100);
+                        doc.text("No data available for chart visualization", 105, 60, {
                             align: 'center'
                         });
-                        const chartImg = canvas.toDataURL('image/png');
-                        console.log('Chart image created successfully');
-                        // Add chart image to PDF on new page
-                        doc.addImage(chartImg, 'PNG', 14, 30, 182, 80);
-                        // Add a note about the chart
-                        doc.setFontSize(8);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, 120, {
-                            align: 'center'
+                        return;
+                    }
+                    const chartData = window.chartData;
+                    console.log('Using chart data from window object:', chartData.length, 'data points');
+                    // Set up chart dimensions for A4 page (210 x 297 mm)
+                    const pageWidth = doc.internal.pageSize.width;
+                    // Center the chart on the page with proper margins
+                    const chartX = 25;
+                    const chartY = 40;
+                    const chartWidth = pageWidth - 50; // 25mm margins on each side
+                    const chartHeight = 120; // Taller chart
+                    // Calculate bar spacing and width based on data points
+                    // Adjust based on number of data points to prevent overcrowding
+                    const maxBars = Math.min(chartData.length, 15); // Limit to 15 data points max
+                    const barSpacing = chartWidth / (maxBars * 2);
+                    const barWidth = Math.min(barSpacing * 0.8, 12); // Limit max width
+                    // Find max values for scaling
+                    let maxAmount = 0;
+                    let maxTransactions = 0;
+                    // Validate and find max values
+                    chartData.forEach((item)=>{
+                        // Ensure values are numbers and valid
+                        if (item && typeof item.amount !== 'undefined') {
+                            const amount = typeof item.amount === 'number' ? item.amount : parseFloat(item.amount) || 0;
+                            maxAmount = Math.max(maxAmount, amount);
+                        }
+                        if (item && typeof item.transactions !== 'undefined') {
+                            const transactions = typeof item.transactions === 'number' ? item.transactions : parseFloat(item.transactions) || 0;
+                            maxTransactions = Math.max(maxTransactions, transactions);
+                        }
+                    });
+                    console.log('Chart max values:', {
+                        maxAmount,
+                        maxTransactions
+                    });
+                    // Ensure we have non-zero max values
+                    if (maxAmount <= 0) maxAmount = 1000;
+                    if (maxTransactions <= 0) maxTransactions = 10;
+                    // Add some padding to max values
+                    maxAmount = maxAmount * 1.1;
+                    maxTransactions = maxTransactions * 1.1;
+                    // Draw chart axes
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.5);
+                    // Y-axis
+                    doc.line(chartX, chartY, chartX, chartY + chartHeight);
+                    // X-axis
+                    doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+                    // Determine which data points to show if we have too many
+                    let dataToShow = chartData;
+                    if (chartData.length > maxBars) {
+                        // If we have too many data points, sample them evenly
+                        const step = Math.ceil(chartData.length / maxBars);
+                        dataToShow = [];
+                        for(let i = 0; i < chartData.length; i += step){
+                            dataToShow.push(chartData[i]);
+                        }
+                        // Always include the last data point
+                        if (dataToShow[dataToShow.length - 1] !== chartData[chartData.length - 1]) {
+                            dataToShow.push(chartData[chartData.length - 1]);
+                        }
+                    }
+                    // Draw chart based on report type
+                    if (reportType === 'sales-monthly') {
+                        // Check if we have enough data points for a line chart
+                        if (dataToShow.length <= 1) {
+                            // Not enough data for a line chart
+                            doc.setFontSize(12);
+                            doc.setTextColor(100, 100, 100);
+                            doc.text("Not enough data points for chart visualization", chartX + chartWidth / 2, chartY + chartHeight / 2, {
+                                align: 'center'
+                            });
+                            return; // Exit early
+                        }
+                        // Draw line chart for monthly data
+                        const pointSpacing = chartWidth / Math.max(dataToShow.length - 1, 1);
+                        // Draw lines
+                        // Amount line (dark gold)
+                        doc.setDrawColor(184, 134, 11); // DarkGoldenRod
+                        doc.setLineWidth(2);
+                        // Draw amount line
+                        let prevX, prevY;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.amount !== 'number' || isNaN(item.amount)) {
+                                console.warn('Invalid amount value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.amount / maxAmount * chartHeight;
+                            // Draw point
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                        });
+                        // Transactions line (gold)
+                        doc.setDrawColor(218, 165, 32); // GoldenRod
+                        doc.setLineWidth(2);
+                        // Draw transactions line
+                        prevX = undefined;
+                        prevY = undefined;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.transactions !== 'number' || isNaN(item.transactions)) {
+                                console.warn('Invalid transactions value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.transactions / maxTransactions * chartHeight;
+                            // Draw point
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                            // Add month label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
                         });
                     } else {
-                        // Add chart to current page
-                        const chartImg = canvas.toDataURL('image/png');
-                        console.log('Chart image created successfully');
-                        // Add chart image to PDF after the table
-                        doc.addImage(chartImg, 'PNG', 14, finalY + 30, 182, 80);
-                        // Add a note about the chart
-                        doc.setFontSize(8);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, finalY + 120, {
-                            align: 'center'
+                        // Draw bar chart for daily data
+                        dataToShow.forEach((item, index)=>{
+                            const x = chartX + index * barSpacing * 2 + barSpacing;
+                            // Amount bar (dark gold)
+                            const amountHeight = item.amount / maxAmount * chartHeight;
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.rect(x, chartY + chartHeight - amountHeight, barWidth, amountHeight, 'F');
+                            // Transactions bar (gold)
+                            const transactionsHeight = item.transactions / maxTransactions * chartHeight;
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.rect(x + barWidth, chartY + chartHeight - transactionsHeight, barWidth, transactionsHeight, 'F');
+                            // Add date label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
                         });
                     }
+                    // Calculate legend position based on chart dimensions
+                    const legendY = chartY + chartHeight + (dataToShow.length > 7 ? 25 : 15);
+                    // Add legend with better spacing
+                    doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                    doc.rect(chartX, legendY, 10, 5, 'F');
+                    doc.setFontSize(9);
+                    doc.setTextColor(50, 50, 50);
+                    doc.text('Sales Amount', chartX + 15, legendY + 4);
+                    doc.setFillColor(218, 165, 32); // GoldenRod
+                    doc.rect(chartX + 80, legendY, 10, 5, 'F');
+                    doc.text('Transactions', chartX + 95, legendY + 4);
+                    // Add grid lines for better readability
+                    doc.setDrawColor(220, 220, 220);
+                    doc.setLineWidth(0.2);
+                    // Horizontal grid lines
+                    for(let i = 1; i < 4; i++){
+                        const y = chartY + chartHeight / 4 * i;
+                        doc.line(chartX, y, chartX + chartWidth, y);
+                    }
+                    // Add Y-axis labels with better formatting
+                    doc.setFontSize(8);
+                    doc.setTextColor(80, 80, 80);
+                    // Format large numbers with K/M suffix
+                    const formatLargeNumber = (num)=>{
+                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                        return num.toString();
+                    };
+                    // Amount labels (left)
+                    doc.text(formatLargeNumber(maxAmount), chartX - 3, chartY + 5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.75), chartX - 3, chartY + chartHeight * 0.25, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.5), chartX - 3, chartY + chartHeight * 0.5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.25), chartX - 3, chartY + chartHeight * 0.75, {
+                        align: 'right'
+                    });
+                    doc.text('0', chartX - 3, chartY + chartHeight, {
+                        align: 'right'
+                    });
+                    // Transactions labels (right)
+                    doc.text(formatLargeNumber(maxTransactions), chartX + chartWidth + 3, chartY + 5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.75), chartX + chartWidth + 3, chartY + chartHeight * 0.25, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.5), chartX + chartWidth + 3, chartY + chartHeight * 0.5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.25), chartX + chartWidth + 3, chartY + chartHeight * 0.75, {
+                        align: 'left'
+                    });
+                    doc.text('0', chartX + chartWidth + 3, chartY + chartHeight, {
+                        align: 'left'
+                    });
+                    // Add axis titles
+                    doc.setFontSize(8);
+                    doc.setTextColor(184, 134, 11); // DarkGoldenRod
+                    doc.text("Sales Amount (LKR)", chartX - 15, chartY - 10, {
+                        angle: 90
+                    });
+                    doc.setTextColor(218, 165, 32); // GoldenRod
+                    doc.text("Transactions", chartX + chartWidth + 15, chartY - 10, {
+                        angle: 270
+                    });
+                    // Add a note about the chart
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, legendY + 20, {
+                        align: 'center'
+                    });
                 } else {
-                    console.log('No canvas element found in chart reference');
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
                 }
             } catch (chartErr) {
                 console.error('Error adding chart to PDF:', chartErr);
-            // Continue without chart if there's an error
+                // If there's an error, add a message
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
+                    align: 'center'
+                });
             }
         } else {
-            console.log('Chart not added to PDF:', {
-                isSalesReport: reportType.startsWith('sales-'),
-                hasChartRef: !!chartRef,
-                hasCurrentProperty: chartRef && !!chartRef.current
-            });
+            console.log('Chart not added to PDF - not a sales report');
         }
         // Save the PDF
         doc.save(`${filename}.pdf`);
@@ -612,6 +893,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$printer$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Printer$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/printer.js [app-client] (ecmascript) <export default as Printer>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$refresh$2d$cw$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__RefreshCw$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/refresh-cw.js [app-client] (ecmascript) <export default as RefreshCw>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$left$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowLeft$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/arrow-left.js [app-client] (ecmascript) <export default as ArrowLeft>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/file-text.js [app-client] (ecmascript) <export default as FileText>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/client/app-dir/link.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/services/reportService.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$chart$2f$LineChart$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/chart/LineChart.js [app-client] (ecmascript)");
@@ -637,6 +919,8 @@ function MonthlySalesReportPage() {
     const [selectedBranch, setSelectedBranch] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [salesData, setSalesData] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [isExporting, setIsExporting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const chartRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     // Format currency
     const formatCurrency = (amount)=>{
         return `LKR ${amount.toLocaleString('en-US', {
@@ -678,30 +962,117 @@ function MonthlySalesReportPage() {
     const handleRefresh = ()=>{
         fetchSalesData();
     };
+    // Handle export to CSV
+    const handleExportCSV = async ()=>{
+        try {
+            setIsExporting(true);
+            const params = {
+                period: dateRange,
+                ...selectedBranch ? {
+                    branchId: selectedBranch
+                } : {}
+            };
+            await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["exportReportCSV"])('sales-monthly', params);
+        } catch (err) {
+            console.error('Error exporting CSV:', err);
+            setError('Failed to export CSV. Please try again.');
+        } finally{
+            setIsExporting(false);
+        }
+    };
+    // Handle export to PDF
+    const handleExportPDF = async ()=>{
+        try {
+            setIsExporting(true);
+            // Prepare chart data and ensure it's stored in window object
+            const chartData = prepareMonthlyChartData();
+            console.log('Chart data for PDF export:', chartData);
+            // Validate chart data
+            if (!chartData || chartData.length === 0) {
+                console.warn('No chart data available for export');
+            // Still proceed with export, the PDF generator will handle the empty data case
+            }
+            // Make sure the chart data is stored in the window object
+            if ("TURBOPACK compile-time truthy", 1) {
+                window.chartData = chartData;
+            }
+            // Set a small delay to ensure data is ready
+            setTimeout(async ()=>{
+                try {
+                    const params = {
+                        period: dateRange,
+                        ...selectedBranch ? {
+                            branchId: selectedBranch
+                        } : {}
+                    };
+                    // Export the PDF with chart data
+                    await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["exportReportPDF"])('sales-monthly', params, chartRef);
+                    console.log('PDF export completed');
+                } catch (exportErr) {
+                    console.error('Error in export after timeout:', exportErr);
+                    setError('Failed to export PDF. Please try again.');
+                } finally{
+                    setIsExporting(false);
+                }
+            }, 100);
+        } catch (err) {
+            console.error('Error exporting PDF:', err);
+            setError('Failed to export PDF. Please try again.');
+            setIsExporting(false);
+        }
+    };
+    // Handle print
+    const handlePrint = ()=>{
+        window.print();
+    };
     // Prepare monthly chart data by grouping daily data by month
     const prepareMonthlyChartData = ()=>{
-        if (!salesData?.salesByDay) return [];
+        if (!salesData?.salesByDay || salesData.salesByDay.length === 0) {
+            console.log('No sales data available for chart');
+            return [];
+        }
+        console.log('Preparing monthly chart data from', salesData.salesByDay.length, 'daily records');
         const monthlyData = {};
+        // Process each day's data
         salesData.salesByDay.forEach((day)=>{
-            const date = new Date(day.date);
-            const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
-            const monthName = date.toLocaleDateString('en-US', {
-                month: 'short',
-                year: 'numeric'
-            });
-            if (!monthlyData[monthKey]) {
-                monthlyData[monthKey] = {
-                    month: monthName,
-                    amount: 0,
-                    transactions: 0
-                };
+            try {
+                // Validate the date
+                if (!day.date) {
+                    console.warn('Day record missing date:', day);
+                    return;
+                }
+                const date = new Date(day.date);
+                if (isNaN(date.getTime())) {
+                    console.warn('Invalid date in sales data:', day.date);
+                    return;
+                }
+                const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                const monthName = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    year: 'numeric'
+                });
+                if (!monthlyData[monthKey]) {
+                    monthlyData[monthKey] = {
+                        month: monthName,
+                        amount: 0,
+                        transactions: 0
+                    };
+                }
+                // Ensure values are numbers
+                const amount = typeof day.amount === 'number' ? day.amount : parseFloat(day.amount) || 0;
+                const transactions = typeof day.transactions === 'number' ? day.transactions : parseFloat(day.transactions) || 0;
+                monthlyData[monthKey].amount += amount;
+                monthlyData[monthKey].transactions += transactions;
+            } catch (err) {
+                console.error('Error processing day data:', err, day);
             }
-            monthlyData[monthKey].amount += day.amount;
-            monthlyData[monthKey].transactions += day.transactions;
         });
-        return Object.values(monthlyData).sort((a, b)=>{
+        // Convert to array and sort chronologically
+        const result = Object.values(monthlyData).sort((a, b)=>{
             return a.month.localeCompare(b.month);
         });
+        console.log('Prepared monthly chart data:', result);
+        return result;
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "p-6",
@@ -716,12 +1087,12 @@ function MonthlySalesReportPage() {
                             className: "h-5 w-5 text-gray-500 hover:text-gray-700"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                            lineNumber: 132,
+                            lineNumber: 237,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 131,
+                        lineNumber: 236,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -729,13 +1100,13 @@ function MonthlySalesReportPage() {
                         children: "Monthly Sales Report"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 134,
+                        lineNumber: 239,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                lineNumber: 130,
+                lineNumber: 235,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -757,7 +1128,7 @@ function MonthlySalesReportPage() {
                                                 children: "Last 30 Days"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 147,
+                                                lineNumber: 252,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -765,7 +1136,7 @@ function MonthlySalesReportPage() {
                                                 children: "This Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 148,
+                                                lineNumber: 253,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -773,26 +1144,26 @@ function MonthlySalesReportPage() {
                                                 children: "Last Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 149,
+                                                lineNumber: 254,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 142,
+                                        lineNumber: 247,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calendar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Calendar$3e$__["Calendar"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 151,
+                                        lineNumber: 256,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 141,
+                                lineNumber: 246,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -808,7 +1179,7 @@ function MonthlySalesReportPage() {
                                                 children: "All Branches"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 161,
+                                                lineNumber: 266,
                                                 columnNumber: 15
                                             }, this),
                                             salesData?.branches?.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -816,26 +1187,26 @@ function MonthlySalesReportPage() {
                                                     children: branch.branch_name
                                                 }, branch.branch_id, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                    lineNumber: 163,
+                                                    lineNumber: 268,
                                                     columnNumber: 17
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 156,
+                                        lineNumber: 261,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$filter$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Filter$3e$__["Filter"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 273,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 155,
+                                lineNumber: 260,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -846,20 +1217,20 @@ function MonthlySalesReportPage() {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 176,
+                                        lineNumber: 281,
                                         columnNumber: 13
                                     }, this),
                                     "Refresh"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 172,
+                                lineNumber: 277,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 139,
+                        lineNumber: 244,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -867,48 +1238,149 @@ function MonthlySalesReportPage() {
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
-                                        className: "h-4 w-4 mr-1"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 184,
-                                        columnNumber: 13
-                                    }, this),
-                                    "Export"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 183,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
+                                onClick: handlePrint,
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$printer$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Printer$3e$__["Printer"], {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 190,
+                                        lineNumber: 292,
                                         columnNumber: 13
                                     }, this),
                                     "Print"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 189,
+                                lineNumber: 288,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "relative inline-block text-left",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
+                                            id: "export-menu-button",
+                                            "aria-expanded": "true",
+                                            "aria-haspopup": "true",
+                                            onClick: ()=>document.getElementById('export-dropdown')?.classList.toggle('hidden'),
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
+                                                    className: "h-4 w-4 mr-1"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                    lineNumber: 307,
+                                                    columnNumber: 17
+                                                }, this),
+                                                isExporting ? 'Exporting...' : 'Export'
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                            lineNumber: 299,
+                                            columnNumber: 15
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                        lineNumber: 298,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        id: "export-dropdown",
+                                        className: "hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10",
+                                        role: "menu",
+                                        "aria-orientation": "vertical",
+                                        "aria-labelledby": "export-menu-button",
+                                        tabIndex: -1,
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "py-1",
+                                            role: "none",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    className: "text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100",
+                                                    role: "menuitem",
+                                                    tabIndex: -1,
+                                                    id: "export-menu-item-0",
+                                                    onClick: handleExportCSV,
+                                                    disabled: isExporting,
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "flex items-center",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"], {
+                                                                className: "h-4 w-4 mr-2"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                                lineNumber: 329,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            "Export as CSV"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                        lineNumber: 328,
+                                                        columnNumber: 19
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                    lineNumber: 320,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    className: "text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100",
+                                                    role: "menuitem",
+                                                    tabIndex: -1,
+                                                    id: "export-menu-item-1",
+                                                    onClick: handleExportPDF,
+                                                    disabled: isExporting,
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "flex items-center",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"], {
+                                                                className: "h-4 w-4 mr-2"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                                lineNumber: 342,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            "Export as PDF"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                        lineNumber: 341,
+                                                        columnNumber: 19
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                                    lineNumber: 333,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                            lineNumber: 319,
+                                            columnNumber: 15
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                        lineNumber: 311,
+                                        columnNumber: 13
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
+                                lineNumber: 297,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 181,
+                        lineNumber: 286,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                lineNumber: 138,
+                lineNumber: 243,
                 columnNumber: 7
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -922,22 +1394,22 @@ function MonthlySalesReportPage() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                            lineNumber: 201,
+                            lineNumber: 357,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 200,
+                        lineNumber: 356,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                    lineNumber: 199,
+                    lineNumber: 355,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                lineNumber: 198,
+                lineNumber: 354,
                 columnNumber: 9
             }, this),
             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -946,12 +1418,12 @@ function MonthlySalesReportPage() {
                     className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                    lineNumber: 209,
+                    lineNumber: 365,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                lineNumber: 208,
+                lineNumber: 364,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: [
@@ -966,7 +1438,7 @@ function MonthlySalesReportPage() {
                                         children: "Total Sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 216,
+                                        lineNumber: 372,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -974,7 +1446,7 @@ function MonthlySalesReportPage() {
                                         children: formatCurrency(salesData?.summary?.totalSales || 0)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 217,
+                                        lineNumber: 373,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -986,13 +1458,13 @@ function MonthlySalesReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 218,
+                                        lineNumber: 374,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 215,
+                                lineNumber: 371,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1003,7 +1475,7 @@ function MonthlySalesReportPage() {
                                         children: "Transactions"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 224,
+                                        lineNumber: 380,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1011,7 +1483,7 @@ function MonthlySalesReportPage() {
                                         children: salesData?.summary?.totalTransactions || 0
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 225,
+                                        lineNumber: 381,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1019,13 +1491,13 @@ function MonthlySalesReportPage() {
                                         children: "Total number of sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 226,
+                                        lineNumber: 382,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 223,
+                                lineNumber: 379,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1036,7 +1508,7 @@ function MonthlySalesReportPage() {
                                         children: "Average Order Value"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 230,
+                                        lineNumber: 386,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1044,7 +1516,7 @@ function MonthlySalesReportPage() {
                                         children: formatCurrency(salesData?.summary?.averageOrderValue || 0)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 231,
+                                        lineNumber: 387,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1052,19 +1524,19 @@ function MonthlySalesReportPage() {
                                         children: "Per transaction"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 232,
+                                        lineNumber: 388,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 229,
+                                lineNumber: 385,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 214,
+                        lineNumber: 370,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1075,11 +1547,12 @@ function MonthlySalesReportPage() {
                                 children: "Monthly Sales Trend"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 238,
+                                lineNumber: 394,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "h-80",
+                                ref: chartRef,
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$ResponsiveContainer$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ResponsiveContainer"], {
                                     width: "100%",
                                     height: "100%",
@@ -1096,44 +1569,83 @@ function MonthlySalesReportPage() {
                                                 strokeDasharray: "3 3"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 245,
+                                                lineNumber: 401,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$XAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XAxis"], {
                                                 dataKey: "month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 246,
+                                                lineNumber: 402,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$YAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["YAxis"], {
                                                 yAxisId: "left",
                                                 orientation: "left",
-                                                stroke: "#8884d8"
+                                                stroke: "#B8860B" // DarkGoldenRod
+                                                ,
+                                                label: {
+                                                    value: 'Sales Amount (LKR)',
+                                                    angle: -90,
+                                                    position: 'insideLeft',
+                                                    style: {
+                                                        fill: '#B8860B'
+                                                    }
+                                                }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 247,
+                                                lineNumber: 403,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$YAxis$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["YAxis"], {
                                                 yAxisId: "right",
                                                 orientation: "right",
-                                                stroke: "#82ca9d"
+                                                stroke: "#DAA520" // GoldenRod
+                                                ,
+                                                label: {
+                                                    value: 'Transactions',
+                                                    angle: 90,
+                                                    position: 'insideRight',
+                                                    style: {
+                                                        fill: '#DAA520'
+                                                    }
+                                                }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 248,
+                                                lineNumber: 414,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
-                                                formatter: (value)=>formatCurrency(Number(value))
+                                                formatter: (value, name)=>{
+                                                    if (name === 'amount') return [
+                                                        formatCurrency(Number(value)),
+                                                        'Sales Amount'
+                                                    ];
+                                                    if (name === 'transactions') return [
+                                                        value,
+                                                        'Transactions'
+                                                    ];
+                                                    return [
+                                                        value,
+                                                        name
+                                                    ];
+                                                },
+                                                contentStyle: {
+                                                    backgroundColor: '#FFF8DC',
+                                                    borderColor: '#B8860B',
+                                                    border: '1px solid #B8860B'
+                                                },
+                                                labelStyle: {
+                                                    color: '#B8860B'
+                                                }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 249,
+                                                lineNumber: 425,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Legend"], {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 250,
+                                                lineNumber: 438,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Line$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Line"], {
@@ -1141,13 +1653,15 @@ function MonthlySalesReportPage() {
                                                 type: "monotone",
                                                 dataKey: "amount",
                                                 name: "Sales Amount",
-                                                stroke: "#8884d8",
+                                                stroke: "#B8860B" // DarkGoldenRod
+                                                ,
+                                                strokeWidth: 2,
                                                 activeDot: {
                                                     r: 8
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 251,
+                                                lineNumber: 439,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Line$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Line"], {
@@ -1155,32 +1669,34 @@ function MonthlySalesReportPage() {
                                                 type: "monotone",
                                                 dataKey: "transactions",
                                                 name: "Transactions",
-                                                stroke: "#82ca9d"
+                                                stroke: "#DAA520" // GoldenRod
+                                                ,
+                                                strokeWidth: 2
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 252,
+                                                lineNumber: 448,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                        lineNumber: 241,
+                                        lineNumber: 397,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                    lineNumber: 240,
+                                    lineNumber: 396,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 239,
+                                lineNumber: 395,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 237,
+                        lineNumber: 393,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1193,12 +1709,12 @@ function MonthlySalesReportPage() {
                                     children: "Monthly Sales Details"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                    lineNumber: 261,
+                                    lineNumber: 464,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 260,
+                                lineNumber: 463,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1216,7 +1732,7 @@ function MonthlySalesReportPage() {
                                                         children: "Month"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                        lineNumber: 267,
+                                                        lineNumber: 470,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1225,7 +1741,7 @@ function MonthlySalesReportPage() {
                                                         children: "Sales Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                        lineNumber: 270,
+                                                        lineNumber: 473,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1234,7 +1750,7 @@ function MonthlySalesReportPage() {
                                                         children: "Transactions"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                        lineNumber: 273,
+                                                        lineNumber: 476,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1243,18 +1759,18 @@ function MonthlySalesReportPage() {
                                                         children: "Average"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                        lineNumber: 276,
+                                                        lineNumber: 479,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                lineNumber: 266,
+                                                lineNumber: 469,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                            lineNumber: 265,
+                                            lineNumber: 468,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1267,7 +1783,7 @@ function MonthlySalesReportPage() {
                                                             children: month.month
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                            lineNumber: 284,
+                                                            lineNumber: 487,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1275,7 +1791,7 @@ function MonthlySalesReportPage() {
                                                             children: formatCurrency(month.amount)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                            lineNumber: 287,
+                                                            lineNumber: 490,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1283,7 +1799,7 @@ function MonthlySalesReportPage() {
                                                             children: month.transactions
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                            lineNumber: 290,
+                                                            lineNumber: 493,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1291,35 +1807,35 @@ function MonthlySalesReportPage() {
                                                             children: formatCurrency(month.amount / month.transactions)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                            lineNumber: 293,
+                                                            lineNumber: 496,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, month.month, true, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                                    lineNumber: 283,
+                                                    lineNumber: 486,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                            lineNumber: 281,
+                                            lineNumber: 484,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                    lineNumber: 264,
+                                    lineNumber: 467,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                                lineNumber: 263,
+                                lineNumber: 466,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-                        lineNumber: 259,
+                        lineNumber: 462,
                         columnNumber: 11
                     }, this)
                 ]
@@ -1327,11 +1843,11 @@ function MonthlySalesReportPage() {
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/reports/sales/monthly/page.tsx",
-        lineNumber: 128,
+        lineNumber: 233,
         columnNumber: 5
     }, this);
 }
-_s(MonthlySalesReportPage, "GijRx2mtIk+C8B/Gtc/pkOY5hnI=");
+_s(MonthlySalesReportPage, "OFtQ/ppP4MS11AmroZuVE9sr5ew=");
 _c = MonthlySalesReportPage;
 var _c;
 __turbopack_context__.k.register(_c, "MonthlySalesReportPage");

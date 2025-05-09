@@ -259,7 +259,11 @@ const exportReportCSV = async (reportType, params = {})=>{
 };
 const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
     try {
-        // First get the data in JSON format
+        // Always get data from the API first
+        let data = [];
+        let filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}`;
+        // Get data from the API
+        console.log('Fetching report data from API for', reportType);
         const response = await axiosInstance.get('/export', {
             params: {
                 reportType,
@@ -267,10 +271,45 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 ...params
             }
         });
-        // Get current user info
-        const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
-            name: 'System User'
-        };
+        // Log the response for debugging
+        console.log('API response:', response.data);
+        // Check if we have data from the API
+        if (response.data && response.data.data && response.data.data.length > 0) {
+            console.log('Using API data for report');
+            data = response.data.data;
+            filename = response.data.filename || filename;
+        } else {
+            console.log('No data from API, checking for chart data');
+            // If no data from API, try to use chart data as fallback
+            if (chartRef && chartRef.current) {
+                try {
+                    // Create data from the chart for PDF
+                    const chartData = window.chartData || [];
+                    if (chartData && chartData.length > 0) {
+                        console.log('Using chart data for report');
+                        data = chartData;
+                    } else {
+                        console.log('No chart data available');
+                    }
+                } catch (chartError) {
+                    console.error('Error getting chart data:', chartError);
+                }
+            }
+        }
+        // Get user info from server response or fallback to localStorage
+        let userName = 'System User';
+        // Check if the server provided a user name in the response
+        if (response.data && response.data.generatedBy) {
+            console.log('Using server-provided user name:', response.data.generatedBy);
+            userName = response.data.generatedBy;
+        } else {
+            // Fallback to localStorage if server didn't provide a name
+            const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
+                name: 'System User'
+            };
+            console.log('Using localStorage user name:', userInfo.name);
+            userName = userInfo.name;
+        }
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
@@ -364,44 +403,76 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Add date and user info
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userInfo.name}`, 105, 32, {
+        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userName}`, 105, 32, {
             align: 'center'
         });
         // Add decorative line
         doc.setDrawColor(titleColor[0], titleColor[1], titleColor[2]);
         doc.setLineWidth(0.5);
         doc.line(14, 35, 196, 35);
-        // Set starting Y position
+        // Set starting Y position for the table
         let yPos = 40;
-        // Add chart if available
-        if (chartRef && chartRef.current) {
-            try {
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                if (canvas) {
-                    const chartImg = canvas.toDataURL('image/png');
-                    // Add chart image to PDF
-                    doc.addImage(chartImg, 'PNG', 14, yPos, 182, 80);
-                    yPos += 85; // Move down for table
-                }
-            } catch (chartErr) {
-                console.error('Error adding chart to PDF:', chartErr);
-            // Continue without chart if there's an error
-            }
+        // For sales reports, ensure we have the correct columns in the right order
+        let formattedData = data;
+        let headers = [];
+        if (reportType.startsWith('sales-') && data.length > 0) {
+            // Define the expected columns for sales reports
+            const expectedColumns = [
+                'sale_id',
+                'sale_date',
+                'total_amount',
+                'discount',
+                'payment_method',
+                'customer_name',
+                'branch_name',
+                'employee_name'
+            ];
+            // Format the headers
+            headers = [
+                'Sale ID',
+                'Sale Date',
+                'Total Amount',
+                'Discount',
+                'Payment Method',
+                'Customer Name',
+                'Branch Name',
+                'Employee Name'
+            ];
+            // Ensure data has all expected columns in the right order
+            formattedData = data.map((item)=>{
+                const formattedItem = {};
+                expectedColumns.forEach((col)=>{
+                    formattedItem[col] = item[col] !== undefined ? item[col] : 'N/A';
+                });
+                return formattedItem;
+            });
+        } else {
+            // For other reports, use the default approach
+            headers = Object.keys(data[0] || {}).map((header)=>{
+                // Convert camelCase or snake_case to Title Case with spaces
+                return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
+            });
         }
         // Format data for autoTable
-        const tableData = response.data.data.map((item)=>{
+        const tableData = formattedData.map((item)=>{
             return Object.values(item);
-        });
-        // Get column headers and format them
-        const headers = Object.keys(response.data.data[0]).map((header)=>{
-            // Convert camelCase or snake_case to Title Case with spaces
-            return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
         });
         // Define gold-themed colors for different report types
         let headColor, alternateColor;
-        switch(reportType){
-            case 'gold-stock':
+        switch(true){
+            case reportType.startsWith('sales-'):
+                headColor = [
+                    75,
+                    0,
+                    130
+                ]; // Deep purple for sales
+                alternateColor = [
+                    245,
+                    245,
+                    255
+                ]; // Light purple-ish
+                break;
+            case reportType === 'gold-stock':
                 headColor = [
                     184,
                     134,
@@ -413,7 +484,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     220
                 ]; // Cornsilk
                 break;
-            case 'current-stock':
+            case reportType === 'current-stock':
                 headColor = [
                     0,
                     128,
@@ -425,7 +496,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Honeydew
                 break;
-            case 'low-stock':
+            case reportType === 'low-stock':
                 headColor = [
                     178,
                     34,
@@ -437,7 +508,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Light red
                 break;
-            case 'valuation':
+            case reportType === 'valuation':
                 headColor = [
                     0,
                     0,
@@ -451,70 +522,169 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 break;
             default:
                 headColor = [
-                    75,
-                    0,
-                    130
-                ]; // Indigo
+                    218,
+                    165,
+                    32
+                ]; // Goldenrod (default)
                 alternateColor = [
-                    248,
-                    240,
-                    255
-                ]; // Light purple
+                    253,
+                    245,
+                    230
+                ]; // Light gold
                 break;
         }
-        // Create table with gold-themed styling
-        autoTable(doc, {
-            head: [
-                headers
-            ],
-            body: tableData,
-            startY: yPos,
-            styles: {
-                fontSize: 8,
-                cellPadding: 3,
-                lineColor: [
-                    200,
-                    200,
-                    200
-                ]
-            },
-            headStyles: {
-                fillColor: headColor,
-                textColor: [
-                    255,
-                    255,
-                    255
+        // Check if we have data to display in the table
+        if (tableData.length > 0) {
+            console.log('Creating table with data:', tableData.length, 'rows');
+            // Create table with gold-themed styling
+            autoTable(doc, {
+                head: [
+                    headers
                 ],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            alternateRowStyles: {
-                fillColor: alternateColor
-            },
-            columnStyles: {
-                // Apply currency formatting to price/value columns
-                // This is a generic approach - adjust indices based on actual data
-                2: {
-                    halign: 'right'
+                body: tableData,
+                startY: yPos,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [
+                        200,
+                        200,
+                        200
+                    ]
                 },
-                3: {
-                    halign: 'right'
+                headStyles: {
+                    fillColor: headColor,
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ],
+                    fontStyle: 'bold',
+                    halign: 'center'
                 },
-                4: {
-                    halign: 'right'
-                } // Assuming column 4 is often a total
-            },
-            didDrawPage: (data)=>{
-                // Add footer with page numbers
-                doc.setFontSize(8);
+                alternateRowStyles: {
+                    fillColor: alternateColor
+                },
+                columnStyles: {
+                    // Apply specific formatting based on report type
+                    ...reportType === 'sales-daily' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'center'
+                        },
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'center'
+                        },
+                        5: {
+                            halign: 'left'
+                        },
+                        6: {
+                            halign: 'left'
+                        },
+                        7: {
+                            halign: 'left'
+                        } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
+                    } : {
+                        // Default formatting for other reports
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'right'
+                        }
+                    }
+                },
+                didDrawPage: ()=>{
+                    // Add footer with page numbers
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                        align: 'center'
+                    });
+                }
+            });
+        } else {
+            console.log('No data for table, skipping table creation');
+            // Add a message indicating no data
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text("No data available for the selected filters", 105, yPos + 20, {
+                align: 'center'
+            });
+            // Update yPos for chart placement
+            yPos += 30;
+        }
+        // Get the final Y position after the table
+        // Use the current yPos if no table was created or autoTable is not available
+        let finalY = yPos;
+        if (doc.autoTable && doc.autoTable.previous) {
+            finalY = doc.autoTable.previous.finalY;
+            console.log('Final Y position from autoTable:', finalY);
+        } else {
+            console.log('Using default Y position:', finalY);
+        }
+        // Always add a page break for the chart
+        doc.addPage();
+        // Add chart after the table if available (for sales reports)
+        if (reportType.startsWith('sales-')) {
+            try {
+                console.log('Adding chart to PDF on new page');
+                // Add a title for the chart section
+                doc.setFontSize(16);
+                doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
+                doc.text("Sales Trend Chart", 105, 20, {
+                    align: 'center'
+                });
+                // Create a simple chart directly in the PDF
+                if ("TURBOPACK compile-time falsy", 0) {
+                    "TURBOPACK unreachable";
+                } else {
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
+                }
+            } catch (chartErr) {
+                console.error('Error adding chart to PDF:', chartErr);
+                // If there's an error, add a message
+                doc.setFontSize(12);
                 doc.setTextColor(100, 100, 100);
-                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
                     align: 'center'
                 });
             }
-        });
+        } else {
+            console.log('Chart not added to PDF - not a sales report');
+        }
         // Save the PDF
-        doc.save(`${response.data.filename}.pdf`);
+        doc.save(`${filename}.pdf`);
         return {
             success: true
         };

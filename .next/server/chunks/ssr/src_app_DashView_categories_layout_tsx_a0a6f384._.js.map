@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file://D%3A/JewelleryWEBApp/front_end/src/app/DashView/categories/layout.tsx"],"sourcesContent":["'use client';\n\nimport React from 'react';\nimport ProtectedRoute from '@/components/ProtectedRoute';\n\nexport default function CategoriesLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <ProtectedRoute allowedRoles={['Admin', 'Store Manager', 'Sales Associate', 'Cashier']}>\n      {children}\n    </ProtectedRoute>\n  );\n}\n"],"names":[],"mappings":";;;;AAGA;AAHA;;;AAKe,SAAS,iBAAiB,EACvC,QAAQ,EAGT;IACC,qBACE,8OAAC,oIAAA,CAAA,UAAc;QAAC,cAAc;YAAC;YAAS;YAAiB;YAAmB;SAAU;kBACnF;;;;;;AAGP","debugId":null}},
+    {"offset": {"line": 30, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
+}

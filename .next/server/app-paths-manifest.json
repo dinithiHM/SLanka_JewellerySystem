@@ -7,5 +7,7 @@
   "/DashView/reports/page": "app/DashView/reports/page.js",
   "/DashView/reports/sales/page": "app/DashView/reports/sales/page.js",
   "/DashView/reports/sales/daily/page": "app/DashView/reports/sales/daily/page.js",
-  "/DashView/reports/sales/monthly/page": "app/DashView/reports/sales/monthly/page.js"
+  "/DashView/reports/sales/monthly/page": "app/DashView/reports/sales/monthly/page.js",
+  "/DashView/reports/sales/by-category/page": "app/DashView/reports/sales/by-category/page.js",
+  "/DashView/reports/sales/by-branch/page": "app/DashView/reports/sales/by-branch/page.js"
 }

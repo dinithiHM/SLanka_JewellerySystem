@@ -131,9 +131,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -533,143 +549,155 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 ]; // Light gold
                 break;
         }
-        // Create table with gold-themed styling
-        autoTable(doc, {
-            head: [
-                headers
-            ],
-            body: tableData,
-            startY: yPos,
-            styles: {
-                fontSize: 8,
-                cellPadding: 3,
-                lineColor: [
-                    200,
-                    200,
-                    200
-                ]
-            },
-            headStyles: {
-                fillColor: headColor,
-                textColor: [
-                    255,
-                    255,
-                    255
+        // Check if we have data to display in the table
+        if (tableData.length > 0) {
+            console.log('Creating table with data:', tableData.length, 'rows');
+            // Create table with gold-themed styling
+            autoTable(doc, {
+                head: [
+                    headers
                 ],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            alternateRowStyles: {
-                fillColor: alternateColor
-            },
-            columnStyles: {
-                // Apply specific formatting based on report type
-                ...reportType.startsWith('sales-') ? {
-                    0: {
-                        halign: 'center'
-                    },
-                    1: {
-                        halign: 'center'
-                    },
-                    2: {
-                        halign: 'right'
-                    },
-                    3: {
-                        halign: 'right'
-                    },
-                    4: {
-                        halign: 'center'
-                    },
-                    5: {
-                        halign: 'left'
-                    },
-                    6: {
-                        halign: 'left'
-                    },
-                    7: {
-                        halign: 'left'
-                    } // Employee Name
-                } : {
-                    // Default formatting for other reports
-                    2: {
-                        halign: 'right'
-                    },
-                    3: {
-                        halign: 'right'
-                    },
-                    4: {
-                        halign: 'right'
+                body: tableData,
+                startY: yPos,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [
+                        200,
+                        200,
+                        200
+                    ]
+                },
+                headStyles: {
+                    fillColor: headColor,
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ],
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                alternateRowStyles: {
+                    fillColor: alternateColor
+                },
+                columnStyles: {
+                    // Apply specific formatting based on report type
+                    ...reportType === 'sales-daily' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'center'
+                        },
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'center'
+                        },
+                        5: {
+                            halign: 'left'
+                        },
+                        6: {
+                            halign: 'left'
+                        },
+                        7: {
+                            halign: 'left'
+                        } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
+                    } : {
+                        // Default formatting for other reports
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'right'
+                        }
                     }
+                },
+                didDrawPage: ()=>{
+                    // Add footer with page numbers
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                        align: 'center'
+                    });
                 }
-            },
-            didDrawPage: ()=>{
-                // Add footer with page numbers
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
-                    align: 'center'
-                });
-            }
-        });
+            });
+        } else {
+            console.log('No data for table, skipping table creation');
+            // Add a message indicating no data
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text("No data available for the selected filters", 105, yPos + 20, {
+                align: 'center'
+            });
+            // Update yPos for chart placement
+            yPos += 30;
+        }
         // Get the final Y position after the table
-        const finalY = doc.autoTable.previous.finalY || 40;
+        // Use the current yPos if no table was created or autoTable is not available
+        let finalY = yPos;
+        if (doc.autoTable && doc.autoTable.previous) {
+            finalY = doc.autoTable.previous.finalY;
+            console.log('Final Y position from autoTable:', finalY);
+        } else {
+            console.log('Using default Y position:', finalY);
+        }
+        // Always add a page break for the chart
+        doc.addPage();
         // Add chart after the table if available (for sales reports)
-        if (reportType.startsWith('sales-') && chartRef && chartRef.current) {
+        if (reportType.startsWith('sales-')) {
             try {
-                console.log('Adding chart to PDF after table at Y position:', finalY);
+                console.log('Adding chart to PDF on new page');
                 // Add a title for the chart section
-                doc.setFontSize(14);
+                doc.setFontSize(16);
                 doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-                doc.text("Sales Trend Chart", 105, finalY + 20, {
+                doc.text("Sales Trend Chart", 105, 20, {
                     align: 'center'
                 });
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                console.log('Chart canvas found:', !!canvas);
-                if (canvas) {
-                    // Add a page break if we're too far down the page
-                    if (finalY > 180) {
-                        doc.addPage();
-                        // Reset Y position for new page
-                        doc.text("Sales Trend Chart", 105, 20, {
-                            align: 'center'
-                        });
-                        const chartImg = canvas.toDataURL('image/png');
-                        console.log('Chart image created successfully');
-                        // Add chart image to PDF on new page
-                        doc.addImage(chartImg, 'PNG', 14, 30, 182, 80);
-                        // Add a note about the chart
-                        doc.setFontSize(8);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, 120, {
-                            align: 'center'
-                        });
-                    } else {
-                        // Add chart to current page
-                        const chartImg = canvas.toDataURL('image/png');
-                        console.log('Chart image created successfully');
-                        // Add chart image to PDF after the table
-                        doc.addImage(chartImg, 'PNG', 14, finalY + 30, 182, 80);
-                        // Add a note about the chart
-                        doc.setFontSize(8);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, finalY + 120, {
-                            align: 'center'
-                        });
-                    }
+                // Create a simple chart directly in the PDF
+                if ("TURBOPACK compile-time falsy", 0) {
+                    "TURBOPACK unreachable";
                 } else {
-                    console.log('No canvas element found in chart reference');
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
                 }
             } catch (chartErr) {
                 console.error('Error adding chart to PDF:', chartErr);
-            // Continue without chart if there's an error
+                // If there's an error, add a message
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
+                    align: 'center'
+                });
             }
         } else {
-            console.log('Chart not added to PDF:', {
-                isSalesReport: reportType.startsWith('sales-'),
-                hasChartRef: !!chartRef,
-                hasCurrentProperty: chartRef && !!chartRef.current
-            });
+            console.log('Chart not added to PDF - not a sales report');
         }
         // Save the PDF
         doc.save(`${filename}.pdf`);
