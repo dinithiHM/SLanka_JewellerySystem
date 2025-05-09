@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { getSalesReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-// Extend Window interface to include chartData
+// Extend Window interface to include chartData and chartImageForPDF
 declare global {
   interface Window {
     chartData?: any[];
+    chartImageForPDF?: string | null;
   }
 }
 
@@ -127,17 +128,16 @@ export default function DailySalesReportPage() {
     try {
       setIsExporting(true);
 
-      // Log chart reference for debugging
-      console.log('Chart reference before export:', {
-        chartRef: chartRef,
-        hasCurrentProperty: chartRef && !!chartRef.current,
-        hasCanvas: chartRef && chartRef.current && !!chartRef.current.querySelector('canvas')
-      });
-
-      // Prepare chart data
+      // Prepare chart data and ensure it's stored in window object
       const chartData = prepareChartData();
+      console.log('Chart data for PDF export:', chartData);
 
-      // Force chart to render completely before exporting
+      // Make sure the chart data is stored in the window object
+      if (typeof window !== 'undefined') {
+        window.chartData = chartData;
+      }
+
+      // Set a small delay to ensure data is ready
       setTimeout(async () => {
         try {
           const params = {
@@ -145,15 +145,16 @@ export default function DailySalesReportPage() {
             ...(selectedBranch ? { branchId: selectedBranch } : {})
           };
 
-          // Export the PDF with chart reference
+          // Export the PDF with chart data
           await exportReportPDF('sales-daily', params, chartRef);
+          console.log('PDF export completed');
         } catch (exportErr) {
           console.error('Error in export after timeout:', exportErr);
           setError('Failed to export PDF. Please try again.');
         } finally {
           setIsExporting(false);
         }
-      }, 500);
+      }, 100);
     } catch (err) {
       console.error('Error exporting PDF:', err);
       setError('Failed to export PDF. Please try again.');
@@ -170,15 +171,23 @@ export default function DailySalesReportPage() {
   const prepareChartData = () => {
     if (!salesData?.salesByDay) return [];
 
-    const chartData = salesData.salesByDay.map(day => ({
+    // Sort data by date to ensure chronological order
+    const sortedData = [...salesData.salesByDay].sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const chartData = sortedData.map(day => ({
       date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       amount: day.amount,
       transactions: day.transactions,
     }));
 
+    console.log('Chart data prepared:', chartData);
+
     // Store chart data in window object for PDF export
     if (typeof window !== 'undefined') {
       window.chartData = chartData;
+      console.log('Chart data stored in window object for PDF export');
     }
 
     // Force chart to render completely
