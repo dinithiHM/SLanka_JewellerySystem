@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { BarChart, Download, Printer, ArrowLeft, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BarChart, Download, Printer, ArrowLeft, RefreshCw, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { getGoldStockReport } from '@/services/reportService';
+import { getGoldStockReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface GoldStockItem {
@@ -38,6 +38,8 @@ export default function GoldStockReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [goldStockData, setGoldStockData] = useState<GoldStockData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -74,10 +76,41 @@ export default function GoldStockReportPage() {
     fetchGoldStockData();
   };
 
+  // Handle export to CSV
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      await exportReportCSV('gold-stock');
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      setError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      await exportReportPDF('gold-stock', {}, chartRef);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      setError('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Prepare chart data
   const prepareChartData = () => {
     if (!goldStockData?.goldStock) return [];
-    
+
     return goldStockData.goldStock.map(item => ({
       purity: `${item.purity}K`,
       weight: item.weight,
@@ -108,14 +141,65 @@ export default function GoldStockReportPage() {
             )}
             Refresh
           </button>
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+          <button
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            onClick={handlePrint}
+          >
             <Printer className="h-4 w-4 mr-2" />
             Print
           </button>
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </button>
+          <div className="relative inline-block text-left">
+            <div>
+              <button
+                type="button"
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                id="export-menu-button"
+                aria-expanded="true"
+                aria-haspopup="true"
+                onClick={() => document.getElementById('export-dropdown')?.classList.toggle('hidden')}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
+            </div>
+            <div
+              id="export-dropdown"
+              className="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="export-menu-button"
+              tabIndex={-1}
+            >
+              <div className="py-1" role="none">
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-0"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </div>
+                </button>
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-1"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -146,7 +230,7 @@ export default function GoldStockReportPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
@@ -158,7 +242,7 @@ export default function GoldStockReportPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
@@ -177,7 +261,7 @@ export default function GoldStockReportPage() {
           {/* Gold Stock Chart */}
           <div className="bg-white shadow rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Gold Stock by Purity</h3>
-            <div className="h-80">
+            <div className="h-80" ref={chartRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsBarChart
                   data={prepareChartData()}
@@ -185,16 +269,56 @@ export default function GoldStockReportPage() {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="purity" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" label={{ value: 'Weight (g)', angle: -90, position: 'insideLeft' }} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" label={{ value: 'Value (LKR)', angle: 90, position: 'insideRight' }} />
-                  <Tooltip formatter={(value, name) => {
-                    if (name === 'weight') return [`${value.toFixed(2)} g`, 'Weight'];
-                    if (name === 'value') return [`LKR ${value.toLocaleString()}`, 'Value'];
-                    return [value, name];
-                  }} />
+                  <YAxis
+                    yAxisId="left"
+                    orientation="left"
+                    stroke="#B8860B"
+                    label={{
+                      value: 'Weight (g)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: { fill: '#B8860B' }
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#DAA520"
+                    label={{
+                      value: 'Value (LKR)',
+                      angle: 90,
+                      position: 'insideRight',
+                      style: { fill: '#DAA520' }
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (name === 'weight') return [`${value.toFixed(2)} g`, 'Weight'];
+                      if (name === 'value') return [`LKR ${value.toLocaleString()}`, 'Value'];
+                      return [value, name];
+                    }}
+                    contentStyle={{
+                      backgroundColor: '#FFF8DC', // Cornsilk
+                      borderColor: '#B8860B', // DarkGoldenRod
+                      border: '1px solid #B8860B'
+                    }}
+                    labelStyle={{ color: '#B8860B' }}
+                  />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="weight" name="Weight (g)" fill="#8884d8" />
-                  <Bar yAxisId="right" dataKey="value" name="Value (LKR)" fill="#82ca9d" />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="weight"
+                    name="Weight (g)"
+                    fill="#B8860B"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="value"
+                    name="Value (LKR)"
+                    fill="#DAA520"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </RechartsBarChart>
               </ResponsiveContainer>
             </div>

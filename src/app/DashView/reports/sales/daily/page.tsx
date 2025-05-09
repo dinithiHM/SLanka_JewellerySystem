@@ -1,10 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Filter, Download, Printer, BarChart, RefreshCw, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, Filter, Download, Printer, BarChart, RefreshCw, ArrowLeft, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { getSalesReport } from '@/services/reportService';
+import { getSalesReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+// Extend Window interface to include chartData
+declare global {
+  interface Window {
+    chartData?: any[];
+  }
+}
 
 interface SalesData {
   summary: {
@@ -58,6 +65,8 @@ export default function DailySalesReportPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -96,15 +105,92 @@ export default function DailySalesReportPage() {
     fetchSalesData();
   };
 
+  // Handle export to CSV
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const params = {
+        period: dateRange,
+        ...(selectedBranch ? { branchId: selectedBranch } : {})
+      };
+      await exportReportCSV('sales-daily', params);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      setError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+
+      // Log chart reference for debugging
+      console.log('Chart reference before export:', {
+        chartRef: chartRef,
+        hasCurrentProperty: chartRef && !!chartRef.current,
+        hasCanvas: chartRef && chartRef.current && !!chartRef.current.querySelector('canvas')
+      });
+
+      // Prepare chart data
+      const chartData = prepareChartData();
+
+      // Force chart to render completely before exporting
+      setTimeout(async () => {
+        try {
+          const params = {
+            period: dateRange,
+            ...(selectedBranch ? { branchId: selectedBranch } : {})
+          };
+
+          // Export the PDF with chart reference
+          await exportReportPDF('sales-daily', params, chartRef);
+        } catch (exportErr) {
+          console.error('Error in export after timeout:', exportErr);
+          setError('Failed to export PDF. Please try again.');
+        } finally {
+          setIsExporting(false);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      setError('Failed to export PDF. Please try again.');
+      setIsExporting(false);
+    }
+  };
+
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Prepare chart data
   const prepareChartData = () => {
     if (!salesData?.salesByDay) return [];
-    
-    return salesData.salesByDay.map(day => ({
+
+    const chartData = salesData.salesByDay.map(day => ({
       date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       amount: day.amount,
       transactions: day.transactions,
     }));
+
+    // Store chart data in window object for PDF export
+    if (typeof window !== 'undefined') {
+      window.chartData = chartData;
+    }
+
+    // Force chart to render completely
+    if (chartRef && chartRef.current) {
+      const canvas = chartRef.current.querySelector('canvas');
+      if (canvas) {
+        // This forces the canvas to be fully rendered
+        console.log('Forcing chart render, canvas dimensions:', canvas.width, canvas.height);
+      }
+    }
+
+    return chartData;
   };
 
   return (
@@ -165,17 +251,68 @@ export default function DailySalesReportPage() {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Export Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </button>
-          
           {/* Print Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+          <button
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            onClick={handlePrint}
+          >
             <Printer className="h-4 w-4 mr-1" />
             Print
           </button>
+
+          {/* Export Button */}
+          <div className="relative inline-block text-left">
+            <div>
+              <button
+                type="button"
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                id="export-menu-button"
+                aria-expanded="true"
+                aria-haspopup="true"
+                onClick={() => document.getElementById('export-dropdown')?.classList.toggle('hidden')}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
+            </div>
+            <div
+              id="export-dropdown"
+              className="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="export-menu-button"
+              tabIndex={-1}
+            >
+              <div className="py-1" role="none">
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-0"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </div>
+                </button>
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-1"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -205,13 +342,13 @@ export default function DailySalesReportPage() {
                 {salesData?.dateRange?.startDate} to {salesData?.dateRange?.endDate}
               </p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
               <h3 className="text-gray-500 text-sm font-medium">Transactions</h3>
               <p className="text-2xl font-bold mt-1">{salesData?.summary?.totalTransactions || 0}</p>
               <p className="text-sm text-gray-500 mt-1">Total number of sales</p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
               <h3 className="text-gray-500 text-sm font-medium">Average Order Value</h3>
               <p className="text-2xl font-bold mt-1">{formatCurrency(salesData?.summary?.averageOrderValue || 0)}</p>
@@ -222,7 +359,7 @@ export default function DailySalesReportPage() {
           {/* Daily Sales Chart */}
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Daily Sales Trend</h2>
-            <div className="h-80">
+            <div className="h-80" ref={chartRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsBarChart
                   data={prepareChartData()}
@@ -230,12 +367,56 @@ export default function DailySalesReportPage() {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <YAxis
+                    yAxisId="left"
+                    orientation="left"
+                    stroke="#B8860B" // DarkGoldenRod
+                    label={{
+                      value: 'Sales Amount (LKR)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: { fill: '#B8860B' }
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#DAA520" // GoldenRod
+                    label={{
+                      value: 'Transactions',
+                      angle: 90,
+                      position: 'insideRight',
+                      style: { fill: '#DAA520' }
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (name === 'amount') return [formatCurrency(Number(value)), 'Sales Amount'];
+                      if (name === 'transactions') return [value, 'Transactions'];
+                      return [value, name];
+                    }}
+                    contentStyle={{
+                      backgroundColor: '#FFF8DC', // Cornsilk
+                      borderColor: '#B8860B', // DarkGoldenRod
+                      border: '1px solid #B8860B'
+                    }}
+                    labelStyle={{ color: '#B8860B' }}
+                  />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="amount" name="Sales Amount" fill="#8884d8" />
-                  <Bar yAxisId="right" dataKey="transactions" name="Transactions" fill="#82ca9d" />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="amount"
+                    name="Sales Amount"
+                    fill="#B8860B" // DarkGoldenRod
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="transactions"
+                    name="Transactions"
+                    fill="#DAA520" // GoldenRod
+                    radius={[4, 4, 0, 0]}
+                  />
                 </RechartsBarChart>
               </ResponsiveContainer>
             </div>

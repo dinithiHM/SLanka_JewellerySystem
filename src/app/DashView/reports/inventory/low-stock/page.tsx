@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Filter, Download, Printer, ArrowLeft, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AlertTriangle, Filter, Download, Printer, ArrowLeft, RefreshCw, FileText, BarChart } from 'lucide-react';
 import Link from 'next/link';
-import { getLowStockReport } from '@/services/reportService';
+import { getLowStockReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
 interface Branch {
   branch_id: number;
@@ -44,6 +45,8 @@ export default function LowStockReportPage() {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -81,6 +84,45 @@ export default function LowStockReportPage() {
     fetchLowStockData();
   };
 
+  // Handle export to CSV
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const params: any = {};
+      if (selectedBranch) {
+        params.branchId = selectedBranch;
+      }
+      await exportReportCSV('low-stock', params);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      setError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      const params: any = {};
+      if (selectedBranch) {
+        params.branchId = selectedBranch;
+      }
+      await exportReportPDF('low-stock', params, chartRef);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      setError('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Get unique categories for filtering
   const getUniqueCategories = () => {
     if (!lowStockData?.items) return [];
@@ -88,17 +130,42 @@ export default function LowStockReportPage() {
     return Array.from(categories);
   };
 
+  // Prepare chart data for category breakdown
+  const prepareCategoryChartData = () => {
+    if (!lowStockData?.categories) return [];
+
+    // Use gold-related colors for the pie chart
+    const GOLD_COLORS = [
+      '#B8860B', // DarkGoldenRod
+      '#DAA520', // GoldenRod
+      '#FFD700', // Gold
+      '#FFDF00', // Golden Yellow
+      '#F0E68C', // Khaki
+      '#BDB76B', // DarkKhaki
+      '#CD853F', // Peru
+      '#D2B48C', // Tan
+      '#A0522D', // Sienna
+      '#8B4513'  // SaddleBrown
+    ];
+
+    return lowStockData.categories.map((category, index) => ({
+      name: category.category,
+      value: category.itemCount,
+      color: GOLD_COLORS[index % GOLD_COLORS.length]
+    }));
+  };
+
   // Filter items based on search term and category
   const getFilteredItems = () => {
     if (!lowStockData?.items) return [];
-    
+
     return lowStockData.items.filter(item => {
-      const matchesSearch = searchTerm === '' || 
+      const matchesSearch = searchTerm === '' ||
         item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesCategory = categoryFilter === null || item.category === categoryFilter;
-      
+
       return matchesSearch && matchesCategory;
     });
   };
@@ -126,14 +193,65 @@ export default function LowStockReportPage() {
             )}
             Refresh
           </button>
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+          <button
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            onClick={handlePrint}
+          >
             <Printer className="h-4 w-4 mr-2" />
             Print
           </button>
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </button>
+          <div className="relative inline-block text-left">
+            <div>
+              <button
+                type="button"
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                id="export-menu-button"
+                aria-expanded="true"
+                aria-haspopup="true"
+                onClick={() => document.getElementById('export-dropdown')?.classList.toggle('hidden')}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
+            </div>
+            <div
+              id="export-dropdown"
+              className="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="export-menu-button"
+              tabIndex={-1}
+            >
+              <div className="py-1" role="none">
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-0"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </div>
+                </button>
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-1"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -224,7 +342,7 @@ export default function LowStockReportPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  There are {lowStockData.summary.totalLowStockItems} items with low stock (less than 10 units). 
+                  There are {lowStockData.summary.totalLowStockItems} items with low stock (less than 10 units).
                   Consider restocking these items soon.
                 </p>
               </div>
@@ -244,7 +362,7 @@ export default function LowStockReportPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
@@ -256,7 +374,7 @@ export default function LowStockReportPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
@@ -328,11 +446,47 @@ export default function LowStockReportPage() {
             </div>
           </div>
 
-          {/* Category Breakdown */}
+          {/* Category Breakdown with Chart */}
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="px-4 py-5 sm:px-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Low Stock by Category</h3>
             </div>
+
+            {/* Add Pie Chart */}
+            <div className="px-4 py-5" ref={chartRef}>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={prepareCategoryChartData()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={true}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    >
+                      {prepareCategoryChartData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => [`${value} items`, 'Count']}
+                      contentStyle={{
+                        backgroundColor: '#FFF8DC', // Cornsilk
+                        borderColor: '#B8860B', // DarkGoldenRod
+                        border: '1px solid #B8860B'
+                      }}
+                      labelStyle={{ color: '#B8860B' }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -352,7 +506,13 @@ export default function LowStockReportPage() {
                   {lowStockData.categories.map((category, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {category.category}
+                        <div className="flex items-center">
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
+                            style={{ backgroundColor: prepareCategoryChartData()[index]?.color || '#B8860B' }}
+                          ></div>
+                          {category.category}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {category.itemCount}
