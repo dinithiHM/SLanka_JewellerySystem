@@ -12,8 +12,17 @@ import verifyToken from '../Middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(verifyToken);
+// Debug middleware to log requests
+router.use((req, res, next) => {
+  console.log(`[${req.method}] /api/reports${req.url}`);
+  next();
+});
+
+// Test endpoint
+router.get('/test', (req, res) => {
+  console.log('Test endpoint called');
+  res.status(200).json({ message: 'Reports API is working!' });
+});
 
 // Sales reports
 router.get('/sales', getSalesReport);
