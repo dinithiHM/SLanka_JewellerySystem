@@ -105,17 +105,17 @@ export const getSalesReport = (req, res) => {
             return res.status(500).json({ message: 'Error fetching sales by day', error: byDayErr.message });
           }
 
-          // Check if sales_details table exists
+          // Check if sale_items table exists
           const checkTableQuery = `
             SELECT COUNT(*) as table_exists
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
-            AND table_name = 'sales_details'
+            AND table_name = 'sale_items'
           `;
 
           con.query(checkTableQuery, (tableErr, tableResult) => {
             if (tableErr) {
-              console.error('Error checking for sales_details table:', tableErr);
+              console.error('Error checking for sale_items table:', tableErr);
               return res.status(500).json({ message: 'Error checking database tables', error: tableErr.message });
             }
 
@@ -125,31 +125,32 @@ export const getSalesReport = (req, res) => {
 
             // If table doesn't exist, skip to recent sales
             if (!tableResult[0].table_exists) {
-              console.log('sales_details table does not exist, using empty arrays for categories and products');
+              console.log('sale_items table does not exist, using empty arrays for categories and products');
               getRecentSales();
             } else {
               // Get top selling categories
               const topCategoriesQuery = `
                 SELECT
-                  c.category_name,
-                  SUM(sd.quantity) AS totalQuantity,
-                  SUM(sd.price * sd.quantity) AS totalAmount
-                FROM sales_details sd
-                JOIN items i ON sd.item_id = i.item_id
-                JOIN categories c ON i.category_id = c.category_id
-                JOIN sales s ON sd.sale_id = s.sale_id
+                  ji.category AS category_name,
+                  SUM(si.quantity) AS totalQuantity,
+                  SUM(si.subtotal) AS totalAmount
+                FROM sale_items si
+                JOIN jewellery_items ji ON si.item_id = ji.item_id
+                JOIN sales s ON si.sale_id = s.sale_id
                 WHERE s.sale_date BETWEEN ? AND ? ${branchFilter}
-                GROUP BY c.category_id
-                ORDER BY totalQuantity DESC
-                LIMIT 5
+                GROUP BY ji.category
+                ORDER BY totalAmount DESC
+                LIMIT 10
               `;
 
               con.query(topCategoriesQuery, [dateRange.startDate, dateRange.endDate, ...branchParams], (categoriesErr, categoriesResult) => {
                 if (categoriesErr) {
                   console.error('Error fetching top categories:', categoriesErr);
+                  console.error('Error details:', categoriesErr.message);
                   // Continue with empty categories
                   getTopProducts();
                 } else {
+                  console.log('Categories result:', categoriesResult);
                   topCategories = categoriesResult;
                   getTopProducts();
                 }
@@ -165,24 +166,26 @@ export const getSalesReport = (req, res) => {
 
               const topProductsQuery = `
                 SELECT
-                  i.item_name,
-                  SUM(sd.quantity) AS totalQuantity,
-                  SUM(sd.price * sd.quantity) AS totalAmount
-                FROM sales_details sd
-                JOIN items i ON sd.item_id = i.item_id
-                JOIN sales s ON sd.sale_id = s.sale_id
+                  ji.product_title AS item_name,
+                  SUM(si.quantity) AS totalQuantity,
+                  SUM(si.subtotal) AS totalAmount
+                FROM sale_items si
+                JOIN jewellery_items ji ON si.item_id = ji.item_id
+                JOIN sales s ON si.sale_id = s.sale_id
                 WHERE s.sale_date BETWEEN ? AND ? ${branchFilter}
-                GROUP BY i.item_id
-                ORDER BY totalQuantity DESC
+                GROUP BY ji.item_id
+                ORDER BY totalAmount DESC
                 LIMIT 10
               `;
 
               con.query(topProductsQuery, [dateRange.startDate, dateRange.endDate, ...branchParams], (productsErr, productsResult) => {
                 if (productsErr) {
                   console.error('Error fetching top products:', productsErr);
+                  console.error('Error details:', productsErr.message);
                   // Continue with empty products
                   getRecentSales();
                 } else {
+                  console.log('Products result:', productsResult);
                   topProducts = productsResult;
                   getRecentSales();
                 }
