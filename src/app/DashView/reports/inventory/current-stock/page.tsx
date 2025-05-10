@@ -96,6 +96,9 @@ export default function CurrentStockReportPage() {
       if (selectedBranch) {
         params.branchId = selectedBranch;
       }
+      if (categoryFilter) {
+        params.category = categoryFilter;
+      }
       await exportReportCSV('current-stock', params);
     } catch (err) {
       console.error('Error exporting CSV:', err);
@@ -112,6 +115,9 @@ export default function CurrentStockReportPage() {
       const params: any = {};
       if (selectedBranch) {
         params.branchId = selectedBranch;
+      }
+      if (categoryFilter) {
+        params.category = categoryFilter;
       }
       await exportReportPDF('current-stock', params);
     } catch (err) {
