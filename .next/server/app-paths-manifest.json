@@ -9,5 +9,14 @@
   "/DashView/reports/sales/daily/page": "app/DashView/reports/sales/daily/page.js",
   "/DashView/reports/sales/monthly/page": "app/DashView/reports/sales/monthly/page.js",
   "/DashView/reports/sales/by-category/page": "app/DashView/reports/sales/by-category/page.js",
-  "/DashView/reports/sales/by-branch/page": "app/DashView/reports/sales/by-branch/page.js"
+  "/DashView/reports/sales/by-branch/page": "app/DashView/reports/sales/by-branch/page.js",
+  "/DashView/sales/manage/page": "app/DashView/sales/manage/page.js",
+  "/DashView/sales/add/page": "app/DashView/sales/add/page.js",
+  "/DashView/sales/view/page": "app/DashView/sales/view/page.js",
+  "/DashView/sales/details/[id]/page": "app/DashView/sales/details/[id]/page.js",
+  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
+  "/DashView/reports/inventory/page": "app/DashView/reports/inventory/page.js",
+  "/DashView/reports/inventory/current-stock/page": "app/DashView/reports/inventory/current-stock/page.js",
+  "/DashView/reports/inventory/gold-stock/page": "app/DashView/reports/inventory/gold-stock/page.js",
+  "/DashView/reports/inventory/low-stock/page": "app/DashView/reports/inventory/low-stock/page.js"
 }

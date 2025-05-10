@@ -131,9 +131,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -259,7 +275,11 @@ const exportReportCSV = async (reportType, params = {})=>{
 };
 const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
     try {
-        // First get the data in JSON format
+        // Always get data from the API first
+        let data = [];
+        let filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}`;
+        // Get data from the API
+        console.log('Fetching report data from API for', reportType);
         const response = await axiosInstance.get('/export', {
             params: {
                 reportType,
@@ -267,13 +287,59 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 ...params
             }
         });
-        // Get current user info
-        const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
-            name: 'System User'
-        };
+        // Log the response for debugging
+        console.log('API response:', response.data);
+        // Check if we have data from the API
+        if (response.data && response.data.data && response.data.data.length > 0) {
+            console.log('Using API data for report');
+            data = response.data.data;
+            filename = response.data.filename || filename;
+        } else {
+            console.log('No data from API, checking for chart data');
+            // If no data from API, try to use chart data as fallback
+            if (chartRef && chartRef.current) {
+                try {
+                    // Create data from the chart for PDF
+                    const chartData = window.chartData || [];
+                    if (chartData && chartData.length > 0) {
+                        console.log('Using chart data for report');
+                        data = chartData;
+                    } else {
+                        console.log('No chart data available');
+                    }
+                } catch (chartError) {
+                    console.error('Error getting chart data:', chartError);
+                }
+            }
+        }
+        // Get user info from server response or fallback to localStorage
+        let userName = 'System User';
+        // Check if the server provided a user name in the response
+        if (response.data && response.data.generatedBy) {
+            console.log('Using server-provided user name:', response.data.generatedBy);
+            userName = response.data.generatedBy;
+        } else {
+            // Fallback to localStorage if server didn't provide a name
+            const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
+                name: 'System User'
+            };
+            console.log('Using localStorage user name:', userInfo.name);
+            userName = userInfo.name;
+        }
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Define gold-themed colors for charts
+        const COLORS = [
+            '#D4AF37',
+            '#CFB53B',
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFC125',
+            '#FFBF00',
+            '#F0E68C'
+        ];
         // Create a new PDF document
         const doc = new jsPDF();
         // Add company header
@@ -364,44 +430,107 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Add date and user info
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userInfo.name}`, 105, 32, {
+        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userName}`, 105, 32, {
             align: 'center'
         });
         // Add decorative line
         doc.setDrawColor(titleColor[0], titleColor[1], titleColor[2]);
         doc.setLineWidth(0.5);
         doc.line(14, 35, 196, 35);
-        // Set starting Y position
+        // Set starting Y position for the table
         let yPos = 40;
-        // Add chart if available
-        if (chartRef && chartRef.current) {
-            try {
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                if (canvas) {
-                    const chartImg = canvas.toDataURL('image/png');
-                    // Add chart image to PDF
-                    doc.addImage(chartImg, 'PNG', 14, yPos, 182, 80);
-                    yPos += 85; // Move down for table
-                }
-            } catch (chartErr) {
-                console.error('Error adding chart to PDF:', chartErr);
-            // Continue without chart if there's an error
+        // For sales reports, ensure we have the correct columns in the right order
+        let formattedData = data;
+        let headers = [];
+        // Special handling for category report
+        if (reportType === 'sales-category' && window.chartData && window.chartData.length > 0) {
+            console.log('Using chart data for category report PDF');
+            // Use the category data from the chart
+            const categoryData = window.chartData;
+            // Define the expected columns for category report
+            headers = [
+                'Category',
+                'Quantity Sold',
+                'Sales Amount',
+                '% of Total Sales'
+            ];
+            // Calculate total sales for percentage
+            const totalSales = categoryData.reduce((sum, item)=>sum + item.value, 0);
+            // Format the data
+            formattedData = categoryData.map((item)=>{
+                const percentage = (item.value / totalSales * 100).toFixed(2) + '%';
+                return {
+                    category: item.name,
+                    quantity: '0',
+                    amount: item.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    percentage: percentage
+                };
+            });
+            // Try to get quantity data from the page if available
+            if ("TURBOPACK compile-time falsy", 0) {
+                "TURBOPACK unreachable";
             }
+        } else if (reportType.startsWith('sales-') && data.length > 0) {
+            // Define the expected columns for sales reports
+            const expectedColumns = [
+                'sale_id',
+                'sale_date',
+                'total_amount',
+                'discount',
+                'payment_method',
+                'customer_name',
+                'branch_name',
+                'employee_name'
+            ];
+            // Format the headers
+            headers = [
+                'Sale ID',
+                'Sale Date',
+                'Total Amount',
+                'Discount',
+                'Payment Method',
+                'Customer Name',
+                'Branch Name',
+                'Employee Name'
+            ];
+            // Ensure data has all expected columns in the right order
+            formattedData = data.map((item)=>{
+                const formattedItem = {};
+                expectedColumns.forEach((col)=>{
+                    formattedItem[col] = item[col] !== undefined ? item[col] : 'N/A';
+                });
+                return formattedItem;
+            });
+        } else {
+            // For other reports, use the default approach
+            headers = Object.keys(data[0] || {}).map((header)=>{
+                // Convert camelCase or snake_case to Title Case with spaces
+                return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
+            });
         }
         // Format data for autoTable
-        const tableData = response.data.data.map((item)=>{
+        const tableData = formattedData.map((item)=>{
             return Object.values(item);
-        });
-        // Get column headers and format them
-        const headers = Object.keys(response.data.data[0]).map((header)=>{
-            // Convert camelCase or snake_case to Title Case with spaces
-            return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
         });
         // Define gold-themed colors for different report types
         let headColor, alternateColor;
-        switch(reportType){
-            case 'gold-stock':
+        switch(true){
+            case reportType.startsWith('sales-'):
+                headColor = [
+                    75,
+                    0,
+                    130
+                ]; // Deep purple for sales
+                alternateColor = [
+                    245,
+                    245,
+                    255
+                ]; // Light purple-ish
+                break;
+            case reportType === 'gold-stock':
                 headColor = [
                     184,
                     134,
@@ -413,7 +542,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     220
                 ]; // Cornsilk
                 break;
-            case 'current-stock':
+            case reportType === 'current-stock':
                 headColor = [
                     0,
                     128,
@@ -425,7 +554,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Honeydew
                 break;
-            case 'low-stock':
+            case reportType === 'low-stock':
                 headColor = [
                     178,
                     34,
@@ -437,7 +566,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Light red
                 break;
-            case 'valuation':
+            case reportType === 'valuation':
                 headColor = [
                     0,
                     0,
@@ -451,70 +580,171 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 break;
             default:
                 headColor = [
-                    75,
-                    0,
-                    130
-                ]; // Indigo
+                    218,
+                    165,
+                    32
+                ]; // Goldenrod (default)
                 alternateColor = [
-                    248,
-                    240,
-                    255
-                ]; // Light purple
+                    253,
+                    245,
+                    230
+                ]; // Light gold
                 break;
         }
-        // Create table with gold-themed styling
-        autoTable(doc, {
-            head: [
-                headers
-            ],
-            body: tableData,
-            startY: yPos,
-            styles: {
-                fontSize: 8,
-                cellPadding: 3,
-                lineColor: [
-                    200,
-                    200,
-                    200
-                ]
-            },
-            headStyles: {
-                fillColor: headColor,
-                textColor: [
-                    255,
-                    255,
-                    255
+        // Check if we have data to display in the table
+        if (tableData.length > 0) {
+            console.log('Creating table with data:', tableData.length, 'rows');
+            // Create table with gold-themed styling
+            autoTable(doc, {
+                head: [
+                    headers
                 ],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            alternateRowStyles: {
-                fillColor: alternateColor
-            },
-            columnStyles: {
-                // Apply currency formatting to price/value columns
-                // This is a generic approach - adjust indices based on actual data
-                2: {
-                    halign: 'right'
+                body: tableData,
+                startY: yPos,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [
+                        200,
+                        200,
+                        200
+                    ]
                 },
-                3: {
-                    halign: 'right'
+                headStyles: {
+                    fillColor: headColor,
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ],
+                    fontStyle: 'bold',
+                    halign: 'center'
                 },
-                4: {
-                    halign: 'right'
-                } // Assuming column 4 is often a total
-            },
-            didDrawPage: (data)=>{
-                // Add footer with page numbers
-                doc.setFontSize(8);
+                alternateRowStyles: {
+                    fillColor: alternateColor
+                },
+                columnStyles: {
+                    // Apply specific formatting based on report type
+                    ...reportType === 'sales-daily' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'center'
+                        },
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'center'
+                        },
+                        5: {
+                            halign: 'left'
+                        },
+                        6: {
+                            halign: 'left'
+                        },
+                        7: {
+                            halign: 'left'
+                        } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
+                    } : {
+                        // Default formatting for other reports
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'right'
+                        }
+                    }
+                },
+                didDrawPage: ()=>{
+                    // Add footer with page numbers
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                        align: 'center'
+                    });
+                }
+            });
+        } else {
+            console.log('No data for table, skipping table creation');
+            // Add a message indicating no data
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text("No data available for the selected filters", 105, yPos + 20, {
+                align: 'center'
+            });
+            // Update yPos for chart placement
+            yPos += 30;
+        }
+        // Get the final Y position after the table
+        // Use the current yPos if no table was created or autoTable is not available
+        let finalY = yPos;
+        if (doc.autoTable && doc.autoTable.previous) {
+            finalY = doc.autoTable.previous.finalY;
+            console.log('Final Y position from autoTable:', finalY);
+        } else {
+            console.log('Using default Y position:', finalY);
+        }
+        // Always add a page break for the chart
+        doc.addPage();
+        // Add chart after the table if available (for sales reports)
+        if (reportType.startsWith('sales-')) {
+            try {
+                console.log('Adding chart to PDF on new page');
+                // Add a title for the chart section
+                doc.setFontSize(16);
+                doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
+                // Use different title based on report type
+                const chartTitle = reportType === 'sales-category' ? "Sales Distribution by Category" : "Sales Trend Chart";
+                doc.text(chartTitle, 105, 20, {
+                    align: 'center'
+                });
+                // Create a simple chart directly in the PDF
+                if ("TURBOPACK compile-time falsy", 0) {
+                    "TURBOPACK unreachable";
+                } else {
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
+                }
+            } catch (chartErr) {
+                console.error('Error adding chart to PDF:', chartErr);
+                // If there's an error, add a message
+                doc.setFontSize(12);
                 doc.setTextColor(100, 100, 100);
-                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
                     align: 'center'
                 });
             }
-        });
+        } else {
+            console.log('Chart not added to PDF - not a sales report');
+        }
         // Save the PDF
-        doc.save(`${response.data.filename}.pdf`);
+        doc.save(`${filename}.pdf`);
         return {
             success: true
         };
@@ -554,9 +784,17 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$printer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Printer$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/printer.js [app-ssr] (ecmascript) <export default as Printer>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$left$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowLeft$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/arrow-left.js [app-ssr] (ecmascript) <export default as ArrowLeft>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$refresh$2d$cw$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__RefreshCw$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/refresh-cw.js [app-ssr] (ecmascript) <export default as RefreshCw>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/file-text.js [app-ssr] (ecmascript) <export default as FileText>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/client/app-dir/link.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/services/reportService.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/component/Tooltip.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$ResponsiveContainer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/component/ResponsiveContainer.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/component/Legend.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$chart$2f$PieChart$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/chart/PieChart.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$polar$2f$Pie$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/polar/Pie.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Cell$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/recharts/es6/component/Cell.js [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -569,6 +807,8 @@ function LowStockReportPage() {
     const [selectedBranch, setSelectedBranch] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [searchTerm, setSearchTerm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [categoryFilter, setCategoryFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [isExporting, setIsExporting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const chartRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
     // Format currency
     const formatCurrency = (amount)=>{
         return `LKR ${amount.toLocaleString('en-US', {
@@ -604,11 +844,69 @@ function LowStockReportPage() {
     const handleRefresh = ()=>{
         fetchLowStockData();
     };
+    // Handle export to CSV
+    const handleExportCSV = async ()=>{
+        try {
+            setIsExporting(true);
+            const params = {};
+            if (selectedBranch) {
+                params.branchId = selectedBranch;
+            }
+            await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["exportReportCSV"])('low-stock', params);
+        } catch (err) {
+            console.error('Error exporting CSV:', err);
+            setError('Failed to export CSV. Please try again.');
+        } finally{
+            setIsExporting(false);
+        }
+    };
+    // Handle export to PDF
+    const handleExportPDF = async ()=>{
+        try {
+            setIsExporting(true);
+            const params = {};
+            if (selectedBranch) {
+                params.branchId = selectedBranch;
+            }
+            await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$reportService$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["exportReportPDF"])('low-stock', params, chartRef);
+        } catch (err) {
+            console.error('Error exporting PDF:', err);
+            setError('Failed to export PDF. Please try again.');
+        } finally{
+            setIsExporting(false);
+        }
+    };
+    // Handle print
+    const handlePrint = ()=>{
+        window.print();
+    };
     // Get unique categories for filtering
     const getUniqueCategories = ()=>{
         if (!lowStockData?.items) return [];
         const categories = new Set(lowStockData.items.map((item)=>item.category));
         return Array.from(categories);
+    };
+    // Prepare chart data for category breakdown
+    const prepareCategoryChartData = ()=>{
+        if (!lowStockData?.categories) return [];
+        // Use gold-related colors for the pie chart
+        const GOLD_COLORS = [
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFDF00',
+            '#F0E68C',
+            '#BDB76B',
+            '#CD853F',
+            '#D2B48C',
+            '#A0522D',
+            '#8B4513' // SaddleBrown
+        ];
+        return lowStockData.categories.map((category, index)=>({
+                name: category.category,
+                value: category.itemCount,
+                color: GOLD_COLORS[index % GOLD_COLORS.length]
+            }));
     };
     // Filter items based on search term and category
     const getFilteredItems = ()=>{
@@ -635,12 +933,12 @@ function LowStockReportPage() {
                                     className: "h-5 w-5 text-gray-500 hover:text-gray-700"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 112,
+                                    lineNumber: 179,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 111,
+                                lineNumber: 178,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -648,13 +946,13 @@ function LowStockReportPage() {
                                 children: "Low Stock Report"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 114,
+                                lineNumber: 181,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 110,
+                        lineNumber: 177,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -668,66 +966,167 @@ function LowStockReportPage() {
                                         className: "h-4 w-4 mr-2 animate-spin"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 123,
+                                        lineNumber: 190,
                                         columnNumber: 15
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$refresh$2d$cw$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__RefreshCw$3e$__["RefreshCw"], {
                                         className: "h-4 w-4 mr-2"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 125,
+                                        lineNumber: 192,
                                         columnNumber: 15
                                     }, this),
                                     "Refresh"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 118,
+                                lineNumber: 185,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
+                                onClick: handlePrint,
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$printer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Printer$3e$__["Printer"], {
                                         className: "h-4 w-4 mr-2"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 130,
+                                        lineNumber: 200,
                                         columnNumber: 13
                                     }, this),
                                     "Print"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 129,
+                                lineNumber: 196,
                                 columnNumber: 11
                             }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "relative inline-block text-left",
                                 children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
-                                        className: "h-4 w-4 mr-2"
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            className: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500",
+                                            id: "export-menu-button",
+                                            "aria-expanded": "true",
+                                            "aria-haspopup": "true",
+                                            onClick: ()=>document.getElementById('export-dropdown')?.classList.toggle('hidden'),
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$download$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Download$3e$__["Download"], {
+                                                    className: "h-4 w-4 mr-2"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 213,
+                                                    columnNumber: 17
+                                                }, this),
+                                                isExporting ? 'Exporting...' : 'Export'
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                            lineNumber: 205,
+                                            columnNumber: 15
+                                        }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 134,
+                                        lineNumber: 204,
                                         columnNumber: 13
                                     }, this),
-                                    "Export"
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        id: "export-dropdown",
+                                        className: "hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10",
+                                        role: "menu",
+                                        "aria-orientation": "vertical",
+                                        "aria-labelledby": "export-menu-button",
+                                        tabIndex: -1,
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "py-1",
+                                            role: "none",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    className: "text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100",
+                                                    role: "menuitem",
+                                                    tabIndex: -1,
+                                                    id: "export-menu-item-0",
+                                                    onClick: handleExportCSV,
+                                                    disabled: isExporting,
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "flex items-center",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"], {
+                                                                className: "h-4 w-4 mr-2"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                                lineNumber: 235,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            "Export as CSV"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                        lineNumber: 234,
+                                                        columnNumber: 19
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 226,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    className: "text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100",
+                                                    role: "menuitem",
+                                                    tabIndex: -1,
+                                                    id: "export-menu-item-1",
+                                                    onClick: handleExportPDF,
+                                                    disabled: isExporting,
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "flex items-center",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$file$2d$text$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__FileText$3e$__["FileText"], {
+                                                                className: "h-4 w-4 mr-2"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                                lineNumber: 248,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            "Export as PDF"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                        lineNumber: 247,
+                                                        columnNumber: 19
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 239,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                            lineNumber: 225,
+                                            columnNumber: 15
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                        lineNumber: 217,
+                                        columnNumber: 13
+                                    }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 133,
+                                lineNumber: 203,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 117,
+                        lineNumber: 184,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                lineNumber: 109,
+                lineNumber: 176,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -743,7 +1142,7 @@ function LowStockReportPage() {
                                     children: "Branch"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 145,
+                                    lineNumber: 263,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -757,7 +1156,7 @@ function LowStockReportPage() {
                                             children: "All Branches"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 154,
+                                            lineNumber: 272,
                                             columnNumber: 15
                                         }, this),
                                         lowStockData?.branches.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -765,19 +1164,19 @@ function LowStockReportPage() {
                                                 children: branch.branch_name
                                             }, branch.branch_id, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 156,
+                                                lineNumber: 274,
                                                 columnNumber: 17
                                             }, this))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 148,
+                                    lineNumber: 266,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 144,
+                            lineNumber: 262,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -788,7 +1187,7 @@ function LowStockReportPage() {
                                     children: "Category"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 165,
+                                    lineNumber: 283,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -802,7 +1201,7 @@ function LowStockReportPage() {
                                             children: "All Categories"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 174,
+                                            lineNumber: 292,
                                             columnNumber: 15
                                         }, this),
                                         getUniqueCategories().map((category)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -810,19 +1209,19 @@ function LowStockReportPage() {
                                                 children: category
                                             }, category, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 176,
+                                                lineNumber: 294,
                                                 columnNumber: 17
                                             }, this))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 168,
+                                    lineNumber: 286,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 164,
+                            lineNumber: 282,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -833,7 +1232,7 @@ function LowStockReportPage() {
                                     children: "Search"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 185,
+                                    lineNumber: 303,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -848,7 +1247,7 @@ function LowStockReportPage() {
                                             onChange: (e)=>setSearchTerm(e.target.value)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 189,
+                                            lineNumber: 307,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -857,35 +1256,35 @@ function LowStockReportPage() {
                                                 className: "h-4 w-4 text-gray-400"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 198,
+                                                lineNumber: 316,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 197,
+                                            lineNumber: 315,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 188,
+                                    lineNumber: 306,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 184,
+                            lineNumber: 302,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                    lineNumber: 142,
+                    lineNumber: 260,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                lineNumber: 141,
+                lineNumber: 259,
                 columnNumber: 7
             }, this),
             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -894,12 +1293,12 @@ function LowStockReportPage() {
                     className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                    lineNumber: 207,
+                    lineNumber: 325,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                lineNumber: 206,
+                lineNumber: 324,
                 columnNumber: 9
             }, this) : error ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "bg-red-50 border-l-4 border-red-400 p-4",
@@ -912,22 +1311,22 @@ function LowStockReportPage() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 213,
+                            lineNumber: 331,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 212,
+                        lineNumber: 330,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                    lineNumber: 211,
+                    lineNumber: 329,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                lineNumber: 210,
+                lineNumber: 328,
                 columnNumber: 9
             }, this) : lowStockData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: [
@@ -942,12 +1341,12 @@ function LowStockReportPage() {
                                         className: "h-5 w-5 text-red-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 223,
+                                        lineNumber: 341,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 222,
+                                    lineNumber: 340,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -961,23 +1360,23 @@ function LowStockReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 226,
+                                        lineNumber: 344,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 225,
+                                    lineNumber: 343,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 221,
+                            lineNumber: 339,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 220,
+                        lineNumber: 338,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -994,12 +1393,12 @@ function LowStockReportPage() {
                                                 className: "h-6 w-6 text-red-600"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 239,
+                                                lineNumber: 357,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 238,
+                                            lineNumber: 356,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1010,7 +1409,7 @@ function LowStockReportPage() {
                                                     children: "Low Stock Items"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 242,
+                                                    lineNumber: 360,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1018,24 +1417,24 @@ function LowStockReportPage() {
                                                     children: lowStockData.summary.totalLowStockItems
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 243,
+                                                    lineNumber: 361,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 241,
+                                            lineNumber: 359,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 237,
+                                    lineNumber: 355,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 236,
+                                lineNumber: 354,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1049,12 +1448,12 @@ function LowStockReportPage() {
                                                 className: "h-6 w-6 text-red-600"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 251,
+                                                lineNumber: 369,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 250,
+                                            lineNumber: 368,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1065,7 +1464,7 @@ function LowStockReportPage() {
                                                     children: "Total Quantity"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 254,
+                                                    lineNumber: 372,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1073,24 +1472,24 @@ function LowStockReportPage() {
                                                     children: lowStockData.summary.totalQuantity
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 255,
+                                                    lineNumber: 373,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 253,
+                                            lineNumber: 371,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 249,
+                                    lineNumber: 367,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 248,
+                                lineNumber: 366,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1104,12 +1503,12 @@ function LowStockReportPage() {
                                                 className: "h-6 w-6 text-red-600"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 263,
+                                                lineNumber: 381,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 380,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1120,7 +1519,7 @@ function LowStockReportPage() {
                                                     children: "Total Value"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 266,
+                                                    lineNumber: 384,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1128,30 +1527,30 @@ function LowStockReportPage() {
                                                     children: formatCurrency(lowStockData.summary.totalValue)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 267,
+                                                    lineNumber: 385,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 265,
+                                            lineNumber: 383,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 261,
+                                    lineNumber: 379,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 260,
+                                lineNumber: 378,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 235,
+                        lineNumber: 353,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1165,7 +1564,7 @@ function LowStockReportPage() {
                                         children: "Low Stock Items"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 276,
+                                        lineNumber: 394,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1176,13 +1575,13 @@ function LowStockReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                        lineNumber: 277,
+                                        lineNumber: 395,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 275,
+                                lineNumber: 393,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1200,7 +1599,7 @@ function LowStockReportPage() {
                                                         children: "Item Name"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 285,
+                                                        lineNumber: 403,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1209,7 +1608,7 @@ function LowStockReportPage() {
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 288,
+                                                        lineNumber: 406,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1218,7 +1617,7 @@ function LowStockReportPage() {
                                                         children: "Quantity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 291,
+                                                        lineNumber: 409,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1227,7 +1626,7 @@ function LowStockReportPage() {
                                                         children: "Unit Price"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 294,
+                                                        lineNumber: 412,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1236,18 +1635,18 @@ function LowStockReportPage() {
                                                         children: "Branch"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 297,
+                                                        lineNumber: 415,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 284,
+                                                lineNumber: 402,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 283,
+                                            lineNumber: 401,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1260,7 +1659,7 @@ function LowStockReportPage() {
                                                             children: item.item_name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 305,
+                                                            lineNumber: 423,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1268,7 +1667,7 @@ function LowStockReportPage() {
                                                             children: item.category
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 308,
+                                                            lineNumber: 426,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1278,12 +1677,12 @@ function LowStockReportPage() {
                                                                 children: item.quantity
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                                lineNumber: 312,
+                                                                lineNumber: 430,
                                                                 columnNumber: 25
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 311,
+                                                            lineNumber: 429,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1291,7 +1690,7 @@ function LowStockReportPage() {
                                                             children: formatCurrency(item.unit_price)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 318,
+                                                            lineNumber: 436,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1299,35 +1698,35 @@ function LowStockReportPage() {
                                                             children: item.branch_name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 321,
+                                                            lineNumber: 439,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, item.item_id, true, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 304,
+                                                    lineNumber: 422,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 302,
+                                            lineNumber: 420,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 282,
+                                    lineNumber: 400,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 281,
+                                lineNumber: 399,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 274,
+                        lineNumber: 392,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1340,12 +1739,88 @@ function LowStockReportPage() {
                                     children: "Low Stock by Category"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 452,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 333,
+                                lineNumber: 451,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "px-4 py-5",
+                                ref: chartRef,
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "h-80",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$ResponsiveContainer$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ResponsiveContainer"], {
+                                        width: "100%",
+                                        height: "100%",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$chart$2f$PieChart$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PieChart"], {
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$polar$2f$Pie$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Pie"], {
+                                                    data: prepareCategoryChartData(),
+                                                    cx: "50%",
+                                                    cy: "50%",
+                                                    labelLine: true,
+                                                    outerRadius: 120,
+                                                    fill: "#8884d8",
+                                                    dataKey: "value",
+                                                    nameKey: "name",
+                                                    label: ({ name, percent })=>`${name}: ${(percent * 100).toFixed(1)}%`,
+                                                    children: prepareCategoryChartData().map((entry, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Cell$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Cell"], {
+                                                            fill: entry.color
+                                                        }, `cell-${index}`, false, {
+                                                            fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                            lineNumber: 472,
+                                                            columnNumber: 25
+                                                        }, this))
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 460,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Tooltip"], {
+                                                    formatter: (value)=>[
+                                                            `${value} items`,
+                                                            'Count'
+                                                        ],
+                                                    contentStyle: {
+                                                        backgroundColor: '#FFF8DC',
+                                                        borderColor: '#B8860B',
+                                                        border: '1px solid #B8860B'
+                                                    },
+                                                    labelStyle: {
+                                                        color: '#B8860B'
+                                                    }
+                                                }, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 475,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Legend"], {}, void 0, false, {
+                                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                    lineNumber: 484,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                            lineNumber: 459,
+                                            columnNumber: 19
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                        lineNumber: 458,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                    lineNumber: 457,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                lineNumber: 456,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1363,7 +1838,7 @@ function LowStockReportPage() {
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 340,
+                                                        lineNumber: 494,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1372,7 +1847,7 @@ function LowStockReportPage() {
                                                         children: "Number of Items"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 343,
+                                                        lineNumber: 497,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1381,18 +1856,18 @@ function LowStockReportPage() {
                                                         children: "Percentage"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                        lineNumber: 346,
+                                                        lineNumber: 500,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                lineNumber: 339,
+                                                lineNumber: 493,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 338,
+                                            lineNumber: 492,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1402,10 +1877,29 @@ function LowStockReportPage() {
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900",
-                                                            children: category.category
+                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                className: "flex items-center",
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                        className: "w-3 h-3 rounded-full mr-2",
+                                                                        style: {
+                                                                            backgroundColor: prepareCategoryChartData()[index]?.color || '#B8860B'
+                                                                        }
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                                        lineNumber: 510,
+                                                                        columnNumber: 27
+                                                                    }, this),
+                                                                    category.category
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
+                                                                lineNumber: 509,
+                                                                columnNumber: 25
+                                                            }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 354,
+                                                            lineNumber: 508,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1413,7 +1907,7 @@ function LowStockReportPage() {
                                                             children: category.itemCount
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 357,
+                                                            lineNumber: 517,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1424,35 +1918,35 @@ function LowStockReportPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                            lineNumber: 360,
+                                                            lineNumber: 520,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, index, true, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                                    lineNumber: 353,
+                                                    lineNumber: 507,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                            lineNumber: 351,
+                                            lineNumber: 505,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                    lineNumber: 337,
+                                    lineNumber: 491,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                                lineNumber: 336,
+                                lineNumber: 490,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 332,
+                        lineNumber: 450,
                         columnNumber: 11
                     }, this)
                 ]
@@ -1467,28 +1961,28 @@ function LowStockReportPage() {
                             children: "No low stock data available. Please try refreshing."
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                            lineNumber: 374,
+                            lineNumber: 534,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                        lineNumber: 373,
+                        lineNumber: 533,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                    lineNumber: 372,
+                    lineNumber: 532,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-                lineNumber: 371,
+                lineNumber: 531,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/reports/inventory/low-stock/page.tsx",
-        lineNumber: 107,
+        lineNumber: 174,
         columnNumber: 5
     }, this);
 }

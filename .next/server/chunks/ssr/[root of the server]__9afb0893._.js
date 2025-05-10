@@ -131,9 +131,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -313,6 +329,17 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-ssr] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Define gold-themed colors for charts
+        const COLORS = [
+            '#D4AF37',
+            '#CFB53B',
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFC125',
+            '#FFBF00',
+            '#F0E68C'
+        ];
         // Create a new PDF document
         const doc = new jsPDF();
         // Add company header
@@ -415,7 +442,38 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // For sales reports, ensure we have the correct columns in the right order
         let formattedData = data;
         let headers = [];
-        if (reportType.startsWith('sales-') && data.length > 0) {
+        // Special handling for category report
+        if (reportType === 'sales-category' && window.chartData && window.chartData.length > 0) {
+            console.log('Using chart data for category report PDF');
+            // Use the category data from the chart
+            const categoryData = window.chartData;
+            // Define the expected columns for category report
+            headers = [
+                'Category',
+                'Quantity Sold',
+                'Sales Amount',
+                '% of Total Sales'
+            ];
+            // Calculate total sales for percentage
+            const totalSales = categoryData.reduce((sum, item)=>sum + item.value, 0);
+            // Format the data
+            formattedData = categoryData.map((item)=>{
+                const percentage = (item.value / totalSales * 100).toFixed(2) + '%';
+                return {
+                    category: item.name,
+                    quantity: '0',
+                    amount: item.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    percentage: percentage
+                };
+            });
+            // Try to get quantity data from the page if available
+            if ("TURBOPACK compile-time falsy", 0) {
+                "TURBOPACK unreachable";
+            }
+        } else if (reportType.startsWith('sales-') && data.length > 0) {
             // Define the expected columns for sales reports
             const expectedColumns = [
                 'sale_id',
@@ -656,7 +714,9 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 // Add a title for the chart section
                 doc.setFontSize(16);
                 doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-                doc.text("Sales Trend Chart", 105, 20, {
+                // Use different title based on report type
+                const chartTitle = reportType === 'sales-category' ? "Sales Distribution by Category" : "Sales Trend Chart";
+                doc.text(chartTitle, 105, 20, {
                     align: 'center'
                 });
                 // Create a simple chart directly in the PDF

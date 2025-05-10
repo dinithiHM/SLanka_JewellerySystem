@@ -226,6 +226,17 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Define gold-themed colors for charts
+        const COLORS = [
+            '#D4AF37',
+            '#CFB53B',
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFC125',
+            '#FFBF00',
+            '#F0E68C'
+        ];
         // Create a new PDF document
         const doc = new jsPDF();
         // Add company header
@@ -328,7 +339,42 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // For sales reports, ensure we have the correct columns in the right order
         let formattedData = data;
         let headers = [];
-        if (reportType.startsWith('sales-') && data.length > 0) {
+        // Special handling for category report
+        if (reportType === 'sales-category' && window.chartData && window.chartData.length > 0) {
+            console.log('Using chart data for category report PDF');
+            // Use the category data from the chart
+            const categoryData = window.chartData;
+            // Define the expected columns for category report
+            headers = [
+                'Category',
+                'Quantity Sold',
+                'Sales Amount',
+                '% of Total Sales'
+            ];
+            // Calculate total sales for percentage
+            const totalSales = categoryData.reduce((sum, item)=>sum + item.value, 0);
+            // Format the data
+            formattedData = categoryData.map((item)=>{
+                const percentage = (item.value / totalSales * 100).toFixed(2) + '%';
+                return {
+                    category: item.name,
+                    quantity: '0',
+                    amount: item.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    percentage: percentage
+                };
+            });
+            // Try to get quantity data from the page if available
+            if ("object" !== 'undefined' && window.categoryQuantities) {
+                formattedData.forEach((item)=>{
+                    if (window.categoryQuantities[item.category]) {
+                        item.quantity = window.categoryQuantities[item.category];
+                    }
+                });
+            }
+        } else if (reportType.startsWith('sales-') && data.length > 0) {
             // Define the expected columns for sales reports
             const expectedColumns = [
                 'sale_id',
@@ -569,7 +615,9 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 // Add a title for the chart section
                 doc.setFontSize(16);
                 doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-                doc.text("Sales Trend Chart", 105, 20, {
+                // Use different title based on report type
+                const chartTitle = reportType === 'sales-category' ? "Sales Distribution by Category" : "Sales Trend Chart";
+                doc.text(chartTitle, 105, 20, {
                     align: 'center'
                 });
                 // Create a simple chart directly in the PDF
@@ -649,7 +697,61 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                         }
                     }
                     // Draw chart based on report type
-                    if (reportType === 'sales-monthly') {
+                    if (reportType === 'sales-category') {
+                        // Draw pie chart for category data
+                        const centerX = chartX + chartWidth / 2;
+                        const centerY = chartY + chartHeight / 2;
+                        const radius = Math.min(chartWidth, chartHeight) / 2.5;
+                        // Calculate total for percentages
+                        const total = chartData.reduce((sum, item)=>sum + (typeof item.value === 'number' ? item.value : 0), 0);
+                        // Draw pie slices
+                        let startAngle = 0;
+                        let endAngle = 0;
+                        // Draw legend
+                        doc.setFontSize(10);
+                        const legendX = chartX + 10;
+                        let legendY = chartY + 10;
+                        const legendSpacing = 15;
+                        chartData.forEach((item, index)=>{
+                            const value = typeof item.value === 'number' ? item.value : 0;
+                            const percentage = total > 0 ? value / total : 0;
+                            endAngle = startAngle + percentage * 2 * Math.PI;
+                            // Set slice color
+                            const colorIndex = index % COLORS.length;
+                            const r = parseInt(COLORS[colorIndex].substring(1, 3), 16);
+                            const g = parseInt(COLORS[colorIndex].substring(3, 5), 16);
+                            const b = parseInt(COLORS[colorIndex].substring(5, 7), 16);
+                            // Draw pie slice
+                            doc.setFillColor(r, g, b);
+                            doc.setDrawColor(255, 255, 255);
+                            doc.setLineWidth(1);
+                            // Draw the slice
+                            doc.circle(centerX, centerY, radius, 'S');
+                            doc.setLineWidth(0.5);
+                            // Calculate angles for the slice
+                            // Draw slice
+                            if (percentage > 0) {
+                                doc.moveTo(centerX, centerY);
+                                doc.lineTo(centerX + Math.cos(startAngle) * radius, centerY + Math.sin(startAngle) * radius);
+                                // Draw arc (approximated with lines)
+                                const steps = Math.max(10, Math.floor(percentage * 60));
+                                for(let i = 1; i <= steps; i++){
+                                    const angle = startAngle + i / steps * (endAngle - startAngle);
+                                    doc.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                                }
+                                doc.lineTo(centerX, centerY);
+                                doc.fill();
+                            }
+                            // Add to legend
+                            doc.setFillColor(r, g, b);
+                            doc.rect(legendX, legendY - 6, 10, 10, 'F');
+                            doc.setTextColor(0, 0, 0);
+                            doc.text(`${item.name}: ${(percentage * 100).toFixed(1)}%`, legendX + 15, legendY);
+                            legendY += legendSpacing;
+                            // Update start angle for next slice
+                            startAngle = endAngle;
+                        });
+                    } else if (reportType === 'sales-monthly') {
                         // Check if we have enough data points for a line chart
                         if (dataToShow.length <= 1) {
                             // Not enough data for a line chart
@@ -909,16 +1011,16 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-// Colors for the pie chart
+// Gold-themed colors for the pie chart
 const COLORS = [
-    '#0088FE',
-    '#00C49F',
-    '#FFBB28',
-    '#FF8042',
-    '#8884D8',
-    '#FF6B6B',
-    '#6B66FF',
-    '#FFD166'
+    '#D4AF37',
+    '#CFB53B',
+    '#B8860B',
+    '#DAA520',
+    '#FFD700',
+    '#FFC125',
+    '#FFBF00',
+    '#F0E68C'
 ];
 function SalesByCategoryReportPage() {
     _s();
@@ -972,12 +1074,32 @@ function SalesByCategoryReportPage() {
             if (salesData && salesData.topCategories && salesData.topCategories.length > 0) {
                 // Store chart data in window object for PDF export
                 if ("TURBOPACK compile-time truthy", 1) {
+                    // Store chart data for the pie chart
                     window.chartData = salesData.topCategories.map({
                         "SalesByCategoryReportPage.useEffect": (category)=>({
                                 name: category.category_name,
-                                value: category.totalAmount
+                                value: parseFloat(category.totalAmount) || 0
                             })
                     }["SalesByCategoryReportPage.useEffect"]);
+                    // Store quantity data separately for PDF export
+                    window.categoryQuantities = {};
+                    salesData.topCategories.forEach({
+                        "SalesByCategoryReportPage.useEffect": (category)=>{
+                            window.categoryQuantities[category.category_name] = category.totalQuantity;
+                        }
+                    }["SalesByCategoryReportPage.useEffect"]);
+                    // Force a re-render of the chart
+                    const timer = setTimeout({
+                        "SalesByCategoryReportPage.useEffect.timer": ()=>{
+                            // This empty state update will trigger a re-render
+                            setSalesData({
+                                ...salesData
+                            });
+                        }
+                    }["SalesByCategoryReportPage.useEffect.timer"], 100);
+                    return ({
+                        "SalesByCategoryReportPage.useEffect": ()=>clearTimeout(timer)
+                    })["SalesByCategoryReportPage.useEffect"];
                 }
             }
         }
@@ -997,9 +1119,10 @@ function SalesByCategoryReportPage() {
                 }
             ];
         }
+        // Parse the totalAmount as a number to ensure it's treated as a numeric value
         return salesData.topCategories.map((category)=>({
                 name: category.category_name,
-                value: category.totalAmount
+                value: parseFloat(category.totalAmount) || 0
             }));
     };
     // Handle export to CSV
@@ -1035,25 +1158,36 @@ function SalesByCategoryReportPage() {
                 className: "bg-white p-3 border border-gray-200 shadow-md rounded-md",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                        className: "font-medium",
+                        className: "font-medium text-gray-900",
                         children: payload[0].name
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 161,
+                        lineNumber: 177,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                        className: "text-sm",
+                        className: "text-sm font-bold text-yellow-600",
                         children: formatCurrency(payload[0].value)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 162,
+                        lineNumber: 178,
                         columnNumber: 11
+                    }, this),
+                    salesData?.summary?.totalSales && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-xs text-gray-500 mt-1",
+                        children: [
+                            (payload[0].value / salesData.summary.totalSales * 100).toFixed(2),
+                            "% of total sales"
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
+                        lineNumber: 180,
+                        columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                lineNumber: 160,
+                lineNumber: 176,
                 columnNumber: 9
             }, this);
         }
@@ -1072,12 +1206,12 @@ function SalesByCategoryReportPage() {
                             className: "h-5 w-5 text-gray-500 hover:text-gray-700"
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                            lineNumber: 174,
+                            lineNumber: 195,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 173,
+                        lineNumber: 194,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -1085,13 +1219,13 @@ function SalesByCategoryReportPage() {
                         children: "Sales by Category Report"
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 176,
+                        lineNumber: 197,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                lineNumber: 172,
+                lineNumber: 193,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1113,7 +1247,7 @@ function SalesByCategoryReportPage() {
                                                 children: "Today"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 189,
+                                                lineNumber: 210,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1121,7 +1255,7 @@ function SalesByCategoryReportPage() {
                                                 children: "Yesterday"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 190,
+                                                lineNumber: 211,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1129,7 +1263,7 @@ function SalesByCategoryReportPage() {
                                                 children: "Last 7 Days"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 191,
+                                                lineNumber: 212,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1137,7 +1271,7 @@ function SalesByCategoryReportPage() {
                                                 children: "Last 30 Days"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 192,
+                                                lineNumber: 213,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1145,7 +1279,7 @@ function SalesByCategoryReportPage() {
                                                 children: "This Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 193,
+                                                lineNumber: 214,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1153,26 +1287,26 @@ function SalesByCategoryReportPage() {
                                                 children: "Last Month"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 194,
+                                                lineNumber: 215,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 184,
+                                        lineNumber: 205,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$calendar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Calendar$3e$__["Calendar"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 196,
+                                        lineNumber: 217,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 183,
+                                lineNumber: 204,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1188,7 +1322,7 @@ function SalesByCategoryReportPage() {
                                                 children: "All Branches"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 206,
+                                                lineNumber: 227,
                                                 columnNumber: 15
                                             }, this),
                                             salesData?.branches?.map((branch)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1196,26 +1330,26 @@ function SalesByCategoryReportPage() {
                                                     children: branch.branch_name
                                                 }, branch.branch_id, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                    lineNumber: 208,
+                                                    lineNumber: 229,
                                                     columnNumber: 17
                                                 }, this))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 201,
+                                        lineNumber: 222,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$filter$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Filter$3e$__["Filter"], {
                                         className: "absolute right-3 top-2.5 h-4 w-4 text-gray-400"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 213,
+                                        lineNumber: 234,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 200,
+                                lineNumber: 221,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1226,20 +1360,20 @@ function SalesByCategoryReportPage() {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 221,
+                                        lineNumber: 242,
                                         columnNumber: 13
                                     }, this),
                                     "Refresh"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 217,
+                                lineNumber: 238,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 181,
+                        lineNumber: 202,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1255,19 +1389,19 @@ function SalesByCategoryReportPage() {
                                             className: "h-4 w-4 mr-1"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                            lineNumber: 233,
+                                            lineNumber: 254,
                                             columnNumber: 15
                                         }, this),
                                         "Export CSV"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                    lineNumber: 229,
+                                    lineNumber: 250,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 228,
+                                lineNumber: 249,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1278,26 +1412,26 @@ function SalesByCategoryReportPage() {
                                         className: "h-4 w-4 mr-1"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 243,
+                                        lineNumber: 264,
                                         columnNumber: 13
                                     }, this),
                                     "Export PDF"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 239,
+                                lineNumber: 260,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 226,
+                        lineNumber: 247,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                lineNumber: 180,
+                lineNumber: 201,
                 columnNumber: 7
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1311,22 +1445,22 @@ function SalesByCategoryReportPage() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                            lineNumber: 254,
+                            lineNumber: 275,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 253,
+                        lineNumber: 274,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                    lineNumber: 252,
+                    lineNumber: 273,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                lineNumber: 251,
+                lineNumber: 272,
                 columnNumber: 9
             }, this),
             isLoading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1335,12 +1469,12 @@ function SalesByCategoryReportPage() {
                     className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                    lineNumber: 262,
+                    lineNumber: 283,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                lineNumber: 261,
+                lineNumber: 282,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                 children: [
@@ -1355,7 +1489,7 @@ function SalesByCategoryReportPage() {
                                         children: "Total Sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 269,
+                                        lineNumber: 290,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1363,7 +1497,7 @@ function SalesByCategoryReportPage() {
                                         children: formatCurrency(salesData?.summary?.totalSales || 0)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 270,
+                                        lineNumber: 291,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1375,13 +1509,13 @@ function SalesByCategoryReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 271,
+                                        lineNumber: 292,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 268,
+                                lineNumber: 289,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1392,7 +1526,7 @@ function SalesByCategoryReportPage() {
                                         children: "Categories"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 277,
+                                        lineNumber: 298,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1400,7 +1534,7 @@ function SalesByCategoryReportPage() {
                                         children: salesData?.topCategories?.length || 0
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 278,
+                                        lineNumber: 299,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1408,13 +1542,13 @@ function SalesByCategoryReportPage() {
                                         children: "Total categories with sales"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 279,
+                                        lineNumber: 300,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 276,
+                                lineNumber: 297,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1425,7 +1559,7 @@ function SalesByCategoryReportPage() {
                                         children: "Top Category"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 283,
+                                        lineNumber: 304,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1433,7 +1567,7 @@ function SalesByCategoryReportPage() {
                                         children: salesData?.topCategories && salesData.topCategories.length > 0 ? salesData.topCategories[0].category_name : 'No data'
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 284,
+                                        lineNumber: 305,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1441,19 +1575,19 @@ function SalesByCategoryReportPage() {
                                         children: salesData?.topCategories && salesData.topCategories.length > 0 ? formatCurrency(salesData.topCategories[0].totalAmount) : ''
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 289,
+                                        lineNumber: 310,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 282,
+                                lineNumber: 303,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 267,
+                        lineNumber: 288,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1464,7 +1598,7 @@ function SalesByCategoryReportPage() {
                                 children: "Sales Distribution by Category"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 299,
+                                lineNumber: 320,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1481,58 +1615,68 @@ function SalesByCategoryReportPage() {
                                                 cy: "50%",
                                                 labelLine: true,
                                                 outerRadius: 120,
-                                                fill: "#8884d8",
+                                                innerRadius: 0,
+                                                paddingAngle: 0,
+                                                fill: "#D4AF37",
                                                 dataKey: "value",
                                                 nameKey: "name",
                                                 label: ({ name, percent })=>`${name}: ${(percent * 100).toFixed(0)}%`,
+                                                isAnimationActive: true,
                                                 children: prepareCategoryChartData().map((entry, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Cell$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Cell"], {
-                                                        fill: COLORS[index % COLORS.length]
+                                                        fill: COLORS[index % COLORS.length],
+                                                        stroke: "#fff",
+                                                        strokeWidth: 1
                                                     }, `cell-${index}`, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                        lineNumber: 315,
+                                                        lineNumber: 339,
                                                         columnNumber: 23
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 303,
+                                                lineNumber: 324,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
                                                 content: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CustomTooltip, {}, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                    lineNumber: 318,
+                                                    lineNumber: 347,
                                                     columnNumber: 37
                                                 }, void 0)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 318,
+                                                lineNumber: 347,
                                                 columnNumber: 19
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Legend"], {}, void 0, false, {
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Legend"], {
+                                                layout: "horizontal",
+                                                verticalAlign: "bottom",
+                                                align: "center",
+                                                iconType: "circle"
+                                            }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 319,
+                                                lineNumber: 348,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 302,
+                                        lineNumber: 323,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                    lineNumber: 301,
+                                    lineNumber: 322,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 300,
+                                lineNumber: 321,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 298,
+                        lineNumber: 319,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1546,7 +1690,7 @@ function SalesByCategoryReportPage() {
                                         children: "Category Sales Details"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 328,
+                                        lineNumber: 362,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1557,13 +1701,13 @@ function SalesByCategoryReportPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                        lineNumber: 329,
+                                        lineNumber: 363,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 327,
+                                lineNumber: 361,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1581,7 +1725,7 @@ function SalesByCategoryReportPage() {
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                        lineNumber: 337,
+                                                        lineNumber: 371,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1590,7 +1734,7 @@ function SalesByCategoryReportPage() {
                                                         children: "Quantity Sold"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                        lineNumber: 340,
+                                                        lineNumber: 374,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1599,7 +1743,7 @@ function SalesByCategoryReportPage() {
                                                         children: "Sales Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                        lineNumber: 343,
+                                                        lineNumber: 377,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1608,18 +1752,18 @@ function SalesByCategoryReportPage() {
                                                         children: "% of Total Sales"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                        lineNumber: 346,
+                                                        lineNumber: 380,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 336,
+                                                lineNumber: 370,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                            lineNumber: 335,
+                                            lineNumber: 369,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1631,12 +1775,12 @@ function SalesByCategoryReportPage() {
                                                     children: "No category data available"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                    lineNumber: 354,
+                                                    lineNumber: 388,
                                                     columnNumber: 23
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                lineNumber: 353,
+                                                lineNumber: 387,
                                                 columnNumber: 21
                                             }, this) : salesData?.topCategories?.map((category)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                                     className: "hover:bg-gray-50",
@@ -1646,7 +1790,7 @@ function SalesByCategoryReportPage() {
                                                             children: category.category_name
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                            lineNumber: 361,
+                                                            lineNumber: 395,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1654,7 +1798,7 @@ function SalesByCategoryReportPage() {
                                                             children: category.totalQuantity
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                            lineNumber: 364,
+                                                            lineNumber: 398,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1662,7 +1806,7 @@ function SalesByCategoryReportPage() {
                                                             children: formatCurrency(category.totalAmount)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                            lineNumber: 367,
+                                                            lineNumber: 401,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1673,35 +1817,35 @@ function SalesByCategoryReportPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                            lineNumber: 370,
+                                                            lineNumber: 404,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, category.category_name, true, {
                                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                                    lineNumber: 360,
+                                                    lineNumber: 394,
                                                     columnNumber: 23
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                            lineNumber: 351,
+                                            lineNumber: 385,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 368,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                                lineNumber: 333,
+                                lineNumber: 367,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-                        lineNumber: 326,
+                        lineNumber: 360,
                         columnNumber: 11
                     }, this)
                 ]
@@ -1709,7 +1853,7 @@ function SalesByCategoryReportPage() {
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/DashView/reports/sales/by-category/page.tsx",
-        lineNumber: 170,
+        lineNumber: 191,
         columnNumber: 5
     }, this);
 }

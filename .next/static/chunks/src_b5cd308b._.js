@@ -28,9 +28,25 @@ const axiosInstance = __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
 });
 // Add request interceptor to include auth token
 axiosInstance.interceptors.request.use((config)=>{
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage
+    let token = localStorage.getItem('token');
+    // If token not found in localStorage, try to get it from userInfo
+    if (!token) {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const parsedUserInfo = JSON.parse(userInfo);
+                token = parsedUserInfo.token;
+            } catch (e) {
+                console.error('Error parsing userInfo:', e);
+            }
+        }
+    }
+    // If token found, add it to headers
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        console.warn('No authentication token found for API request');
     }
     return config;
 }, (error)=>{
@@ -156,7 +172,11 @@ const exportReportCSV = async (reportType, params = {})=>{
 };
 const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
     try {
-        // First get the data in JSON format
+        // Always get data from the API first
+        let data = [];
+        let filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}`;
+        // Get data from the API
+        console.log('Fetching report data from API for', reportType);
         const response = await axiosInstance.get('/export', {
             params: {
                 reportType,
@@ -164,13 +184,59 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 ...params
             }
         });
-        // Get current user info
-        const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
-            name: 'System User'
-        };
+        // Log the response for debugging
+        console.log('API response:', response.data);
+        // Check if we have data from the API
+        if (response.data && response.data.data && response.data.data.length > 0) {
+            console.log('Using API data for report');
+            data = response.data.data;
+            filename = response.data.filename || filename;
+        } else {
+            console.log('No data from API, checking for chart data');
+            // If no data from API, try to use chart data as fallback
+            if (chartRef && chartRef.current) {
+                try {
+                    // Create data from the chart for PDF
+                    const chartData = window.chartData || [];
+                    if (chartData && chartData.length > 0) {
+                        console.log('Using chart data for report');
+                        data = chartData;
+                    } else {
+                        console.log('No chart data available');
+                    }
+                } catch (chartError) {
+                    console.error('Error getting chart data:', chartError);
+                }
+            }
+        }
+        // Get user info from server response or fallback to localStorage
+        let userName = 'System User';
+        // Check if the server provided a user name in the response
+        if (response.data && response.data.generatedBy) {
+            console.log('Using server-provided user name:', response.data.generatedBy);
+            userName = response.data.generatedBy;
+        } else {
+            // Fallback to localStorage if server didn't provide a name
+            const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {
+                name: 'System User'
+            };
+            console.log('Using localStorage user name:', userInfo.name);
+            userName = userInfo.name;
+        }
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Define gold-themed colors for charts
+        const COLORS = [
+            '#D4AF37',
+            '#CFB53B',
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFC125',
+            '#FFBF00',
+            '#F0E68C'
+        ];
         // Create a new PDF document
         const doc = new jsPDF();
         // Add company header
@@ -261,44 +327,111 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Add date and user info
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userInfo.name}`, 105, 32, {
+        doc.text(`Generated on: ${new Date().toLocaleDateString()} by ${userName}`, 105, 32, {
             align: 'center'
         });
         // Add decorative line
         doc.setDrawColor(titleColor[0], titleColor[1], titleColor[2]);
         doc.setLineWidth(0.5);
         doc.line(14, 35, 196, 35);
-        // Set starting Y position
+        // Set starting Y position for the table
         let yPos = 40;
-        // Add chart if available
-        if (chartRef && chartRef.current) {
-            try {
-                // Get chart canvas and convert to image
-                const canvas = chartRef.current.querySelector('canvas');
-                if (canvas) {
-                    const chartImg = canvas.toDataURL('image/png');
-                    // Add chart image to PDF
-                    doc.addImage(chartImg, 'PNG', 14, yPos, 182, 80);
-                    yPos += 85; // Move down for table
-                }
-            } catch (chartErr) {
-                console.error('Error adding chart to PDF:', chartErr);
-            // Continue without chart if there's an error
+        // For sales reports, ensure we have the correct columns in the right order
+        let formattedData = data;
+        let headers = [];
+        // Special handling for category report
+        if (reportType === 'sales-category' && window.chartData && window.chartData.length > 0) {
+            console.log('Using chart data for category report PDF');
+            // Use the category data from the chart
+            const categoryData = window.chartData;
+            // Define the expected columns for category report
+            headers = [
+                'Category',
+                'Quantity Sold',
+                'Sales Amount',
+                '% of Total Sales'
+            ];
+            // Calculate total sales for percentage
+            const totalSales = categoryData.reduce((sum, item)=>sum + item.value, 0);
+            // Format the data
+            formattedData = categoryData.map((item)=>{
+                const percentage = (item.value / totalSales * 100).toFixed(2) + '%';
+                return {
+                    category: item.name,
+                    quantity: '0',
+                    amount: item.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    percentage: percentage
+                };
+            });
+            // Try to get quantity data from the page if available
+            if ("object" !== 'undefined' && window.categoryQuantities) {
+                formattedData.forEach((item)=>{
+                    if (window.categoryQuantities[item.category]) {
+                        item.quantity = window.categoryQuantities[item.category];
+                    }
+                });
             }
+        } else if (reportType.startsWith('sales-') && data.length > 0) {
+            // Define the expected columns for sales reports
+            const expectedColumns = [
+                'sale_id',
+                'sale_date',
+                'total_amount',
+                'discount',
+                'payment_method',
+                'customer_name',
+                'branch_name',
+                'employee_name'
+            ];
+            // Format the headers
+            headers = [
+                'Sale ID',
+                'Sale Date',
+                'Total Amount',
+                'Discount',
+                'Payment Method',
+                'Customer Name',
+                'Branch Name',
+                'Employee Name'
+            ];
+            // Ensure data has all expected columns in the right order
+            formattedData = data.map((item)=>{
+                const formattedItem = {};
+                expectedColumns.forEach((col)=>{
+                    formattedItem[col] = item[col] !== undefined ? item[col] : 'N/A';
+                });
+                return formattedItem;
+            });
+        } else {
+            // For other reports, use the default approach
+            headers = Object.keys(data[0] || {}).map((header)=>{
+                // Convert camelCase or snake_case to Title Case with spaces
+                return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
+            });
         }
         // Format data for autoTable
-        const tableData = response.data.data.map((item)=>{
+        const tableData = formattedData.map((item)=>{
             return Object.values(item);
-        });
-        // Get column headers and format them
-        const headers = Object.keys(response.data.data[0]).map((header)=>{
-            // Convert camelCase or snake_case to Title Case with spaces
-            return header.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, (str)=>str.toUpperCase()).trim();
         });
         // Define gold-themed colors for different report types
         let headColor, alternateColor;
-        switch(reportType){
-            case 'gold-stock':
+        switch(true){
+            case reportType.startsWith('sales-'):
+                headColor = [
+                    75,
+                    0,
+                    130
+                ]; // Deep purple for sales
+                alternateColor = [
+                    245,
+                    245,
+                    255
+                ]; // Light purple-ish
+                break;
+            case reportType === 'gold-stock':
                 headColor = [
                     184,
                     134,
@@ -310,7 +443,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     220
                 ]; // Cornsilk
                 break;
-            case 'current-stock':
+            case reportType === 'current-stock':
                 headColor = [
                     0,
                     128,
@@ -322,7 +455,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Honeydew
                 break;
-            case 'low-stock':
+            case reportType === 'low-stock':
                 headColor = [
                     178,
                     34,
@@ -334,7 +467,7 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                     240
                 ]; // Light red
                 break;
-            case 'valuation':
+            case reportType === 'valuation':
                 headColor = [
                     0,
                     0,
@@ -348,70 +481,478 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 break;
             default:
                 headColor = [
-                    75,
-                    0,
-                    130
-                ]; // Indigo
+                    218,
+                    165,
+                    32
+                ]; // Goldenrod (default)
                 alternateColor = [
-                    248,
-                    240,
-                    255
-                ]; // Light purple
+                    253,
+                    245,
+                    230
+                ]; // Light gold
                 break;
         }
-        // Create table with gold-themed styling
-        autoTable(doc, {
-            head: [
-                headers
-            ],
-            body: tableData,
-            startY: yPos,
-            styles: {
-                fontSize: 8,
-                cellPadding: 3,
-                lineColor: [
-                    200,
-                    200,
-                    200
-                ]
-            },
-            headStyles: {
-                fillColor: headColor,
-                textColor: [
-                    255,
-                    255,
-                    255
+        // Check if we have data to display in the table
+        if (tableData.length > 0) {
+            console.log('Creating table with data:', tableData.length, 'rows');
+            // Create table with gold-themed styling
+            autoTable(doc, {
+                head: [
+                    headers
                 ],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            alternateRowStyles: {
-                fillColor: alternateColor
-            },
-            columnStyles: {
-                // Apply currency formatting to price/value columns
-                // This is a generic approach - adjust indices based on actual data
-                2: {
-                    halign: 'right'
+                body: tableData,
+                startY: yPos,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    lineColor: [
+                        200,
+                        200,
+                        200
+                    ]
                 },
-                3: {
-                    halign: 'right'
+                headStyles: {
+                    fillColor: headColor,
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ],
+                    fontStyle: 'bold',
+                    halign: 'center'
                 },
-                4: {
-                    halign: 'right'
-                } // Assuming column 4 is often a total
-            },
-            didDrawPage: (data)=>{
-                // Add footer with page numbers
-                doc.setFontSize(8);
+                alternateRowStyles: {
+                    fillColor: alternateColor
+                },
+                columnStyles: {
+                    // Apply specific formatting based on report type
+                    ...reportType === 'sales-daily' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'center'
+                        },
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'center'
+                        },
+                        5: {
+                            halign: 'left'
+                        },
+                        6: {
+                            halign: 'left'
+                        },
+                        7: {
+                            halign: 'left'
+                        } // Employee Name
+                    } : reportType === 'sales-monthly' ? {
+                        0: {
+                            halign: 'center'
+                        },
+                        1: {
+                            halign: 'right'
+                        },
+                        2: {
+                            halign: 'center'
+                        },
+                        3: {
+                            halign: 'right'
+                        } // Average
+                    } : {
+                        // Default formatting for other reports
+                        2: {
+                            halign: 'right'
+                        },
+                        3: {
+                            halign: 'right'
+                        },
+                        4: {
+                            halign: 'right'
+                        }
+                    }
+                },
+                didDrawPage: ()=>{
+                    // Add footer with page numbers
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                        align: 'center'
+                    });
+                }
+            });
+        } else {
+            console.log('No data for table, skipping table creation');
+            // Add a message indicating no data
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text("No data available for the selected filters", 105, yPos + 20, {
+                align: 'center'
+            });
+            // Update yPos for chart placement
+            yPos += 30;
+        }
+        // Get the final Y position after the table
+        // Use the current yPos if no table was created or autoTable is not available
+        let finalY = yPos;
+        if (doc.autoTable && doc.autoTable.previous) {
+            finalY = doc.autoTable.previous.finalY;
+            console.log('Final Y position from autoTable:', finalY);
+        } else {
+            console.log('Using default Y position:', finalY);
+        }
+        // Always add a page break for the chart
+        doc.addPage();
+        // Add chart after the table if available (for sales reports)
+        if (reportType.startsWith('sales-')) {
+            try {
+                console.log('Adding chart to PDF on new page');
+                // Add a title for the chart section
+                doc.setFontSize(16);
+                doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
+                // Use different title based on report type
+                const chartTitle = reportType === 'sales-category' ? "Sales Distribution by Category" : "Sales Trend Chart";
+                doc.text(chartTitle, 105, 20, {
+                    align: 'center'
+                });
+                // Create a simple chart directly in the PDF
+                if ("object" !== 'undefined' && window.chartData) {
+                    // Validate chart data
+                    if (!Array.isArray(window.chartData)) {
+                        console.error('Chart data is not an array:', window.chartData);
+                        throw new Error('Invalid chart data format');
+                    }
+                    if (window.chartData.length === 0) {
+                        console.warn('Chart data array is empty');
+                        doc.setFontSize(12);
+                        doc.setTextColor(100, 100, 100);
+                        doc.text("No data available for chart visualization", 105, 60, {
+                            align: 'center'
+                        });
+                        return;
+                    }
+                    const chartData = window.chartData;
+                    console.log('Using chart data from window object:', chartData.length, 'data points');
+                    // Set up chart dimensions for A4 page (210 x 297 mm)
+                    const pageWidth = doc.internal.pageSize.width;
+                    // Center the chart on the page with proper margins
+                    const chartX = 25;
+                    const chartY = 40;
+                    const chartWidth = pageWidth - 50; // 25mm margins on each side
+                    const chartHeight = 120; // Taller chart
+                    // Calculate bar spacing and width based on data points
+                    // Adjust based on number of data points to prevent overcrowding
+                    const maxBars = Math.min(chartData.length, 15); // Limit to 15 data points max
+                    const barSpacing = chartWidth / (maxBars * 2);
+                    const barWidth = Math.min(barSpacing * 0.8, 12); // Limit max width
+                    // Find max values for scaling
+                    let maxAmount = 0;
+                    let maxTransactions = 0;
+                    // Validate and find max values
+                    chartData.forEach((item)=>{
+                        // Ensure values are numbers and valid
+                        if (item && typeof item.amount !== 'undefined') {
+                            const amount = typeof item.amount === 'number' ? item.amount : parseFloat(item.amount) || 0;
+                            maxAmount = Math.max(maxAmount, amount);
+                        }
+                        if (item && typeof item.transactions !== 'undefined') {
+                            const transactions = typeof item.transactions === 'number' ? item.transactions : parseFloat(item.transactions) || 0;
+                            maxTransactions = Math.max(maxTransactions, transactions);
+                        }
+                    });
+                    console.log('Chart max values:', {
+                        maxAmount,
+                        maxTransactions
+                    });
+                    // Ensure we have non-zero max values
+                    if (maxAmount <= 0) maxAmount = 1000;
+                    if (maxTransactions <= 0) maxTransactions = 10;
+                    // Add some padding to max values
+                    maxAmount = maxAmount * 1.1;
+                    maxTransactions = maxTransactions * 1.1;
+                    // Draw chart axes
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.5);
+                    // Y-axis
+                    doc.line(chartX, chartY, chartX, chartY + chartHeight);
+                    // X-axis
+                    doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+                    // Determine which data points to show if we have too many
+                    let dataToShow = chartData;
+                    if (chartData.length > maxBars) {
+                        // If we have too many data points, sample them evenly
+                        const step = Math.ceil(chartData.length / maxBars);
+                        dataToShow = [];
+                        for(let i = 0; i < chartData.length; i += step){
+                            dataToShow.push(chartData[i]);
+                        }
+                        // Always include the last data point
+                        if (dataToShow[dataToShow.length - 1] !== chartData[chartData.length - 1]) {
+                            dataToShow.push(chartData[chartData.length - 1]);
+                        }
+                    }
+                    // Draw chart based on report type
+                    if (reportType === 'sales-category') {
+                        // Draw pie chart for category data
+                        const centerX = chartX + chartWidth / 2;
+                        const centerY = chartY + chartHeight / 2;
+                        const radius = Math.min(chartWidth, chartHeight) / 2.5;
+                        // Calculate total for percentages
+                        const total = chartData.reduce((sum, item)=>sum + (typeof item.value === 'number' ? item.value : 0), 0);
+                        // Draw pie slices
+                        let startAngle = 0;
+                        let endAngle = 0;
+                        // Draw legend
+                        doc.setFontSize(10);
+                        const legendX = chartX + 10;
+                        let legendY = chartY + 10;
+                        const legendSpacing = 15;
+                        chartData.forEach((item, index)=>{
+                            const value = typeof item.value === 'number' ? item.value : 0;
+                            const percentage = total > 0 ? value / total : 0;
+                            endAngle = startAngle + percentage * 2 * Math.PI;
+                            // Set slice color
+                            const colorIndex = index % COLORS.length;
+                            const r = parseInt(COLORS[colorIndex].substring(1, 3), 16);
+                            const g = parseInt(COLORS[colorIndex].substring(3, 5), 16);
+                            const b = parseInt(COLORS[colorIndex].substring(5, 7), 16);
+                            // Draw pie slice
+                            doc.setFillColor(r, g, b);
+                            doc.setDrawColor(255, 255, 255);
+                            doc.setLineWidth(1);
+                            // Draw the slice
+                            doc.circle(centerX, centerY, radius, 'S');
+                            doc.setLineWidth(0.5);
+                            // Calculate angles for the slice
+                            // Draw slice
+                            if (percentage > 0) {
+                                doc.moveTo(centerX, centerY);
+                                doc.lineTo(centerX + Math.cos(startAngle) * radius, centerY + Math.sin(startAngle) * radius);
+                                // Draw arc (approximated with lines)
+                                const steps = Math.max(10, Math.floor(percentage * 60));
+                                for(let i = 1; i <= steps; i++){
+                                    const angle = startAngle + i / steps * (endAngle - startAngle);
+                                    doc.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                                }
+                                doc.lineTo(centerX, centerY);
+                                doc.fill();
+                            }
+                            // Add to legend
+                            doc.setFillColor(r, g, b);
+                            doc.rect(legendX, legendY - 6, 10, 10, 'F');
+                            doc.setTextColor(0, 0, 0);
+                            doc.text(`${item.name}: ${(percentage * 100).toFixed(1)}%`, legendX + 15, legendY);
+                            legendY += legendSpacing;
+                            // Update start angle for next slice
+                            startAngle = endAngle;
+                        });
+                    } else if (reportType === 'sales-monthly') {
+                        // Check if we have enough data points for a line chart
+                        if (dataToShow.length <= 1) {
+                            // Not enough data for a line chart
+                            doc.setFontSize(12);
+                            doc.setTextColor(100, 100, 100);
+                            doc.text("Not enough data points for chart visualization", chartX + chartWidth / 2, chartY + chartHeight / 2, {
+                                align: 'center'
+                            });
+                            return; // Exit early
+                        }
+                        // Draw line chart for monthly data
+                        const pointSpacing = chartWidth / Math.max(dataToShow.length - 1, 1);
+                        // Draw lines
+                        // Amount line (dark gold)
+                        doc.setDrawColor(184, 134, 11); // DarkGoldenRod
+                        doc.setLineWidth(2);
+                        // Draw amount line
+                        let prevX, prevY;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.amount !== 'number' || isNaN(item.amount)) {
+                                console.warn('Invalid amount value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.amount / maxAmount * chartHeight;
+                            // Draw point
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                        });
+                        // Transactions line (gold)
+                        doc.setDrawColor(218, 165, 32); // GoldenRod
+                        doc.setLineWidth(2);
+                        // Draw transactions line
+                        prevX = undefined;
+                        prevY = undefined;
+                        dataToShow.forEach((item, index)=>{
+                            // Skip items with invalid data
+                            if (typeof item.transactions !== 'number' || isNaN(item.transactions)) {
+                                console.warn('Invalid transactions value in chart data:', item);
+                                return;
+                            }
+                            const x = chartX + index * pointSpacing;
+                            const y = chartY + chartHeight - item.transactions / maxTransactions * chartHeight;
+                            // Draw point
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.circle(x, y, 3, 'F');
+                            // Draw line segment
+                            if (index > 0 && prevX !== undefined && prevY !== undefined) {
+                                doc.line(prevX, prevY, x, y);
+                            }
+                            prevX = x;
+                            prevY = y;
+                            // Add month label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.month || item.date, x, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
+                        });
+                    } else {
+                        // Draw bar chart for daily data
+                        dataToShow.forEach((item, index)=>{
+                            const x = chartX + index * barSpacing * 2 + barSpacing;
+                            // Amount bar (dark gold)
+                            const amountHeight = item.amount / maxAmount * chartHeight;
+                            doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                            doc.rect(x, chartY + chartHeight - amountHeight, barWidth, amountHeight, 'F');
+                            // Transactions bar (gold)
+                            const transactionsHeight = item.transactions / maxTransactions * chartHeight;
+                            doc.setFillColor(218, 165, 32); // GoldenRod
+                            doc.rect(x + barWidth, chartY + chartHeight - transactionsHeight, barWidth, transactionsHeight, 'F');
+                            // Add date label
+                            doc.setFontSize(7);
+                            doc.setTextColor(100, 100, 100);
+                            // Rotate labels if we have many data points
+                            if (dataToShow.length > 7) {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 10, {
+                                    align: 'right',
+                                    angle: 45
+                                });
+                            } else {
+                                doc.text(item.date, x + barWidth / 2, chartY + chartHeight + 8, {
+                                    align: 'center'
+                                });
+                            }
+                        });
+                    }
+                    // Calculate legend position based on chart dimensions
+                    const legendY = chartY + chartHeight + (dataToShow.length > 7 ? 25 : 15);
+                    // Add legend with better spacing
+                    doc.setFillColor(184, 134, 11); // DarkGoldenRod
+                    doc.rect(chartX, legendY, 10, 5, 'F');
+                    doc.setFontSize(9);
+                    doc.setTextColor(50, 50, 50);
+                    doc.text('Sales Amount', chartX + 15, legendY + 4);
+                    doc.setFillColor(218, 165, 32); // GoldenRod
+                    doc.rect(chartX + 80, legendY, 10, 5, 'F');
+                    doc.text('Transactions', chartX + 95, legendY + 4);
+                    // Add grid lines for better readability
+                    doc.setDrawColor(220, 220, 220);
+                    doc.setLineWidth(0.2);
+                    // Horizontal grid lines
+                    for(let i = 1; i < 4; i++){
+                        const y = chartY + chartHeight / 4 * i;
+                        doc.line(chartX, y, chartX + chartWidth, y);
+                    }
+                    // Add Y-axis labels with better formatting
+                    doc.setFontSize(8);
+                    doc.setTextColor(80, 80, 80);
+                    // Format large numbers with K/M suffix
+                    const formatLargeNumber = (num)=>{
+                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                        return num.toString();
+                    };
+                    // Amount labels (left)
+                    doc.text(formatLargeNumber(maxAmount), chartX - 3, chartY + 5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.75), chartX - 3, chartY + chartHeight * 0.25, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.5), chartX - 3, chartY + chartHeight * 0.5, {
+                        align: 'right'
+                    });
+                    doc.text(formatLargeNumber(maxAmount * 0.25), chartX - 3, chartY + chartHeight * 0.75, {
+                        align: 'right'
+                    });
+                    doc.text('0', chartX - 3, chartY + chartHeight, {
+                        align: 'right'
+                    });
+                    // Transactions labels (right)
+                    doc.text(formatLargeNumber(maxTransactions), chartX + chartWidth + 3, chartY + 5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.75), chartX + chartWidth + 3, chartY + chartHeight * 0.25, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.5), chartX + chartWidth + 3, chartY + chartHeight * 0.5, {
+                        align: 'left'
+                    });
+                    doc.text(formatLargeNumber(maxTransactions * 0.25), chartX + chartWidth + 3, chartY + chartHeight * 0.75, {
+                        align: 'left'
+                    });
+                    doc.text('0', chartX + chartWidth + 3, chartY + chartHeight, {
+                        align: 'left'
+                    });
+                    // Add axis titles
+                    doc.setFontSize(8);
+                    doc.setTextColor(184, 134, 11); // DarkGoldenRod
+                    doc.text("Sales Amount (LKR)", chartX - 15, chartY - 10, {
+                        angle: 90
+                    });
+                    doc.setTextColor(218, 165, 32); // GoldenRod
+                    doc.text("Transactions", chartX + chartWidth + 15, chartY - 10, {
+                        angle: 270
+                    });
+                    // Add a note about the chart
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart shows sales amount and transaction count trends over the selected period", 105, legendY + 20, {
+                        align: 'center'
+                    });
+                } else {
+                    // If no chart data is available, add a message
+                    doc.setFontSize(12);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text("Chart visualization not available - no data", 105, 60, {
+                        align: 'center'
+                    });
+                    console.log('No chart data available in window.chartData');
+                }
+            } catch (chartErr) {
+                console.error('Error adding chart to PDF:', chartErr);
+                // If there's an error, add a message
+                doc.setFontSize(12);
                 doc.setTextColor(100, 100, 100);
-                doc.text(`S Lanaka Jewellery - Page ${doc.internal.getNumberOfPages()}`, 105, doc.internal.pageSize.height - 10, {
+                doc.text("Chart visualization not available - error occurred", 105, 60, {
                     align: 'center'
                 });
             }
-        });
+        } else {
+            console.log('Chart not added to PDF - not a sales report');
+        }
         // Save the PDF
-        doc.save(`${response.data.filename}.pdf`);
+        doc.save(`${filename}.pdf`);
         return {
             success: true
         };
@@ -1032,7 +1573,10 @@ function GoldStockReportPage() {
                                                 label: {
                                                     value: 'Weight (g)',
                                                     angle: -90,
-                                                    position: 'insideLeft'
+                                                    position: 'insideLeft',
+                                                    style: {
+                                                        fill: '#B8860B'
+                                                    }
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
@@ -1046,11 +1590,14 @@ function GoldStockReportPage() {
                                                 label: {
                                                     value: 'Value (LKR)',
                                                     angle: 90,
-                                                    position: 'insideRight'
+                                                    position: 'insideRight',
+                                                    style: {
+                                                        fill: '#DAA520'
+                                                    }
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 273,
+                                                lineNumber: 283,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Tooltip$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tooltip"], {
@@ -1067,39 +1614,57 @@ function GoldStockReportPage() {
                                                         value,
                                                         name
                                                     ];
+                                                },
+                                                contentStyle: {
+                                                    backgroundColor: '#FFF8DC',
+                                                    borderColor: '#B8860B',
+                                                    border: '1px solid #B8860B'
+                                                },
+                                                labelStyle: {
+                                                    color: '#B8860B'
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 274,
+                                                lineNumber: 294,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$component$2f$Legend$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Legend"], {}, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 279,
+                                                lineNumber: 307,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Bar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Bar"], {
                                                 yAxisId: "left",
                                                 dataKey: "weight",
                                                 name: "Weight (g)",
-                                                fill: "#B8860B"
+                                                fill: "#B8860B",
+                                                radius: [
+                                                    4,
+                                                    4,
+                                                    0,
+                                                    0
+                                                ]
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 280,
+                                                lineNumber: 308,
                                                 columnNumber: 19
                                             }, this),
-                                            " ",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$recharts$2f$es6$2f$cartesian$2f$Bar$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Bar"], {
                                                 yAxisId: "right",
                                                 dataKey: "value",
                                                 name: "Value (LKR)",
-                                                fill: "#DAA520"
+                                                fill: "#DAA520",
+                                                radius: [
+                                                    4,
+                                                    4,
+                                                    0,
+                                                    0
+                                                ]
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 281,
+                                                lineNumber: 315,
                                                 columnNumber: 19
-                                            }, this),
-                                            " "
+                                            }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
@@ -1132,12 +1697,12 @@ function GoldStockReportPage() {
                                     children: "Gold Stock Details"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                    lineNumber: 290,
+                                    lineNumber: 330,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                lineNumber: 289,
+                                lineNumber: 329,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1155,7 +1720,7 @@ function GoldStockReportPage() {
                                                         children: "Gold Purity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 296,
+                                                        lineNumber: 336,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1164,7 +1729,7 @@ function GoldStockReportPage() {
                                                         children: "Weight"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 299,
+                                                        lineNumber: 339,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1173,7 +1738,7 @@ function GoldStockReportPage() {
                                                         children: "Price per Gram"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 302,
+                                                        lineNumber: 342,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1182,7 +1747,7 @@ function GoldStockReportPage() {
                                                         children: "Total Value"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 305,
+                                                        lineNumber: 345,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1191,18 +1756,18 @@ function GoldStockReportPage() {
                                                         children: "Description"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 308,
+                                                        lineNumber: 348,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 295,
+                                                lineNumber: 335,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                            lineNumber: 294,
+                                            lineNumber: 334,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1218,7 +1783,7 @@ function GoldStockReportPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 316,
+                                                            lineNumber: 356,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1226,7 +1791,7 @@ function GoldStockReportPage() {
                                                             children: formatWeight(item.weight)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 319,
+                                                            lineNumber: 359,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1234,7 +1799,7 @@ function GoldStockReportPage() {
                                                             children: formatCurrency(item.price_per_gram)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 322,
+                                                            lineNumber: 362,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1242,7 +1807,7 @@ function GoldStockReportPage() {
                                                             children: formatCurrency(item.value)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 325,
+                                                            lineNumber: 365,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1250,35 +1815,35 @@ function GoldStockReportPage() {
                                                             children: item.description || '-'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 328,
+                                                            lineNumber: 368,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, index, true, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                    lineNumber: 315,
+                                                    lineNumber: 355,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                            lineNumber: 313,
+                                            lineNumber: 353,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                    lineNumber: 293,
+                                    lineNumber: 333,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                lineNumber: 292,
+                                lineNumber: 332,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                        lineNumber: 288,
+                        lineNumber: 328,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1291,12 +1856,12 @@ function GoldStockReportPage() {
                                     children: "Recent Gold Transactions"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                    lineNumber: 341,
+                                    lineNumber: 381,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                lineNumber: 340,
+                                lineNumber: 380,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1314,7 +1879,7 @@ function GoldStockReportPage() {
                                                         children: "Date"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 347,
+                                                        lineNumber: 387,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1323,7 +1888,7 @@ function GoldStockReportPage() {
                                                         children: "Purity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 350,
+                                                        lineNumber: 390,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1332,7 +1897,7 @@ function GoldStockReportPage() {
                                                         children: "Quantity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 353,
+                                                        lineNumber: 393,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1341,7 +1906,7 @@ function GoldStockReportPage() {
                                                         children: "Price per Gram"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 356,
+                                                        lineNumber: 396,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -1350,18 +1915,18 @@ function GoldStockReportPage() {
                                                         children: "Description"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                        lineNumber: 359,
+                                                        lineNumber: 399,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                lineNumber: 346,
+                                                lineNumber: 386,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                            lineNumber: 345,
+                                            lineNumber: 385,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -1374,7 +1939,7 @@ function GoldStockReportPage() {
                                                             children: new Date(transaction.last_updated).toLocaleDateString()
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 367,
+                                                            lineNumber: 407,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1385,7 +1950,7 @@ function GoldStockReportPage() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 370,
+                                                            lineNumber: 410,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1393,7 +1958,7 @@ function GoldStockReportPage() {
                                                             children: formatWeight(transaction.quantity_in_grams)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 373,
+                                                            lineNumber: 413,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1401,7 +1966,7 @@ function GoldStockReportPage() {
                                                             children: formatCurrency(transaction.price_per_gram)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 376,
+                                                            lineNumber: 416,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1409,35 +1974,35 @@ function GoldStockReportPage() {
                                                             children: transaction.description || '-'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                            lineNumber: 379,
+                                                            lineNumber: 419,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, transaction.stock_id, true, {
                                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                                    lineNumber: 366,
+                                                    lineNumber: 406,
                                                     columnNumber: 21
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                            lineNumber: 364,
+                                            lineNumber: 404,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                    lineNumber: 344,
+                                    lineNumber: 384,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                                lineNumber: 343,
+                                lineNumber: 383,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                        lineNumber: 339,
+                        lineNumber: 379,
                         columnNumber: 11
                     }, this)
                 ]
@@ -1452,22 +2017,22 @@ function GoldStockReportPage() {
                             children: "No gold stock data available. Please try refreshing."
                         }, void 0, false, {
                             fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                            lineNumber: 393,
+                            lineNumber: 433,
                             columnNumber: 15
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                        lineNumber: 392,
+                        lineNumber: 432,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                    lineNumber: 391,
+                    lineNumber: 431,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/DashView/reports/inventory/gold-stock/page.tsx",
-                lineNumber: 390,
+                lineNumber: 430,
                 columnNumber: 9
             }, this)
         ]

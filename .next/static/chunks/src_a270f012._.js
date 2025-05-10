@@ -226,6 +226,17 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // Import jsPDF and autoTable dynamically
         const { jsPDF } = await __turbopack_context__.r("[project]/node_modules/jspdf/dist/jspdf.es.min.js [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
         const { default: autoTable } = await __turbopack_context__.r("[project]/node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.mjs [app-client] (ecmascript, async loader)")(__turbopack_context__.i);
+        // Define gold-themed colors for charts
+        const COLORS = [
+            '#D4AF37',
+            '#CFB53B',
+            '#B8860B',
+            '#DAA520',
+            '#FFD700',
+            '#FFC125',
+            '#FFBF00',
+            '#F0E68C'
+        ];
         // Create a new PDF document
         const doc = new jsPDF();
         // Add company header
@@ -328,7 +339,42 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
         // For sales reports, ensure we have the correct columns in the right order
         let formattedData = data;
         let headers = [];
-        if (reportType.startsWith('sales-') && data.length > 0) {
+        // Special handling for category report
+        if (reportType === 'sales-category' && window.chartData && window.chartData.length > 0) {
+            console.log('Using chart data for category report PDF');
+            // Use the category data from the chart
+            const categoryData = window.chartData;
+            // Define the expected columns for category report
+            headers = [
+                'Category',
+                'Quantity Sold',
+                'Sales Amount',
+                '% of Total Sales'
+            ];
+            // Calculate total sales for percentage
+            const totalSales = categoryData.reduce((sum, item)=>sum + item.value, 0);
+            // Format the data
+            formattedData = categoryData.map((item)=>{
+                const percentage = (item.value / totalSales * 100).toFixed(2) + '%';
+                return {
+                    category: item.name,
+                    quantity: '0',
+                    amount: item.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    percentage: percentage
+                };
+            });
+            // Try to get quantity data from the page if available
+            if ("object" !== 'undefined' && window.categoryQuantities) {
+                formattedData.forEach((item)=>{
+                    if (window.categoryQuantities[item.category]) {
+                        item.quantity = window.categoryQuantities[item.category];
+                    }
+                });
+            }
+        } else if (reportType.startsWith('sales-') && data.length > 0) {
             // Define the expected columns for sales reports
             const expectedColumns = [
                 'sale_id',
@@ -569,7 +615,9 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                 // Add a title for the chart section
                 doc.setFontSize(16);
                 doc.setTextColor(titleColor[0], titleColor[1], titleColor[2]);
-                doc.text("Sales Trend Chart", 105, 20, {
+                // Use different title based on report type
+                const chartTitle = reportType === 'sales-category' ? "Sales Distribution by Category" : "Sales Trend Chart";
+                doc.text(chartTitle, 105, 20, {
                     align: 'center'
                 });
                 // Create a simple chart directly in the PDF
@@ -649,7 +697,61 @@ const exportReportPDF = async (reportType, params = {}, chartRef = null)=>{
                         }
                     }
                     // Draw chart based on report type
-                    if (reportType === 'sales-monthly') {
+                    if (reportType === 'sales-category') {
+                        // Draw pie chart for category data
+                        const centerX = chartX + chartWidth / 2;
+                        const centerY = chartY + chartHeight / 2;
+                        const radius = Math.min(chartWidth, chartHeight) / 2.5;
+                        // Calculate total for percentages
+                        const total = chartData.reduce((sum, item)=>sum + (typeof item.value === 'number' ? item.value : 0), 0);
+                        // Draw pie slices
+                        let startAngle = 0;
+                        let endAngle = 0;
+                        // Draw legend
+                        doc.setFontSize(10);
+                        const legendX = chartX + 10;
+                        let legendY = chartY + 10;
+                        const legendSpacing = 15;
+                        chartData.forEach((item, index)=>{
+                            const value = typeof item.value === 'number' ? item.value : 0;
+                            const percentage = total > 0 ? value / total : 0;
+                            endAngle = startAngle + percentage * 2 * Math.PI;
+                            // Set slice color
+                            const colorIndex = index % COLORS.length;
+                            const r = parseInt(COLORS[colorIndex].substring(1, 3), 16);
+                            const g = parseInt(COLORS[colorIndex].substring(3, 5), 16);
+                            const b = parseInt(COLORS[colorIndex].substring(5, 7), 16);
+                            // Draw pie slice
+                            doc.setFillColor(r, g, b);
+                            doc.setDrawColor(255, 255, 255);
+                            doc.setLineWidth(1);
+                            // Draw the slice
+                            doc.circle(centerX, centerY, radius, 'S');
+                            doc.setLineWidth(0.5);
+                            // Calculate angles for the slice
+                            // Draw slice
+                            if (percentage > 0) {
+                                doc.moveTo(centerX, centerY);
+                                doc.lineTo(centerX + Math.cos(startAngle) * radius, centerY + Math.sin(startAngle) * radius);
+                                // Draw arc (approximated with lines)
+                                const steps = Math.max(10, Math.floor(percentage * 60));
+                                for(let i = 1; i <= steps; i++){
+                                    const angle = startAngle + i / steps * (endAngle - startAngle);
+                                    doc.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                                }
+                                doc.lineTo(centerX, centerY);
+                                doc.fill();
+                            }
+                            // Add to legend
+                            doc.setFillColor(r, g, b);
+                            doc.rect(legendX, legendY - 6, 10, 10, 'F');
+                            doc.setTextColor(0, 0, 0);
+                            doc.text(`${item.name}: ${(percentage * 100).toFixed(1)}%`, legendX + 15, legendY);
+                            legendY += legendSpacing;
+                            // Update start angle for next slice
+                            startAngle = endAngle;
+                        });
+                    } else if (reportType === 'sales-monthly') {
                         // Check if we have enough data points for a line chart
                         if (dataToShow.length <= 1) {
                             // Not enough data for a line chart
