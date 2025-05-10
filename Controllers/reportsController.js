@@ -3,48 +3,51 @@ import { format } from 'date-fns';
 
 // Helper function to format date for SQL queries
 const formatDateForSQL = (date) => {
-  return format(date, 'yyyy-MM-dd');
+  // Include time component for more precise filtering
+  return format(date, 'yyyy-MM-dd HH:mm:ss');
 };
 
 // Helper function to get date range based on period
 const getDateRange = (period) => {
-  const today = new Date();
-  let startDate = new Date();
+  // Create date at the beginning of the current day (00:00:00)
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let startDate = new Date(today);
+  let endDate = new Date(today);
+
+  // Set end date to end of current day (23:59:59)
+  endDate.setHours(23, 59, 59, 999);
 
   switch (period) {
     case 'today':
-      startDate = today;
+      // Start date is already beginning of today, end date is end of today
       break;
     case 'yesterday':
-      startDate = new Date(today);
       startDate.setDate(today.getDate() - 1);
+      endDate.setDate(today.getDate() - 1);
       break;
     case 'last7':
-      startDate = new Date(today);
-      startDate.setDate(today.getDate() - 7);
+      startDate.setDate(today.getDate() - 6); // 7 days including today
       break;
     case 'last30':
-      startDate = new Date(today);
-      startDate.setDate(today.getDate() - 30);
+      startDate.setDate(today.getDate() - 29); // 30 days including today
       break;
     case 'thisMonth':
       startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
       break;
     case 'lastMonth':
       startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-      return {
-        startDate: formatDateForSQL(startDate),
-        endDate: formatDateForSQL(endOfLastMonth)
-      };
+      endDate = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+      break;
     default:
-      startDate = new Date(today);
-      startDate.setDate(today.getDate() - 30); // Default to last 30 days
+      startDate.setDate(today.getDate() - 29); // Default to last 30 days including today
   }
 
+  // Format dates for SQL
   return {
     startDate: formatDateForSQL(startDate),
-    endDate: formatDateForSQL(today)
+    endDate: formatDateForSQL(endDate)
   };
 };
 
@@ -52,6 +55,9 @@ const getDateRange = (period) => {
 export const getSalesReport = (req, res) => {
   try {
     const { period = 'last30', startDate, endDate, branchId } = req.query;
+
+    // Log the requested period for debugging
+    console.log('Sales report requested with period:', period);
 
     // Determine date range
     const dateRange = startDate && endDate
@@ -98,6 +104,9 @@ export const getSalesReport = (req, res) => {
           GROUP BY DATE(sale_date)
           ORDER BY date
         `;
+
+        // Log the date range for debugging
+        console.log('Date range for sales by day query:', dateRange.startDate, 'to', dateRange.endDate);
 
         con.query(salesByDayQuery, [dateRange.startDate, dateRange.endDate, ...branchParams], (byDayErr, salesByDay) => {
           if (byDayErr) {
@@ -796,11 +805,15 @@ export const getInventoryValuationReport = (req, res) => {
  */
 export const exportReportCSV = async (req, res) => {
   try {
-    const { reportType, branchId, format } = req.query;
+    const { reportType, branchId, category, format } = req.query;
 
     // Base WHERE clause for branch filtering
     const branchFilter = branchId ? 'AND ji.branch_id = ?' : '';
     const branchParams = branchId ? [branchId] : [];
+
+    // Category filtering
+    const categoryFilter = category ? 'AND ji.category = ?' : '';
+    const allParams = category ? [...branchParams, category] : branchParams;
 
     let data = [];
     let filename = `${reportType}_report_${new Date().toISOString().split('T')[0]}`;
@@ -822,11 +835,11 @@ export const exportReportCSV = async (req, res) => {
             b.branch_name
           FROM jewellery_items ji
           LEFT JOIN branches b ON ji.branch_id = b.branch_id
-          WHERE ji.in_stock > 0 ${branchFilter}
+          WHERE ji.in_stock > 0 ${branchFilter} ${categoryFilter}
           ORDER BY ji.category, ji.product_title
         `;
 
-        const [currentStockItems] = await con.promise().query(currentStockQuery, [...branchParams]);
+        const [currentStockItems] = await con.promise().query(currentStockQuery, [...allParams]);
         data = currentStockItems;
         filename = `current_stock_report_${new Date().toISOString().split('T')[0]}`;
         break;
