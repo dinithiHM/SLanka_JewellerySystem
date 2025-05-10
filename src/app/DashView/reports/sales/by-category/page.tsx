@@ -52,8 +52,8 @@ interface SalesData {
   };
 }
 
-// Colors for the pie chart
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B', '#6B66FF', '#FFD166'];
+// Gold-themed colors for the pie chart
+const COLORS = ['#D4AF37', '#CFB53B', '#B8860B', '#DAA520', '#FFD700', '#FFC125', '#FFBF00', '#F0E68C'];
 
 export default function SalesByCategoryReportPage() {
   const [dateRange, setDateRange] = useState('last30');
@@ -101,10 +101,25 @@ export default function SalesByCategoryReportPage() {
     if (salesData && salesData.topCategories && salesData.topCategories.length > 0) {
       // Store chart data in window object for PDF export
       if (typeof window !== 'undefined') {
+        // Store chart data for the pie chart
         window.chartData = salesData.topCategories.map(category => ({
           name: category.category_name,
-          value: category.totalAmount
+          value: parseFloat(category.totalAmount) || 0
         }));
+
+        // Store quantity data separately for PDF export
+        window.categoryQuantities = {};
+        salesData.topCategories.forEach(category => {
+          window.categoryQuantities[category.category_name] = category.totalQuantity;
+        });
+
+        // Force a re-render of the chart
+        const timer = setTimeout(() => {
+          // This empty state update will trigger a re-render
+          setSalesData({...salesData});
+        }, 100);
+
+        return () => clearTimeout(timer);
       }
     }
   }, [salesData]);
@@ -119,9 +134,10 @@ export default function SalesByCategoryReportPage() {
       return [{ name: 'No Data', value: 1 }];
     }
 
+    // Parse the totalAmount as a number to ensure it's treated as a numeric value
     return salesData.topCategories.map(category => ({
       name: category.category_name,
-      value: category.totalAmount
+      value: parseFloat(category.totalAmount) || 0
     }));
   };
 
@@ -158,8 +174,13 @@ export default function SalesByCategoryReportPage() {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
-          <p className="font-medium">{payload[0].name}</p>
-          <p className="text-sm">{formatCurrency(payload[0].value)}</p>
+          <p className="font-medium text-gray-900">{payload[0].name}</p>
+          <p className="text-sm font-bold text-yellow-600">{formatCurrency(payload[0].value)}</p>
+          {salesData?.summary?.totalSales && (
+            <p className="text-xs text-gray-500 mt-1">
+              {((payload[0].value / salesData.summary.totalSales) * 100).toFixed(2)}% of total sales
+            </p>
+          )}
         </div>
       );
     }
@@ -306,17 +327,30 @@ export default function SalesByCategoryReportPage() {
                     cy="50%"
                     labelLine={true}
                     outerRadius={120}
-                    fill="#8884d8"
+                    innerRadius={0}
+                    paddingAngle={0}
+                    fill="#D4AF37"
                     dataKey="value"
                     nameKey="name"
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    isAnimationActive={true}
                   >
                     {prepareCategoryChartData().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        stroke="#fff"
+                        strokeWidth={1}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    iconType="circle"
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
