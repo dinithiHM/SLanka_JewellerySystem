@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Filter, Download, Printer, BarChart as BarChartIcon, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Calendar, Filter, Download, Printer, BarChart as BarChartIcon, RefreshCw, ArrowLeft, FileText } from 'lucide-react';
 import Link from 'next/link';
-import { getSalesReport } from '@/services/reportService';
+import { getSalesReport, exportReportCSV, exportReportPDF } from '@/services/reportService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 
 interface SalesData {
@@ -58,14 +58,16 @@ interface SalesData {
   };
 }
 
-// Colors for the bar chart
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B', '#6B66FF', '#FFD166'];
+// Gold-themed colors for the bar chart
+const COLORS = ['#D4AF37', '#CFB53B', '#B8860B', '#DAA520', '#FFD700', '#FFC125', '#FFBF00', '#F0E68C'];
 
 export default function SalesByBranchReportPage() {
   const [dateRange, setDateRange] = useState('last30');
   const [isLoading, setIsLoading] = useState(true);
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = React.useRef<HTMLDivElement>(null);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -101,12 +103,67 @@ export default function SalesByBranchReportPage() {
     fetchSalesData();
   };
 
+  // Handle export to CSV
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const params = { period: dateRange };
+      await exportReportCSV('sales-branch', params);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      setError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+
+      // Prepare chart data and ensure it's stored in window object
+      const chartData = prepareBranchChartData();
+      console.log('Chart data for PDF export:', chartData);
+
+      // Make sure the chart data is stored in the window object
+      if (typeof window !== 'undefined') {
+        window.chartData = chartData;
+      }
+
+      // Set a small delay to ensure data is ready
+      setTimeout(async () => {
+        try {
+          const params = { period: dateRange };
+
+          // Export the PDF with chart data
+          await exportReportPDF('sales-branch', params, chartRef);
+          console.log('PDF export completed');
+        } catch (exportErr) {
+          console.error('Error in export after timeout:', exportErr);
+          setError('Failed to export PDF. Please try again.');
+        } finally {
+          setIsExporting(false);
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      setError('Failed to export PDF. Please try again.');
+      setIsExporting(false);
+    }
+  };
+
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Prepare chart data for branches
   const prepareBranchChartData = () => {
     if (!salesData?.salesByBranch || salesData.salesByBranch.length === 0) {
       return [{ name: 'No Data', value: 1 }];
     }
-    
+
     return salesData.salesByBranch.map(branch => ({
       name: branch.branch_name,
       sales: branch.total,
@@ -118,10 +175,10 @@ export default function SalesByBranchReportPage() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
-          <p className="font-medium">{label}</p>
-          <p className="text-sm text-blue-600">{`Sales: ${formatCurrency(payload[0].value)}`}</p>
-          <p className="text-sm text-green-600">{`Transactions: ${payload[1].value}`}</p>
+        <div className="bg-amber-50 p-3 border border-amber-700 shadow-md rounded-md">
+          <p className="font-medium text-amber-800">{label}</p>
+          <p className="text-sm text-amber-900 font-semibold">{`Sales: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-sm text-amber-700">{`Transactions: ${payload[1].value}`}</p>
         </div>
       );
     }
@@ -170,13 +227,64 @@ export default function SalesByBranchReportPage() {
 
         <div className="flex items-center space-x-2">
           {/* Export Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </button>
-          
+          <div className="relative inline-block text-left">
+            <div>
+              <button
+                type="button"
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                id="export-menu-button"
+                aria-expanded="true"
+                aria-haspopup="true"
+                onClick={() => document.getElementById('export-dropdown')?.classList.toggle('hidden')}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
+            </div>
+            <div
+              id="export-dropdown"
+              className="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="export-menu-button"
+              tabIndex={-1}
+            >
+              <div className="py-1" role="none">
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-0"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </div>
+                </button>
+                <button
+                  className="text-gray-700 block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  role="menuitem"
+                  tabIndex={-1}
+                  id="export-menu-item-1"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Print Button */}
-          <button className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+          <button
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            onClick={handlePrint}
+          >
             <Printer className="h-4 w-4 mr-1" />
             Print
           </button>
@@ -209,22 +317,22 @@ export default function SalesByBranchReportPage() {
                 {salesData?.dateRange?.startDate} to {salesData?.dateRange?.endDate}
               </p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
               <h3 className="text-gray-500 text-sm font-medium">Branches</h3>
               <p className="text-2xl font-bold mt-1">{salesData?.salesByBranch?.length || 0}</p>
               <p className="text-sm text-gray-500 mt-1">Total branches with sales</p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
               <h3 className="text-gray-500 text-sm font-medium">Top Branch</h3>
               <p className="text-2xl font-bold mt-1">
-                {salesData?.salesByBranch && salesData.salesByBranch.length > 0 
-                  ? salesData.salesByBranch[0].branch_name 
+                {salesData?.salesByBranch && salesData.salesByBranch.length > 0
+                  ? salesData.salesByBranch[0].branch_name
                   : 'No data'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                {salesData?.salesByBranch && salesData.salesByBranch.length > 0 
+                {salesData?.salesByBranch && salesData.salesByBranch.length > 0
                   ? formatCurrency(salesData.salesByBranch[0].total)
                   : ''}
               </p>
@@ -234,7 +342,7 @@ export default function SalesByBranchReportPage() {
           {/* Branch Sales Chart */}
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Sales Performance by Branch</h2>
-            <div className="h-80">
+            <div className="h-80" ref={chartRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={prepareBranchChartData()}
@@ -242,16 +350,56 @@ export default function SalesByBranchReportPage() {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                  <Tooltip content={<CustomTooltip />} />
+                  <YAxis
+                    yAxisId="left"
+                    orientation="left"
+                    stroke="#B8860B"
+                    label={{
+                      value: 'Sales Amount (LKR)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: { fill: '#B8860B' }
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#DAA520"
+                    label={{
+                      value: 'Transactions',
+                      angle: 90,
+                      position: 'insideRight',
+                      style: { fill: '#DAA520' }
+                    }}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    contentStyle={{
+                      backgroundColor: '#FFF8DC', // Cornsilk
+                      borderColor: '#B8860B', // DarkGoldenRod
+                      border: '1px solid #B8860B'
+                    }}
+                    labelStyle={{ color: '#B8860B' }}
+                  />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="sales" name="Sales Amount" fill="#8884d8">
+                  <Bar
+                    yAxisId="left"
+                    dataKey="sales"
+                    name="Sales Amount"
+                    fill="#B8860B"
+                    radius={[4, 4, 0, 0]}
+                  >
                     {prepareBranchChartData().map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
-                  <Bar yAxisId="right" dataKey="transactions" name="Transactions" fill="#82ca9d" />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="transactions"
+                    name="Transactions"
+                    fill="#DAA520"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
