@@ -556,20 +556,101 @@ router.post("/create", (req, res) => {
           });
         });
       } else {
-        con.commit((commitErr) => {
-          if (commitErr) {
+        // For inventory items, deduct from stock immediately when advance payment is made
+        const isInventoryItem = !is_custom_order && item_id && item_quantity;
+
+        // First, create the inventory_deductions table if it doesn't exist
+        const createTableSql = `
+          CREATE TABLE IF NOT EXISTS inventory_deductions (
+            deduction_id INT AUTO_INCREMENT PRIMARY KEY,
+            payment_id INT NOT NULL,
+            item_id INT NOT NULL,
+            quantity INT NOT NULL,
+            deduction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_payment (payment_id),
+            FOREIGN KEY (payment_id) REFERENCES advance_payments(payment_id) ON DELETE CASCADE,
+            FOREIGN KEY (item_id) REFERENCES jewellery_items(item_id) ON DELETE RESTRICT
+          )
+        `;
+
+        con.query(createTableSql, (createErr) => {
+          if (createErr) {
             return con.rollback(() => {
-              console.error("Error committing transaction:", commitErr);
-              res.status(500).json({ message: "Database error", error: commitErr.message });
+              console.error("Error creating inventory_deductions table:", createErr);
+              res.status(500).json({ message: "Database error", error: createErr.message });
             });
           }
 
-          res.status(201).json({
-            message: "Advance payment created successfully",
-            payment_id: result.insertId,
-            payment_reference,
-            payment_status
-          });
+          if (isInventoryItem) {
+            console.log(`New advance payment for inventory item ${item_id}. Deducting ${item_quantity} from stock immediately.`);
+
+            // Update inventory
+            const updateStockSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
+            con.query(updateStockSql, [item_quantity, item_id, item_quantity], (stockErr, stockResult) => {
+              if (stockErr) {
+                return con.rollback(() => {
+                  console.error("Error updating inventory stock:", stockErr);
+                  res.status(500).json({ message: "Database error", error: stockErr.message });
+                });
+              }
+
+              if (stockResult.affectedRows === 0) {
+                return con.rollback(() => {
+                  console.error(`Insufficient stock for item ID ${item_id}`);
+                  res.status(400).json({ message: `Insufficient stock for item ID ${item_id}` });
+                });
+              }
+
+              // Record the deduction
+              const recordDeductionSql = `
+                INSERT INTO inventory_deductions (payment_id, item_id, quantity)
+                VALUES (?, ?, ?)
+              `;
+              con.query(recordDeductionSql, [result.insertId, item_id, item_quantity], (recordErr) => {
+                if (recordErr) {
+                  return con.rollback(() => {
+                    console.error("Error recording inventory deduction:", recordErr);
+                    res.status(500).json({ message: "Database error", error: recordErr.message });
+                  });
+                }
+
+                // Commit the transaction
+                con.commit((commitErr) => {
+                  if (commitErr) {
+                    return con.rollback(() => {
+                      console.error("Error committing transaction:", commitErr);
+                      res.status(500).json({ message: "Database error", error: commitErr.message });
+                    });
+                  }
+
+                  res.status(201).json({
+                    message: "Advance payment created successfully and inventory deducted",
+                    payment_id: result.insertId,
+                    payment_reference,
+                    payment_status,
+                    inventory_updated: true
+                  });
+                });
+              });
+            });
+          } else {
+            // No inventory update needed
+            con.commit((commitErr) => {
+              if (commitErr) {
+                return con.rollback(() => {
+                  console.error("Error committing transaction:", commitErr);
+                  res.status(500).json({ message: "Database error", error: commitErr.message });
+                });
+              }
+
+              res.status(201).json({
+                message: "Advance payment created successfully",
+                payment_id: result.insertId,
+                payment_reference,
+                payment_status
+              });
+            });
+          }
         });
       }
     });
@@ -609,36 +690,175 @@ router.put("/:id", (req, res) => {
       newPaymentStatus = "Completed";
     }
 
-    // Update the payment
-    const updateSql = `
-      UPDATE advance_payments
-      SET advance_amount = ?,
-          balance_amount = ?,
-          payment_status = ?,
-          notes = CONCAT(notes, '\nAdditional payment of LKR ', ?, ' on ', NOW(), '. ', ?)
-      WHERE payment_id = ?
+    // For inventory items, we need to check if stock has already been deducted
+    const isInventoryItem = !payment.is_custom_order && payment.item_id && payment.item_quantity;
+
+    // We'll check if this payment has a record in the inventory_deductions table
+    // If not, we need to deduct from stock now
+    let checkDeductionSql = "SELECT COUNT(*) as count FROM inventory_deductions WHERE payment_id = ?";
+
+    // First, let's make sure the inventory_deductions table exists
+    const createTableSql = `
+      CREATE TABLE IF NOT EXISTS inventory_deductions (
+        deduction_id INT AUTO_INCREMENT PRIMARY KEY,
+        payment_id INT NOT NULL,
+        item_id INT NOT NULL,
+        quantity INT NOT NULL,
+        deduction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_payment (payment_id),
+        FOREIGN KEY (payment_id) REFERENCES advance_payments(payment_id) ON DELETE CASCADE,
+        FOREIGN KEY (item_id) REFERENCES jewellery_items(item_id) ON DELETE RESTRICT
+      )
     `;
 
-    con.query(updateSql, [
-      newAdvanceAmount,
-      newBalanceAmount,
-      newPaymentStatus,
-      additional_payment,
-      notes || '',
-      paymentId
-    ], (updateErr) => {
-      if (updateErr) {
-        console.error("Error updating payment:", updateErr);
-        return res.status(500).json({ message: "Database error", error: updateErr.message });
-      } else {
-        res.json({
-          message: "Advance payment updated successfully",
-          payment_id: paymentId,
-          new_advance_amount: newAdvanceAmount,
-          new_balance_amount: newBalanceAmount,
-          payment_status: newPaymentStatus
-        });
+    // Start a transaction to ensure data consistency
+    con.beginTransaction((transErr) => {
+      if (transErr) {
+        console.error("Error starting transaction:", transErr);
+        return res.status(500).json({ message: "Database error", error: transErr.message });
       }
+
+      // First, create the inventory_deductions table if it doesn't exist
+      con.query(createTableSql, (createErr) => {
+        if (createErr) {
+          return con.rollback(() => {
+            console.error("Error creating inventory_deductions table:", createErr);
+            res.status(500).json({ message: "Database error", error: createErr.message });
+          });
+        }
+
+        // Update the payment
+        const updateSql = `
+          UPDATE advance_payments
+          SET advance_amount = ?,
+              balance_amount = ?,
+              payment_status = ?,
+              notes = CONCAT(notes, '\nAdditional payment of LKR ', ?, ' on ', NOW(), '. ', ?)
+          WHERE payment_id = ?
+        `;
+
+        con.query(updateSql, [
+          newAdvanceAmount,
+          newBalanceAmount,
+          newPaymentStatus,
+          additional_payment,
+          notes || '',
+          paymentId
+        ], (updateErr) => {
+          if (updateErr) {
+            return con.rollback(() => {
+              console.error("Error updating payment:", updateErr);
+              res.status(500).json({ message: "Database error", error: updateErr.message });
+            });
+          }
+
+          // If this is an inventory item, check if we need to deduct from stock
+          if (isInventoryItem) {
+            // Check if we've already deducted for this payment
+            con.query(checkDeductionSql, [paymentId], (checkErr, checkResults) => {
+              if (checkErr) {
+                return con.rollback(() => {
+                  console.error("Error checking inventory deductions:", checkErr);
+                  res.status(500).json({ message: "Database error", error: checkErr.message });
+                });
+              }
+
+              const alreadyDeducted = checkResults[0].count > 0;
+
+              if (!alreadyDeducted) {
+                console.log(`Payment ${paymentId} for inventory item ${payment.item_id}. Deducting ${payment.item_quantity} from stock.`);
+
+                // Update inventory
+                const updateStockSql = "UPDATE jewellery_items SET in_stock = in_stock - ? WHERE item_id = ? AND in_stock >= ?";
+                con.query(updateStockSql, [payment.item_quantity, payment.item_id, payment.item_quantity], (stockErr, stockResult) => {
+                  if (stockErr) {
+                    return con.rollback(() => {
+                      console.error("Error updating inventory stock:", stockErr);
+                      res.status(500).json({ message: "Database error", error: stockErr.message });
+                    });
+                  }
+
+                  if (stockResult.affectedRows === 0) {
+                    return con.rollback(() => {
+                      console.error(`Insufficient stock for item ID ${payment.item_id}`);
+                      res.status(400).json({ message: `Insufficient stock for item ID ${payment.item_id}` });
+                    });
+                  }
+
+                  // Record the deduction
+                  const recordDeductionSql = `
+                    INSERT INTO inventory_deductions (payment_id, item_id, quantity)
+                    VALUES (?, ?, ?)
+                  `;
+                  con.query(recordDeductionSql, [paymentId, payment.item_id, payment.item_quantity], (recordErr) => {
+                    if (recordErr) {
+                      return con.rollback(() => {
+                        console.error("Error recording inventory deduction:", recordErr);
+                        res.status(500).json({ message: "Database error", error: recordErr.message });
+                      });
+                    }
+
+                    // Commit the transaction
+                    con.commit((commitErr) => {
+                      if (commitErr) {
+                        return con.rollback(() => {
+                          console.error("Error committing transaction:", commitErr);
+                          res.status(500).json({ message: "Database error", error: commitErr.message });
+                        });
+                      }
+
+                      res.json({
+                        message: "Advance payment updated successfully and inventory deducted",
+                        payment_id: paymentId,
+                        new_advance_amount: newAdvanceAmount,
+                        new_balance_amount: newBalanceAmount,
+                        payment_status: newPaymentStatus,
+                        inventory_updated: true
+                      });
+                    });
+                  });
+                });
+              } else {
+                // Already deducted, just commit the transaction
+                con.commit((commitErr) => {
+                  if (commitErr) {
+                    return con.rollback(() => {
+                      console.error("Error committing transaction:", commitErr);
+                      res.status(500).json({ message: "Database error", error: commitErr.message });
+                    });
+                  }
+
+                  res.json({
+                    message: "Advance payment updated successfully",
+                    payment_id: paymentId,
+                    new_advance_amount: newAdvanceAmount,
+                    new_balance_amount: newBalanceAmount,
+                    payment_status: newPaymentStatus
+                  });
+                });
+              }
+            });
+          } else {
+            // Not an inventory item, just commit the transaction
+            con.commit((commitErr) => {
+              if (commitErr) {
+                return con.rollback(() => {
+                  console.error("Error committing transaction:", commitErr);
+                  res.status(500).json({ message: "Database error", error: commitErr.message });
+                });
+              }
+
+              res.json({
+                message: "Advance payment updated successfully",
+                payment_id: paymentId,
+                new_advance_amount: newAdvanceAmount,
+                new_balance_amount: newBalanceAmount,
+                payment_status: newPaymentStatus
+              });
+            });
+          }
+        });
+      });
     });
   });
 });
