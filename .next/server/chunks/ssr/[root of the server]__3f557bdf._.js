@@ -364,14 +364,19 @@ __turbopack_context__.s({
 });
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$translator$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/translator.ts [app-ssr] (ecmascript)");
 'use client';
+;
 ;
 ;
 // Create the context with default values
 const LanguageContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createContext"])({
     language: 'en',
     setLanguage: ()=>{},
-    translations: {}
+    translations: {},
+    translateDynamic: async (text)=>text,
+    isAutoTranslateEnabled: false,
+    setAutoTranslateEnabled: ()=>{}
 });
 // English translations
 const enTranslations = {
@@ -538,12 +543,17 @@ const LanguageProvider = ({ children })=>{
     // Initialize with English or the stored preference
     const [language, setLanguage] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('en');
     const [translations, setTranslations] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(enTranslations);
-    // Load saved language preference on component mount
+    const [isAutoTranslateEnabled, setAutoTranslateEnabled] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    // Load saved language preference and auto-translate setting on component mount
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         const savedLanguage = localStorage.getItem('language');
         if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'ta')) {
             setLanguage(savedLanguage);
             setTranslations(translationMap[savedLanguage]);
+        }
+        const autoTranslate = localStorage.getItem('autoTranslate');
+        if (autoTranslate === 'true') {
+            setAutoTranslateEnabled(true);
         }
     }, []);
     // Update translations when language changes
@@ -554,16 +564,36 @@ const LanguageProvider = ({ children })=>{
         // Update HTML lang attribute
         document.documentElement.lang = lang;
     };
+    // Function to translate dynamic text
+    const translateDynamic = async (text)=>{
+        if (!isAutoTranslateEnabled || language === 'en' || !text) {
+            return text;
+        }
+        try {
+            return await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$translator$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["translateText"])(text, language);
+        } catch (error) {
+            console.error('Translation error:', error);
+            return text;
+        }
+    };
+    // Toggle auto-translate
+    const handleSetAutoTranslateEnabled = (enabled)=>{
+        setAutoTranslateEnabled(enabled);
+        localStorage.setItem('autoTranslate', enabled.toString());
+    };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(LanguageContext.Provider, {
         value: {
             language,
             setLanguage: handleSetLanguage,
-            translations
+            translations,
+            translateDynamic,
+            isAutoTranslateEnabled,
+            setAutoTranslateEnabled: handleSetAutoTranslateEnabled
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/src/contexts/LanguageContext.tsx",
-        lineNumber: 221,
+        lineNumber: 254,
         columnNumber: 5
     }, this);
 };

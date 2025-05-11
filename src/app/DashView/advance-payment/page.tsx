@@ -725,13 +725,25 @@ const AdvancePaymentPage = () => {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Advance Payment</h1>
-        <button
-          onClick={() => router.push('/DashView/advance-payment/view')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-        >
-          <FileText className="mr-2 h-5 w-5" />
-          View All Payments
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+            title="Refresh inventory data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            Refresh
+          </button>
+          <button
+            onClick={() => router.push('/DashView/advance-payment/view')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+          >
+            <FileText className="mr-2 h-5 w-5" />
+            View All Payments
+          </button>
+        </div>
       </div>
 
 
@@ -1091,7 +1103,10 @@ const AdvancePaymentPage = () => {
             )}
             <div className="flex justify-center space-x-4">
               <button
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  // Refresh the page to update inventory data
+                  window.location.reload();
+                }}
                 className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
               >
                 Close

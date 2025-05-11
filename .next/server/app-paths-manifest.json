@@ -1,22 +1,10 @@
 {
   "/page": "app/page.js",
   "/_not-found/page": "app/_not-found/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/login/page": "app/login/page.js",
   "/DashView/storeManager/page": "app/DashView/storeManager/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/DashView/reports/page": "app/DashView/reports/page.js",
   "/DashView/reports/sales/page": "app/DashView/reports/sales/page.js",
-  "/DashView/reports/sales/daily/page": "app/DashView/reports/sales/daily/page.js",
-  "/DashView/reports/sales/monthly/page": "app/DashView/reports/sales/monthly/page.js",
-  "/DashView/reports/sales/by-category/page": "app/DashView/reports/sales/by-category/page.js",
-  "/DashView/reports/sales/by-branch/page": "app/DashView/reports/sales/by-branch/page.js",
-  "/DashView/sales/manage/page": "app/DashView/sales/manage/page.js",
-  "/DashView/sales/add/page": "app/DashView/sales/add/page.js",
-  "/DashView/sales/view/page": "app/DashView/sales/view/page.js",
-  "/DashView/sales/details/[id]/page": "app/DashView/sales/details/[id]/page.js",
-  "/DashView/jewellery-stock/page": "app/DashView/jewellery-stock/page.js",
-  "/DashView/reports/inventory/page": "app/DashView/reports/inventory/page.js",
-  "/DashView/reports/inventory/current-stock/page": "app/DashView/reports/inventory/current-stock/page.js",
-  "/DashView/reports/inventory/gold-stock/page": "app/DashView/reports/inventory/gold-stock/page.js",
-  "/DashView/reports/inventory/low-stock/page": "app/DashView/reports/inventory/low-stock/page.js"
+  "/DashView/reports/financial/page": "app/DashView/reports/financial/page.js"
 }
