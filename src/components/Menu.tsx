@@ -11,72 +11,46 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const menuItems = [
   {
-    title: "MENU",
+    title: "menu.menu",
     items: [
-      { icon: Home, label: "Home", href: "/", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Users, label: "Store Managers", href: "/DashView/list/StoreManager", visible: ["Admin"] }, // Only Admin
-      { icon: Users, label: "Sales Associates", href: "/DashView/list/SalesAssociate", visible: ["Admin", "Store Manager"] },
-      { icon: Users, label: "Cashiers", href: "/DashView/list/cashier", visible: ["Admin", "Store Manager"] },
-      { icon: ClipboardList, label: "Suppliers", href: "/DashView/list/Supplier", visible: ["Admin"] }, // Only Admin
-      { icon: BarChart, label: "Supplier Details", href: "/DashView/supplier-details", visible: ["Admin", "Store Manager"] },
-      { icon: ClipboardList, label: "Orders", href: "/DashView/orders", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Boxes, label: "Jewellery Stock", href: "/DashView/jewellery-stock", visible: ["Admin", "Store Manager", "Sales Associate"] },
-      { icon: FileText, label: "Assay Reports", href: "/DashView/assay-reports", visible: ["Admin", "Store Manager", "Sales Associate"] },
-      { icon: Coins, label: "Gold Stock", href: "/DashView/gold-stock", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Tag, label: "Categories", href: "/DashView/categories", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: ShoppingCart, label: "Sales", href: "/DashView/sales/manage", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: BarChart, label: "Reports", href: "/DashView/reports", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: CalendarCheck, label: "Events", href: "/list/events", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: CreditCard, label: "Advance Payment", href: "/DashView/advance-payment", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Package, label: "Custom Orders", href: "/DashView/custom-orders", visible: ["Admin", "Store Manager", "Sales Associate"] },
-      { icon: Bell, label: "Notifications", href: "/list/notifications", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Home, label: "menu.home", href: "/", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Users, label: "menu.storeManagers", href: "/DashView/list/StoreManager", visible: ["Admin"] }, // Only Admin
+      { icon: Users, label: "menu.salesAssociates", href: "/DashView/list/SalesAssociate", visible: ["Admin", "Store Manager"] },
+      { icon: Users, label: "menu.cashiers", href: "/DashView/list/cashier", visible: ["Admin", "Store Manager"] },
+      { icon: ClipboardList, label: "menu.suppliers", href: "/DashView/list/Supplier", visible: ["Admin"] }, // Only Admin
+      { icon: BarChart, label: "menu.supplierDetails", href: "/DashView/supplier-details", visible: ["Admin", "Store Manager"] },
+      { icon: ClipboardList, label: "menu.orders", href: "/DashView/orders", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Boxes, label: "menu.jewelleryStock", href: "/DashView/jewellery-stock", visible: ["Admin", "Store Manager", "Sales Associate"] },
+      { icon: FileText, label: "menu.assayReports", href: "/DashView/assay-reports", visible: ["Admin", "Store Manager", "Sales Associate"] },
+      { icon: Coins, label: "menu.goldStock", href: "/DashView/gold-stock", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Tag, label: "menu.categories", href: "/DashView/categories", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: ShoppingCart, label: "menu.sales", href: "/DashView/sales/manage", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: BarChart, label: "menu.reports", href: "/DashView/reports", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: CalendarCheck, label: "menu.events", href: "/list/events", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: CreditCard, label: "menu.advancePayment", href: "/DashView/advance-payment", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Package, label: "menu.customOrders", href: "/DashView/custom-orders", visible: ["Admin", "Store Manager", "Sales Associate"] },
+      { icon: Bell, label: "menu.notifications", href: "/list/notifications", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
     ],
   },
   {
-    title: "OTHER",
+    title: "menu.other",
     items: [
-      { icon: UserCircle, label: "Profile", href: "/profile", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: Settings, label: "Settings", href: "/settings", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
-      { icon: LogOut, label: "Logout", href: "/logout", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: UserCircle, label: "menu.profile", href: "/profile", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: Settings, label: "menu.settings", href: "/settings", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
+      { icon: LogOut, label: "menu.logout", href: "/logout", visible: ["Admin", "Store Manager", "Sales Associate", "Cashier"] },
     ],
   },
 ];
 
 const Menu = () => {
   // Using the language context for translations
-  const { language } = useLanguage(); // Use language context to trigger re-renders when language changes
+  const { language, translations } = useLanguage(); // Use language context to trigger re-renders when language changes
   const [role, setRole] = useState<string | null>(null);
-  const [translations, setTranslations] = useState<Record<string, string>>({});
 
-  // Create a mapping of menu items to their translations
-  useEffect(() => {
-    const menuTranslations: Record<string, string> = {
-      'Home': language === 'ta' ? 'முகப்பு' : 'Home',
-      'Store Managers': language === 'ta' ? 'கடை மேலாளர்கள்' : 'Store Managers',
-      'Sales Associates': language === 'ta' ? 'விற்பனை சகாக்கள்' : 'Sales Associates',
-      'Cashiers': language === 'ta' ? 'காசாளர்கள்' : 'Cashiers',
-      'Suppliers': language === 'ta' ? 'விநியோகஸ்தர்கள்' : 'Suppliers',
-      'Supplier Details': language === 'ta' ? 'விநியோகஸ்தர் விவரங்கள்' : 'Supplier Details',
-      'Orders': language === 'ta' ? 'ஆர்டர்கள்' : 'Orders',
-      'Jewellery Stock': language === 'ta' ? 'நகை இருப்பு' : 'Jewellery Stock',
-      'Gold Stock': language === 'ta' ? 'தங்க இருப்பு' : 'Gold Stock',
-      'Categories': language === 'ta' ? 'வகைகள்' : 'Categories',
-      'Sales': language === 'ta' ? 'விற்பனைகள்' : 'Sales',
-      'Reports': language === 'ta' ? 'அறிக்கைகள்' : 'Reports',
-      'Sales Report': language === 'ta' ? 'விற்பனை அறிக்கை' : 'Sales Report',
-      'Events': language === 'ta' ? 'நிகழ்வுகள்' : 'Events',
-      'Advance Payment': language === 'ta' ? 'முன்பணம்' : 'Advance Payment',
-      'Custom Orders': language === 'ta' ? 'தனிப்பயன் ஆர்டர்கள்' : 'Custom Orders',
-      'Notifications': language === 'ta' ? 'அறிவிப்புகள்' : 'Notifications',
-      'Profile': language === 'ta' ? 'சுயவிவரம்' : 'Profile',
-      'Settings': language === 'ta' ? 'அமைப்புகள்' : 'Settings',
-      'Logout': language === 'ta' ? 'வெளியேறு' : 'Logout',
-      'MENU': language === 'ta' ? 'பட்டி' : 'MENU',
-      'OTHER': language === 'ta' ? 'மற்றவை' : 'OTHER'
-    };
-
-    setTranslations(menuTranslations);
-  }, [language]);
+  // Local translation function to avoid calling hooks conditionally
+  const translate = (key: string) => {
+    return translations[key] || key;
+  };
 
   useEffect(() => {
     const storedRole = localStorage.getItem("role"); // Get role from localStorage
@@ -96,8 +70,8 @@ const Menu = () => {
     <div className="mt-4 text-sm bg-[#FFF6BD] p-4 rounded-md w-64">
       {menuItems.map((section) => (
         <div className="flex flex-col gap-2" key={section.title}>
-          <span className="hidden lg:block text-black font-semibold my-4">
-            {translations[section.title] || section.title}
+          <span className="hidden lg:block text-black font-semibold my-4 menu-item-text" data-no-auto-translate="true">
+            {translate(section.title)}
           </span>
           {section.items.map((item) => {
             // Check if the user's role is listed in the 'visible' array for this item
@@ -106,11 +80,12 @@ const Menu = () => {
                 <Link
                   href={item.href}
                   key={item.label}
-                  className="flex items-center justify-start gap-4 text-black py-2 px-4 rounded-md hover:bg-[#F0A500] hover:text-white transition duration-200"
+                  className="flex items-center justify-start gap-4 text-black py-2 px-4 rounded-md hover:bg-[#F0A500] hover:text-white transition duration-200 menu-item"
+                  data-no-auto-translate="true"
                 >
                   <item.icon size={20} className="text-black" />
-                  <span className="hidden lg:block">
-                    {translations[item.label] || item.label}
+                  <span className="hidden lg:block menu-item-text" data-no-auto-translate="true">
+                    {translate(item.label)}
                   </span>
                 </Link>
               );
