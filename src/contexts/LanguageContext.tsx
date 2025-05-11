@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { SupportedLanguage, translateText } from '@/utils/translator';
 
 // Define available languages
 export type Language = 'en' | 'ta';
@@ -10,6 +11,9 @@ type LanguageContextType = {
   language: Language;
   setLanguage: (lang: Language) => void;
   translations: Record<string, string>;
+  translateDynamic: (text: string) => Promise<string>;
+  isAutoTranslateEnabled: boolean;
+  setAutoTranslateEnabled: (enabled: boolean) => void;
 };
 
 // Create the context with default values
@@ -17,6 +21,9 @@ const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
   setLanguage: () => {},
   translations: {},
+  translateDynamic: async (text) => text,
+  isAutoTranslateEnabled: false,
+  setAutoTranslateEnabled: () => {},
 });
 
 // English translations
@@ -26,6 +33,7 @@ const enTranslations: Record<string, string> = {
   'language.english': 'English',
   'language.tamil': 'Tamil',
   'language': 'Language',
+  'language.autoTranslate': 'Auto Translate',
 
   // Menu items
   'menu.menu': 'MENU',
@@ -52,6 +60,7 @@ const enTranslations: Record<string, string> = {
   'menu.logout': 'Logout',
   'menu.reports': 'Reports',
   'menu.notifications': 'Notifications',
+  'menu.assayReports': 'Assay Reports',
 
   // Actions
   'action.add': 'Add',
@@ -110,6 +119,7 @@ const taTranslations: Record<string, string> = {
   'language.english': 'ஆங்கிலம்',
   'language.tamil': 'தமிழ்',
   'language': 'மொழி',
+  'language.autoTranslate': 'தானியங்கி மொழிபெயர்ப்பு',
 
   // Menu items
   'menu.menu': 'பட்டி',
@@ -136,6 +146,7 @@ const taTranslations: Record<string, string> = {
   'menu.logout': 'வெளியேறு',
   'menu.reports': 'அறிக்கைகள்',
   'menu.notifications': 'அறிவிப்புகள்',
+  'menu.assayReports': 'தங்க சான்றிதழ் அறிக்கைகள்',
 
   // Actions
   'action.add': 'சேர்க்க',
@@ -198,13 +209,19 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Initialize with English or the stored preference
   const [language, setLanguage] = useState<Language>('en');
   const [translations, setTranslations] = useState(enTranslations);
+  const [isAutoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
 
-  // Load saved language preference on component mount
+  // Load saved language preference and auto-translate setting on component mount
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') as Language;
     if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'ta')) {
       setLanguage(savedLanguage);
       setTranslations(translationMap[savedLanguage]);
+    }
+
+    const autoTranslate = localStorage.getItem('autoTranslate');
+    if (autoTranslate === 'true') {
+      setAutoTranslateEnabled(true);
     }
   }, []);
 
@@ -217,8 +234,37 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     document.documentElement.lang = lang;
   };
 
+  // Function to translate dynamic text
+  const translateDynamic = async (text: string): Promise<string> => {
+    if (!isAutoTranslateEnabled || language === 'en' || !text) {
+      return text;
+    }
+
+    try {
+      return await translateText(text, language as SupportedLanguage);
+    } catch (error) {
+      console.error('Translation error:', error);
+      return text;
+    }
+  };
+
+  // Toggle auto-translate
+  const handleSetAutoTranslateEnabled = (enabled: boolean) => {
+    setAutoTranslateEnabled(enabled);
+    localStorage.setItem('autoTranslate', enabled.toString());
+  };
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, translations }}>
+    <LanguageContext.Provider
+      value={{
+        language,
+        setLanguage: handleSetLanguage,
+        translations,
+        translateDynamic,
+        isAutoTranslateEnabled,
+        setAutoTranslateEnabled: handleSetAutoTranslateEnabled
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );
@@ -227,7 +273,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 // Custom hook to use the language context
 export const useLanguage = () => useContext(LanguageContext);
 
-// Translation helper function
+// Translation helper function for static text (using predefined translations)
 export const t = (key: string, context?: LanguageContextType) => {
   if (context) {
     const translation = context.translations[key];
@@ -249,4 +295,35 @@ export const t = (key: string, context?: LanguageContextType) => {
     // Fallback to the key itself if context is not available
     return key;
   }
+};
+
+// Dynamic translation component for text that's not in the translation files
+export const DynamicText: React.FC<{ text: string; className?: string }> = ({ text, className }) => {
+  const { language, translateDynamic, isAutoTranslateEnabled } = useLanguage();
+  const [translatedText, setTranslatedText] = useState(text);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const translate = async () => {
+      if (isAutoTranslateEnabled && language !== 'en') {
+        const result = await translateDynamic(text);
+        if (isMounted) {
+          setTranslatedText(result);
+        }
+      } else {
+        if (isMounted) {
+          setTranslatedText(text);
+        }
+      }
+    };
+
+    translate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [text, language, translateDynamic, isAutoTranslateEnabled]);
+
+  return <span className={className}>{translatedText}</span>;
 };
