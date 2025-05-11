@@ -1,6 +1,7 @@
 import { featuredProducts } from "@/data";
 import Image from "next/image";
 import React from "react";
+import { t, DynamicText } from "@/contexts/LanguageContext";
 
 const Featured = () => {
   return (
@@ -21,10 +22,14 @@ const Featured = () => {
             )}
             {/* TEXT CONTAINER */}
             <div className=" flex-1 flex flex-col items-center justify-center text-center gap-4">
-              <h1 className="text-xl font-bold uppercase xl:text-2xl 2xl:text-3xl">{item.title}</h1>
-              <p className="p-4 2xl:p-8">{item.desc}</p>
+              <h1 className="text-xl font-bold uppercase xl:text-2xl 2xl:text-3xl">
+                <DynamicText text={item.title} />
+              </h1>
+              <p className="p-4 2xl:p-8">
+                <DynamicText text={item.desc || ""} />
+              </p>
               <span className="text-xl font-bold">Rs{item.price}</span>
-             
+
             </div>
           </div>
         ))}
