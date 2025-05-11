@@ -8,6 +8,7 @@ import {
   getInventoryValuationReport,
   exportReportCSV
 } from '../Controllers/reportsController.js';
+import { getFinancialReport } from '../Controllers/financialReportController.js';
 import verifyToken from '../Middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -33,6 +34,9 @@ router.get('/inventory/current-stock', getCurrentStockReport);
 router.get('/inventory/gold-stock', getGoldStockReport);
 router.get('/inventory/low-stock', getLowStockReport);
 router.get('/inventory/valuation', getInventoryValuationReport);
+
+// Financial reports
+router.get('/financial', getFinancialReport);
 
 // Export reports
 router.get('/export', exportReportCSV);
