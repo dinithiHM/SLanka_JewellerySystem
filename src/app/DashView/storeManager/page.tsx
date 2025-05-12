@@ -553,6 +553,10 @@ const StoreManagerDashboard = () => {
     }
     if (order.weight_in_grams) params.append('weight', order.weight_in_grams.toString());
 
+    // Add making charges and additional materials charges if they exist
+    if (order.making_charges) params.append('making_charges', order.making_charges.toString());
+    if (order.additional_materials_charges) params.append('additional_materials_charges', order.additional_materials_charges.toString());
+
     // Add order ID to track which order this came from
     params.append('order_id', order.order_id.toString());
 
