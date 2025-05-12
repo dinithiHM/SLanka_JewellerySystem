@@ -16,6 +16,8 @@ interface JewelleryItem {
   is_solid_gold?: boolean;
   assay_certificate?: string;
   assay_status?: string;
+  making_charges?: number;
+  additional_materials_charges?: number;
 }
 
 interface SaleItem {
@@ -32,6 +34,9 @@ interface SaleItem {
   gold_weight?: number;
   gold_price_per_gram?: number;
   is_gold_price_based?: boolean;
+  // Charges
+  making_charges?: number;
+  additional_materials_charges?: number;
 }
 
 const AddSalePage = () => {
@@ -293,18 +298,39 @@ const AddSalePage = () => {
 
   // Calculate price after discount
   const calculatePriceAfterDiscount = (originalPrice: number, discountAmount: number, discountType: 'percentage' | 'fixed'): number => {
-    if (discountAmount <= 0) return originalPrice;
+    console.log('calculatePriceAfterDiscount - Inputs:', { originalPrice, discountAmount, discountType });
+
+    if (discountAmount <= 0) {
+      console.log('calculatePriceAfterDiscount - No discount applied, returning original price:', originalPrice);
+      return originalPrice;
+    }
+
+    let finalPrice: number;
 
     if (discountType === 'percentage') {
       // Limit percentage discount to 75%
       const limitedPercentage = Math.min(discountAmount, 75);
-      return originalPrice * (1 - limitedPercentage / 100);
+      finalPrice = originalPrice * (1 - limitedPercentage / 100);
+      console.log('calculatePriceAfterDiscount - Percentage discount:', {
+        originalPrice,
+        discountPercentage: limitedPercentage,
+        finalPrice
+      });
     } else {
       // For fixed discount, ensure it doesn't exceed 75% of the original price
       const maxDiscount = originalPrice * 0.75;
       const limitedDiscount = Math.min(discountAmount, maxDiscount);
-      return originalPrice - limitedDiscount;
+      finalPrice = originalPrice - limitedDiscount;
+      console.log('calculatePriceAfterDiscount - Fixed discount:', {
+        originalPrice,
+        requestedDiscount: discountAmount,
+        limitedDiscount,
+        maxDiscount,
+        finalPrice
+      });
     }
+
+    return finalPrice;
   };
 
   // Calculate final price for the current item
@@ -314,10 +340,43 @@ const AddSalePage = () => {
     // Start with either custom price, calculated gold price, or original selling price
     let basePrice = selectedItem.selling_price;
 
+    // Log the initial state for debugging
+    console.log('getFinalUnitPrice - Initial state:', {
+      selectedItem: {
+        selling_price: selectedItem.selling_price,
+        making_charges: selectedItem.making_charges,
+        additional_materials_charges: selectedItem.additional_materials_charges
+      },
+      customPrice,
+      calculatedPrice,
+      useGoldPriceCalculation,
+      discountAmount,
+      discountType
+    });
+
     if (customPrice !== null) {
+      // If custom price is set, use it directly (it already includes charges if "Use Total Price with Charges" was clicked)
       basePrice = customPrice;
+
+      console.log('getFinalUnitPrice - Using custom price:', basePrice);
+
+      // Apply discount directly to the custom price
+      const finalPrice = calculatePriceAfterDiscount(basePrice, discountAmount, discountType);
+      console.log('getFinalUnitPrice - Final price with custom price:', finalPrice);
+      return finalPrice;
     } else if (useGoldPriceCalculation && calculatedPrice && calculatedPrice > 0) {
+      // Using gold price calculation
       basePrice = calculatedPrice;
+      console.log('getFinalUnitPrice - Using calculated gold price:', basePrice);
+    } else {
+      // Using catalog price (selling_price)
+      console.log('getFinalUnitPrice - Using catalog price:', basePrice);
+
+      // When explicitly using catalog price, apply discount directly to the catalog price
+      // without adding any charges
+      const finalPrice = calculatePriceAfterDiscount(basePrice, discountAmount, discountType);
+      console.log('getFinalUnitPrice - Final price with catalog price:', finalPrice);
+      return finalPrice;
     }
 
     // For gold items, prioritize using the baseGoldPricePerUnit for discount calculation
@@ -343,8 +402,23 @@ const AddSalePage = () => {
       priceForDiscount = basePrice;
     }
 
+    // Add making charges and additional materials charges if they exist
+    const makingCharges = selectedItem.making_charges || 0;
+    if (makingCharges > 0) {
+      priceForDiscount += makingCharges;
+      console.log('getFinalUnitPrice - Added making charges:', makingCharges, 'New total:', priceForDiscount);
+    }
+
+    const additionalMaterialsCharges = selectedItem.additional_materials_charges || 0;
+    if (additionalMaterialsCharges > 0) {
+      priceForDiscount += additionalMaterialsCharges;
+      console.log('getFinalUnitPrice - Added additional materials charges:', additionalMaterialsCharges, 'New total:', priceForDiscount);
+    }
+
     // Apply discount
-    return calculatePriceAfterDiscount(priceForDiscount, discountAmount, discountType);
+    const finalPrice = calculatePriceAfterDiscount(priceForDiscount, discountAmount, discountType);
+    console.log('getFinalUnitPrice - Final price after discount:', finalPrice, 'Original price:', priceForDiscount);
+    return finalPrice;
   };
 
   // Calculate total
@@ -536,7 +610,8 @@ const AddSalePage = () => {
       const finalPrice = getFinalUnitPrice();
 
       // Calculate subtotal based on the final price
-      const subtotal = quantity * finalPrice;
+      // Ensure it's a proper number by using parseFloat and rounding to 2 decimal places
+      const subtotal = Math.round((quantity * finalPrice) * 100) / 100;
 
       // For gold items, determine the original price based on gold calculation
       let itemOriginalPrice;
@@ -579,7 +654,10 @@ const AddSalePage = () => {
         gold_carat: (selectedItem.is_solid_gold || (selectedItem.gold_carat !== undefined && selectedItem.gold_carat > 0)) ? selectedItem.gold_carat : undefined,
         gold_weight: (selectedItem.is_solid_gold || (selectedItem.weight !== undefined && selectedItem.weight > 0)) ? selectedItem.weight : undefined,
         gold_price_per_gram: (useGoldPriceCalculation && baseGoldPrice > 0) ? baseGoldPrice : undefined,
-        is_gold_price_based: isGoldPriceBased
+        is_gold_price_based: isGoldPriceBased,
+        // Add making charges and additional materials charges if they exist
+        making_charges: selectedItem.making_charges,
+        additional_materials_charges: selectedItem.additional_materials_charges
       };
 
       // Check if item already exists in sale
@@ -602,7 +680,7 @@ const AddSalePage = () => {
         updatedItems[existingItemIndex] = {
           ...existingItem,
           quantity: newTotalQuantity,
-          subtotal: newTotalQuantity * existingItem.unit_price
+          subtotal: Math.round((newTotalQuantity * existingItem.unit_price) * 100) / 100
         };
 
         setSaleItems(updatedItems);
@@ -663,26 +741,58 @@ const AddSalePage = () => {
     setError(null);
 
     try {
+      // Helper function to ensure numeric values are properly formatted
+      const formatNumericValue = (value: any): number | null => {
+        if (value === undefined || value === null) return null;
+        // Make sure we're working with a number, not a string
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        // Check if it's a valid number
+        if (isNaN(numValue)) return null;
+        // Round to 2 decimal places
+        return Math.round(numValue * 100) / 100;
+      };
+
+      // Debug the subtotal calculation
+      console.log('Sale items before formatting:', saleItems.map(item => ({
+        item_id: item.item_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+        calculated_subtotal: item.quantity * item.unit_price
+      })));
+
       const saleData = {
         customer_name: customerName,
-        total_amount: totalAmount, // Add the total amount field
+        total_amount: formatNumericValue(totalAmount), // Add the total amount field
         payment_method: paymentMethod,
-        items: saleItems.map(item => ({
-          item_id: item.item_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          original_price: item.original_price,
-          discount_amount: item.discount_amount,
-          discount_type: item.discount_type,
-          // Include gold-related information if available
-          gold_carat: item.gold_carat,
-          gold_weight: item.gold_weight,
-          gold_price_per_gram: item.gold_price_per_gram,
-          is_gold_price_based: item.is_gold_price_based
-        })),
+        items: saleItems.map(item => {
+          // Recalculate subtotal to ensure it's correct
+          const recalculatedSubtotal = item.quantity * item.unit_price;
+
+          return {
+            item_id: item.item_id,
+            quantity: item.quantity,
+            unit_price: formatNumericValue(item.unit_price),
+            original_price: formatNumericValue(item.original_price),
+            discount_amount: item.discount_amount ? formatNumericValue(item.discount_amount) : null,
+            discount_type: item.discount_type,
+            subtotal: formatNumericValue(recalculatedSubtotal),
+            // Include gold-related information if available
+            gold_carat: item.gold_carat,
+            gold_weight: item.gold_weight ? formatNumericValue(item.gold_weight) : null,
+            gold_price_per_gram: item.gold_price_per_gram ? formatNumericValue(item.gold_price_per_gram) : null,
+            is_gold_price_based: item.is_gold_price_based,
+            // Include making charges and additional materials charges
+            making_charges: item.making_charges ? formatNumericValue(item.making_charges) : null,
+            additional_materials_charges: item.additional_materials_charges ? formatNumericValue(item.additional_materials_charges) : null
+          };
+        }),
         user_id: userId,
         branch_id: branchId
       };
+
+      // Log the formatted data for debugging
+      console.log('Formatted sale data:', JSON.stringify(saleData, null, 2));
 
       console.log('Submitting sale with user_id:', userId, 'and branch_id:', branchId);
 
@@ -977,15 +1087,79 @@ const AddSalePage = () => {
                         <span className="text-right">{selectedItem.weight} grams</span>
                         <span className="font-medium">Total Gold Value:</span>
                         <span className="text-right font-bold">{formatCurrency(calculatedPrice)}</span>
+
+                        {/* Show making charges if they exist */}
+                        {selectedItem.making_charges && selectedItem.making_charges > 0 && (
+                          <>
+                            <span>Making Charges:</span>
+                            <span className="text-right">{formatCurrency(selectedItem.making_charges)}</span>
+                          </>
+                        )}
+
+                        {/* Show additional materials charges if they exist */}
+                        {selectedItem.additional_materials_charges && selectedItem.additional_materials_charges > 0 && (
+                          <>
+                            <span>Additional Materials:</span>
+                            <span className="text-right">{formatCurrency(selectedItem.additional_materials_charges)}</span>
+                          </>
+                        )}
+
+                        {/* Show total with charges if they exist */}
+                        {(selectedItem.making_charges || selectedItem.additional_materials_charges) && (
+                          <>
+                            <span className="font-medium">Total with Charges:</span>
+                            <span className="text-right font-bold">
+                              {(() => {
+                                // Calculate the total with charges correctly
+                                const makingCharges = selectedItem.making_charges ? parseFloat(String(selectedItem.making_charges)) : 0;
+                                const additionalMaterialsCharges = selectedItem.additional_materials_charges ? parseFloat(String(selectedItem.additional_materials_charges)) : 0;
+                                const totalWithCharges = calculatedPrice + makingCharges + additionalMaterialsCharges;
+
+                                // Force to 2 decimal places for display
+                                const roundedTotal = Math.round(totalWithCharges * 100) / 100;
+
+                                // Log for debugging
+                                console.log('Total with Charges calculation:', {
+                                  calculatedPrice,
+                                  makingCharges,
+                                  additionalMaterialsCharges,
+                                  totalWithCharges,
+                                  roundedTotal
+                                });
+
+                                return formatCurrency(roundedTotal);
+                              })()}
+                            </span>
+                          </>
+                        )}
                       </div>
 
                       <div className="mt-2 flex justify-end">
                         <button
                           type="button"
                           className="bg-yellow-400 text-black px-2 py-1 rounded text-xs"
-                          onClick={() => setCustomPrice(calculatedPrice)}
+                          onClick={() => {
+                            // Calculate total price including making charges and additional materials charges
+                            const makingCharges = selectedItem.making_charges ? parseFloat(String(selectedItem.making_charges)) : 0;
+                            const additionalMaterialsCharges = selectedItem.additional_materials_charges ? parseFloat(String(selectedItem.additional_materials_charges)) : 0;
+                            const totalWithCharges = calculatedPrice + makingCharges + additionalMaterialsCharges;
+
+                            // Force to 2 decimal places for consistency
+                            const roundedTotal = Math.round(totalWithCharges * 100) / 100;
+
+                            console.log('Setting custom price to total with charges:', {
+                              calculatedPrice,
+                              makingCharges,
+                              additionalMaterialsCharges,
+                              totalWithCharges,
+                              roundedTotal
+                            });
+
+                            // Set the custom price to the rounded total with charges
+                            setCustomPrice(roundedTotal);
+                          }}
                         >
-                          Use Gold Price
+                          Use Total Price with Charges
                         </button>
                       </div>
                     </div>
@@ -1038,11 +1212,32 @@ const AddSalePage = () => {
                       </button>
                     )}
 
+                    {/* Button to explicitly use catalog price */}
+                    <button
+                      type="button"
+                      className={`px-2 py-1 rounded text-xs ${
+                        customPrice === null
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-blue-400 text-black'
+                      }`}
+                      onClick={() => {
+                        setCustomPrice(null);
+                        setUseGoldPriceCalculation(false);
+                        console.log('Using catalog price, setting useGoldPriceCalculation to false');
+                      }}
+                    >
+                      Use Catalog Price
+                    </button>
+
                     {customPrice !== null && (
                       <button
                         type="button"
                         className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs"
-                        onClick={() => setCustomPrice(null)}
+                        onClick={() => {
+                          setCustomPrice(null);
+                          setUseGoldPriceCalculation(false);
+                          console.log('Reset button clicked, setting useGoldPriceCalculation to false');
+                        }}
                       >
                         Reset
                       </button>
@@ -1056,9 +1251,12 @@ const AddSalePage = () => {
               {/* Price comparison information */}
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {selectedItem && (
-                  <div className={`text-xs ${customPrice !== null ? 'text-gray-500' : 'text-black font-medium'}`}>
+                  <div className={`text-xs ${customPrice !== null ? 'text-gray-500' : 'text-blue-600 font-medium'}`}>
                     <span className="mr-1">Catalog price:</span>
                     <span>{formatCurrency(selectedItem.selling_price)}</span>
+                    {customPrice === null && (
+                      <span className="ml-1 text-blue-600 font-medium">(Selected)</span>
+                    )}
                   </div>
                 )}
 
@@ -1066,6 +1264,36 @@ const AddSalePage = () => {
                   <div className={`text-xs ${customPrice === calculatedPrice ? 'text-yellow-600 font-medium' : 'text-yellow-600'}`}>
                     <span className="mr-1">Gold value price:</span>
                     <span>{formatCurrency(calculatedPrice)}</span>
+                    {customPrice === calculatedPrice && (
+                      <span className="ml-1 text-yellow-600 font-medium">(Selected)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Show total with charges as a separate line if it exists */}
+                {selectedItem && (selectedItem.making_charges || selectedItem.additional_materials_charges) && calculatedPrice && calculatedPrice > 0 && (
+                  <div className="text-xs text-green-600">
+                    <span className="mr-1">Gold value with charges:</span>
+                    <span>{(() => {
+                      const makingCharges = selectedItem.making_charges ? parseFloat(String(selectedItem.making_charges)) : 0;
+                      const additionalMaterialsCharges = selectedItem.additional_materials_charges ? parseFloat(String(selectedItem.additional_materials_charges)) : 0;
+                      const totalWithCharges = calculatedPrice + makingCharges + additionalMaterialsCharges;
+
+                      // Force to 2 decimal places for consistency
+                      const roundedTotal = Math.round(totalWithCharges * 100) / 100;
+                      return formatCurrency(roundedTotal);
+                    })()}</span>
+                    {(() => {
+                      const makingCharges = selectedItem.making_charges ? parseFloat(String(selectedItem.making_charges)) : 0;
+                      const additionalMaterialsCharges = selectedItem.additional_materials_charges ? parseFloat(String(selectedItem.additional_materials_charges)) : 0;
+                      const totalWithCharges = calculatedPrice + makingCharges + additionalMaterialsCharges;
+                      const roundedTotal = Math.round(totalWithCharges * 100) / 100;
+
+                      // Check if this is the selected price
+                      const isSelected = customPrice !== null && Math.abs(customPrice - roundedTotal) < 0.01;
+
+                      return isSelected ? <span className="ml-1 text-green-600 font-medium">(Selected)</span> : null;
+                    })()}
                   </div>
                 )}
 
