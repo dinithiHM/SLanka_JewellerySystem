@@ -38,38 +38,62 @@ router.get("/available", (req, res) => {
 
       let sql, queryParams = [];
 
-      if (branchColumnExists && branchId) {
-        // Filter by branch_id if the column exists and branch_id is provided
-        sql = `
-          SELECT item_id, product_title, category, in_stock, selling_price,
-                 is_solid_gold, gold_carat, weight, assay_certificate
-          FROM jewellery_items
-          WHERE branch_id = ? OR branch_id IS NULL
-        `;
-        queryParams = [branchId];
-      } else {
-        // Get all items if branch_id column doesn't exist or branch_id is not provided
-        sql = `SELECT item_id, product_title, category, in_stock, selling_price,
-                      is_solid_gold, gold_carat, weight, assay_certificate
-               FROM jewellery_items`;
-      }
-
-      console.log('Executing SQL query:', sql, 'with params:', queryParams);
-
-      con.query(sql, queryParams, (err, results) => {
+      // Check if making_charges column exists
+      con.query("SHOW COLUMNS FROM jewellery_items LIKE 'making_charges'", (err, makingChargesColumns) => {
         if (err) {
-          console.error("Error fetching available items:", err);
-          return res.status(500).json({ message: "Database error", error: err.message });
+          console.error("Error checking for making_charges column:", err);
+          makingChargesColumns = [];
         }
 
-        console.log(`Found ${results ? results.length : 0} items in jewellery_items table`);
-        if (results && results.length > 0) {
-          console.log('First item found:', JSON.stringify(results[0]));
+        let baseColumns = `item_id, product_title, category, in_stock, selling_price,
+                           is_solid_gold, gold_carat, weight, assay_certificate`;
+
+        // Add making_charges and additional_materials_charges if they exist
+        if (makingChargesColumns.length > 0) {
+          baseColumns += `, making_charges, additional_materials_charges`;
+        }
+
+        if (branchColumnExists && branchId) {
+          // Filter by branch_id if the column exists and branch_id is provided
+          sql = `
+            SELECT ${baseColumns}
+            FROM jewellery_items
+            WHERE branch_id = ? OR branch_id IS NULL
+          `;
+          queryParams = [branchId];
         } else {
-          console.log('No items found in jewellery_items table');
+          // Get all items if branch_id column doesn't exist or branch_id is not provided
+          sql = `SELECT ${baseColumns} FROM jewellery_items`;
         }
 
-        return res.json(results || []);
+        console.log('Executing SQL query:', sql, 'with params:', queryParams);
+
+        con.query(sql, queryParams, (err, results) => {
+          if (err) {
+            console.error("Error fetching available items:", err);
+            return res.status(500).json({ message: "Database error", error: err.message });
+          }
+
+          console.log(`Found ${results ? results.length : 0} items in jewellery_items table`);
+          if (results && results.length > 0) {
+            console.log('First item found:', JSON.stringify(results[0]));
+
+            // Process results to ensure making_charges and additional_materials_charges are included
+            const processedResults = results.map(item => {
+              // Ensure making_charges and additional_materials_charges are included
+              return {
+                ...item,
+                making_charges: item.making_charges || 0,
+                additional_materials_charges: item.additional_materials_charges || 0
+              };
+            });
+
+            return res.json(processedResults || []);
+          } else {
+            console.log('No items found in jewellery_items table');
+            return res.json([]);
+          }
+        });
       });
     });
   } catch (error) {
