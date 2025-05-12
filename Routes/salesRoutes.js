@@ -223,46 +223,76 @@ router.get("/:id", (req, res) => {
       // Get sale items
       let itemsSql;
 
-      if (columns.length > 0) {
-        // New schema with discount columns
-        itemsSql = `
-          SELECT
-            si.sale_item_id,
-            si.item_id,
-            ji.product_title,
-            ji.category,
-            si.quantity,
-            si.unit_price,
-            si.original_price,
-            si.discount_amount,
-            si.discount_type,
-            si.subtotal
-          FROM
-            sale_items si
-          LEFT JOIN
-            jewellery_items ji ON si.item_id = ji.item_id
-          WHERE
-            si.sale_id = ?
-        `;
-      } else {
-        // Old schema without discount columns
-        itemsSql = `
-          SELECT
-            si.sale_item_id,
-            si.item_id,
-            ji.product_title,
-            ji.category,
-            si.quantity,
-            si.unit_price,
-            si.subtotal
-          FROM
-            sale_items si
-          LEFT JOIN
-            jewellery_items ji ON si.item_id = ji.item_id
-          WHERE
-            si.sale_id = ?
-        `;
-      }
+      // Check if making_charges column exists
+      con.query("SHOW COLUMNS FROM sale_items LIKE 'making_charges'", (err, makingChargesColumns) => {
+        if (err) {
+          console.error("Error checking for making_charges column:", err);
+          makingChargesColumns = [];
+        }
+
+        if (columns.length > 0 && makingChargesColumns.length > 0) {
+          // New schema with discount columns and making charges
+          itemsSql = `
+            SELECT
+              si.sale_item_id,
+              si.item_id,
+              ji.product_title,
+              ji.category,
+              si.quantity,
+              si.unit_price,
+              si.original_price,
+              si.discount_amount,
+              si.discount_type,
+              si.subtotal,
+              si.making_charges,
+              si.additional_materials_charges
+            FROM
+              sale_items si
+            LEFT JOIN
+              jewellery_items ji ON si.item_id = ji.item_id
+            WHERE
+              si.sale_id = ?
+          `;
+        } else if (columns.length > 0) {
+          // New schema with discount columns
+          itemsSql = `
+            SELECT
+              si.sale_item_id,
+              si.item_id,
+              ji.product_title,
+              ji.category,
+              si.quantity,
+              si.unit_price,
+              si.original_price,
+              si.discount_amount,
+              si.discount_type,
+              si.subtotal
+            FROM
+              sale_items si
+            LEFT JOIN
+              jewellery_items ji ON si.item_id = ji.item_id
+            WHERE
+              si.sale_id = ?
+          `;
+        } else {
+          // Old schema without discount columns
+          itemsSql = `
+            SELECT
+              si.sale_item_id,
+              si.item_id,
+              ji.product_title,
+              ji.category,
+              si.quantity,
+              si.unit_price,
+              si.subtotal
+            FROM
+              sale_items si
+            LEFT JOIN
+              jewellery_items ji ON si.item_id = ji.item_id
+            WHERE
+              si.sale_id = ?
+          `;
+        }
 
       con.query(itemsSql, [saleId], (err, itemsResults) => {
         if (err) {
@@ -272,10 +302,36 @@ router.get("/:id", (req, res) => {
 
         // Combine sale and items
         const sale = saleResults[0];
-        sale.items = itemsResults || [];
+
+        // Process items to ensure making_charges and additional_materials_charges are included in calculations
+        const processedItems = (itemsResults || []).map(item => {
+          // If the item has making_charges or additional_materials_charges, ensure they're included in the subtotal
+          if (item.making_charges || item.additional_materials_charges) {
+            // Ensure values are numbers
+            const makingCharges = parseFloat(item.making_charges || 0);
+            const additionalCharges = parseFloat(item.additional_materials_charges || 0);
+
+            // Update the subtotal to include these charges if they're not already included
+            if (item.subtotal) {
+              // Check if the subtotal already includes these charges
+              const baseSubtotal = item.quantity * item.unit_price;
+              const expectedTotalWithCharges = baseSubtotal + makingCharges + additionalCharges;
+
+              // If the subtotal doesn't match the expected total with charges, update it
+              if (Math.abs(item.subtotal - expectedTotalWithCharges) > 0.01) {
+                console.log(`Updating subtotal for item ${item.item_id} from ${item.subtotal} to ${expectedTotalWithCharges}`);
+                item.subtotal = expectedTotalWithCharges;
+              }
+            }
+          }
+          return item;
+        });
+
+        sale.items = processedItems;
 
         res.json(sale);
       });
+      }); // Close makingChargesColumns query
     });
   });
 });
@@ -287,6 +343,12 @@ router.post("/create", (req, res) => {
   if (!customer_name || !total_amount || !payment_method || !items || !items.length) {
     return res.status(400).json({ message: "Missing required fields" });
   }
+
+  // Check if the total amount from the frontend already includes making_charges and additional_materials_charges
+  // We'll use the total_amount provided by the frontend directly, as it already includes all charges
+  // This prevents double-counting of making charges and additional materials charges
+
+  console.log(`Using provided total amount: ${total_amount} from frontend`);
 
   console.log('Creating sale with gold price information:', items.filter(item => item.gold_carat && item.gold_weight).length, 'gold items');
 
@@ -301,12 +363,18 @@ router.post("/create", (req, res) => {
       // Check if user_id and branch_id columns exist in sales table
       const [hasUserIdColumn, hasBranchIdColumn] = await Promise.all([
         new Promise((resolve) => {
-          con.query("SHOW COLUMNS FROM sales LIKE 'user_id'", (err, results) => {
+          con.query("SHOW COLUMNS FROM sales LIKE 'user_id'", (checkErr, results) => {
+            if (checkErr) {
+              console.error("Error checking for user_id column:", checkErr);
+            }
             resolve(results && results.length > 0);
           });
         }),
         new Promise((resolve) => {
-          con.query("SHOW COLUMNS FROM sales LIKE 'branch_id'", (err, results) => {
+          con.query("SHOW COLUMNS FROM sales LIKE 'branch_id'", (checkErr, results) => {
+            if (checkErr) {
+              console.error("Error checking for branch_id column:", checkErr);
+            }
             resolve(results && results.length > 0);
           });
         })
@@ -315,14 +383,17 @@ router.post("/create", (req, res) => {
       // Prepare SQL based on available columns
       let saleSql, saleParams;
 
+      // Use the total amount provided by the frontend directly
+      const finalTotalAmount = total_amount;
+
       if (hasUserIdColumn && hasBranchIdColumn) {
         // Both columns exist, use them
         saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method, user_id, branch_id) VALUES (?, ?, ?, ?, ?)";
-        saleParams = [customer_name, total_amount, payment_method, user_id, branch_id];
+        saleParams = [customer_name, finalTotalAmount, payment_method, user_id, branch_id];
       } else {
         // Columns don't exist, use original schema
         saleSql = "INSERT INTO sales (customer_name, total_amount, payment_method) VALUES (?, ?, ?)";
-        saleParams = [customer_name, total_amount, payment_method];
+        saleParams = [customer_name, finalTotalAmount, payment_method];
       }
 
       // Insert sale
@@ -369,10 +440,48 @@ router.post("/create", (req, res) => {
                     return reject(err);
                   }
 
+                  // Check if the table has the making charges columns
+                  con.query("SHOW COLUMNS FROM sale_items LIKE 'making_charges'", (err, makingChargesColumns) => {
+                    if (err) {
+                      return reject(err);
+                    }
+
                   let itemSql;
                   let itemParams;
 
-                  if (goldColumns.length > 0 && discountColumns.length > 0) {
+                  if (goldColumns.length > 0 && discountColumns.length > 0 && makingChargesColumns.length > 0) {
+                    // New schema with gold price, discount columns, and making charges columns
+                    itemSql = `
+                      INSERT INTO sale_items (
+                        sale_id, item_id, quantity, unit_price, original_price,
+                        discount_amount, discount_type, subtotal,
+                        gold_price_per_gram, gold_carat, gold_weight, is_gold_price_based,
+                        making_charges, additional_materials_charges
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+
+                    // Calculate subtotal including making charges and additional materials charges
+                    const totalWithCharges = subtotal +
+                      (item.making_charges || 0) +
+                      (item.additional_materials_charges || 0);
+
+                    itemParams = [
+                      saleId,
+                      item.item_id,
+                      item.quantity,
+                      item.unit_price,
+                      item.original_price || item.unit_price,
+                      item.discount_amount || null,
+                      item.discount_type || null,
+                      totalWithCharges, // Use the total with charges
+                      item.gold_price_per_gram || null,
+                      item.gold_carat || null,
+                      item.gold_weight || null,
+                      item.is_gold_price_based ? 1 : 0,
+                      item.making_charges || null,
+                      item.additional_materials_charges || null
+                    ];
+                  } else if (goldColumns.length > 0 && discountColumns.length > 0) {
                     // New schema with both gold price and discount columns
                     itemSql = `
                       INSERT INTO sale_items (
@@ -440,6 +549,7 @@ router.post("/create", (req, res) => {
                       resolve();
                     });
                   });
+                  }); // Close makingChargesColumns query
                 });
               });
             });
@@ -636,46 +746,76 @@ router.get("/invoice/:id", (req, res) => {
         // Get sale items
         let itemsSql;
 
-        if (columns.length > 0) {
-          // New schema with discount columns
-          itemsSql = `
-            SELECT
-              si.sale_item_id,
-              si.item_id,
-              ji.product_title,
-              ji.category,
-              si.quantity,
-              si.unit_price,
-              si.original_price,
-              si.discount_amount,
-              si.discount_type,
-              si.subtotal
-            FROM
-              sale_items si
-            LEFT JOIN
-              jewellery_items ji ON si.item_id = ji.item_id
-            WHERE
-              si.sale_id = ?
-          `;
-        } else {
-          // Old schema without discount columns
-          itemsSql = `
-            SELECT
-              si.sale_item_id,
-              si.item_id,
-              ji.product_title,
-              ji.category,
-              si.quantity,
-              si.unit_price,
-              si.subtotal
-            FROM
-              sale_items si
-            LEFT JOIN
-              jewellery_items ji ON si.item_id = ji.item_id
-            WHERE
-              si.sale_id = ?
-          `;
-        }
+        // Check if making_charges column exists
+        con.query("SHOW COLUMNS FROM sale_items LIKE 'making_charges'", (err, makingChargesColumns) => {
+          if (err) {
+            console.error("Error checking for making_charges column:", err);
+            makingChargesColumns = [];
+          }
+
+          if (columns.length > 0 && makingChargesColumns.length > 0) {
+            // New schema with discount columns and making charges
+            itemsSql = `
+              SELECT
+                si.sale_item_id,
+                si.item_id,
+                ji.product_title,
+                ji.category,
+                si.quantity,
+                si.unit_price,
+                si.original_price,
+                si.discount_amount,
+                si.discount_type,
+                si.subtotal,
+                si.making_charges,
+                si.additional_materials_charges
+              FROM
+                sale_items si
+              LEFT JOIN
+                jewellery_items ji ON si.item_id = ji.item_id
+              WHERE
+                si.sale_id = ?
+            `;
+          } else if (columns.length > 0) {
+            // New schema with discount columns
+            itemsSql = `
+              SELECT
+                si.sale_item_id,
+                si.item_id,
+                ji.product_title,
+                ji.category,
+                si.quantity,
+                si.unit_price,
+                si.original_price,
+                si.discount_amount,
+                si.discount_type,
+                si.subtotal
+              FROM
+                sale_items si
+              LEFT JOIN
+                jewellery_items ji ON si.item_id = ji.item_id
+              WHERE
+                si.sale_id = ?
+            `;
+          } else {
+            // Old schema without discount columns
+            itemsSql = `
+              SELECT
+                si.sale_item_id,
+                si.item_id,
+                ji.product_title,
+                ji.category,
+                si.quantity,
+                si.unit_price,
+                si.subtotal
+              FROM
+                sale_items si
+              LEFT JOIN
+                jewellery_items ji ON si.item_id = ji.item_id
+              WHERE
+                si.sale_id = ?
+            `;
+          }
 
         con.query(itemsSql, [saleId], (err, itemsResults) => {
           if (err) {
@@ -727,6 +867,7 @@ router.get("/invoice/:id", (req, res) => {
             });
           }
         });
+        }); // Close makingChargesColumns query
       });
     }
   });
