@@ -23,6 +23,8 @@ interface JewelleryItem {
   weight?: number;
   assay_certificate?: string;
   is_solid_gold?: number; // 1 for true, 0 for false
+  making_charges?: number;
+  additional_materials_charges?: number;
 }
 
 interface Category {
@@ -78,6 +80,8 @@ const JewelleryStockPage = () => {
   const [weight, setWeight] = useState<number | null>(null);
   const [assayCertificate, setAssayCertificate] = useState<string>('');
   const [isSolidGold, setIsSolidGold] = useState<boolean>(true);
+  const [makingCharges, setMakingCharges] = useState<number | null>(null);
+  const [additionalMaterialsCharges, setAdditionalMaterialsCharges] = useState<number | null>(null);
 
   // State to track the order ID if coming from "Add to Stock"
   const [sourceOrderId, setSourceOrderId] = useState<number | null>(null);
@@ -91,6 +95,8 @@ const JewelleryStockPage = () => {
     const goldCaratParam = searchParams.get('gold_carat');
     const weightParam = searchParams.get('weight');
     const orderIdParam = searchParams.get('order_id');
+    const makingChargesParam = searchParams.get('making_charges');
+    const additionalMaterialsChargesParam = searchParams.get('additional_materials_charges');
 
     // If we have parameters, we're coming from "Add to Stock"
     if (category || inStockParam || buyingPriceParam || goldCaratParam || weightParam) {
@@ -102,6 +108,8 @@ const JewelleryStockPage = () => {
       if (buyingPriceParam) setBuyingPrice(parseFloat(buyingPriceParam) || 0);
       if (goldCaratParam) setGoldCarat(parseFloat(goldCaratParam) || null);
       if (weightParam) setWeight(parseFloat(weightParam) || null);
+      if (makingChargesParam) setMakingCharges(parseFloat(makingChargesParam) || null);
+      if (additionalMaterialsChargesParam) setAdditionalMaterialsCharges(parseFloat(additionalMaterialsChargesParam) || null);
 
       // Set solid gold to true if we have gold carat
       if (goldCaratParam) setIsSolidGold(true);
@@ -350,6 +358,9 @@ const JewelleryStockPage = () => {
     setWeight(item.weight !== undefined ? item.weight : null);
     setAssayCertificate(item.assay_certificate || '');
     setIsSolidGold(item.is_solid_gold === 1);
+    // Set making charges and additional materials charges if available
+    setMakingCharges(item.making_charges !== undefined ? item.making_charges : null);
+    setAdditionalMaterialsCharges(item.additional_materials_charges !== undefined ? item.additional_materials_charges : null);
     setFormMode('edit');
     setShowForm(true);
   };
@@ -412,6 +423,9 @@ const JewelleryStockPage = () => {
     setWeight(null);
     setAssayCertificate('');
     setIsSolidGold(true);
+    // Reset making charges and additional materials charges
+    setMakingCharges(null);
+    setAdditionalMaterialsCharges(null);
     // Keep the current branch ID for non-admin users
     if (userRole !== 'admin' && userBranchId) {
       // Branch ID is already set from localStorage
@@ -443,7 +457,9 @@ const JewelleryStockPage = () => {
       gold_carat: goldCarat,
       weight: weight,
       assay_certificate: assayCertificate,
-      is_solid_gold: isSolidGold ? 1 : 0
+      is_solid_gold: isSolidGold ? 1 : 0,
+      making_charges: makingCharges,
+      additional_materials_charges: additionalMaterialsCharges
     };
 
     console.log('Submitting jewellery item data:', itemData);
@@ -879,16 +895,16 @@ const JewelleryStockPage = () => {
       {/* Add/Edit Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <div className="bg-white rounded-lg p-5 w-full max-w-4xl">
 
-            <h2 className="text-xl font-bold mb-4 text-center">
+            <h2 className="text-xl font-bold mb-3 text-center">
               {formMode === 'add' ? 'Add New Jewellery Item' : 'Edit Jewellery Item'}
             </h2>
 
             <form onSubmit={handleSubmitForm}>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div className="grid grid-cols-3 gap-x-5 gap-y-2">
                 {/* Product Title */}
-                <div className="mb-3 col-span-2">
+                <div className="mb-2 col-span-3">
                   <label className="block text-sm font-medium mb-1">Product Title</label>
                   <input
                     type="text"
@@ -900,7 +916,7 @@ const JewelleryStockPage = () => {
                 </div>
 
                 {/* Category */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <input
                     type="text"
@@ -921,7 +937,7 @@ const JewelleryStockPage = () => {
                 </div>
 
                 {/* In Stock */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">In Stock</label>
                   <input
                     type="number"
@@ -933,36 +949,8 @@ const JewelleryStockPage = () => {
                   />
                 </div>
 
-                {/* Buying Price */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium mb-1">Buying Price</label>
-                  <input
-                    type="number"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={buyingPrice}
-                    onChange={(e) => setBuyingPrice(Number(e.target.value))}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-
-                {/* Selling Price */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium mb-1">Selling Price</label>
-                  <input
-                    type="number"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(Number(e.target.value))}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-
                 {/* Branch */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">Branch</label>
                   <select
                     className="w-full p-2 border border-gray-300 rounded-md"
@@ -977,8 +965,64 @@ const JewelleryStockPage = () => {
                   </select>
                 </div>
 
+                {/* Making Charges */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1">Making Charges</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={makingCharges || ''}
+                    onChange={(e) => setMakingCharges(e.target.value ? Number(e.target.value) : null)}
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 2000"
+                  />
+                </div>
+
+                {/* Additional Materials Charges */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1">Additional Materials Charges</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={additionalMaterialsCharges || ''}
+                    onChange={(e) => setAdditionalMaterialsCharges(e.target.value ? Number(e.target.value) : null)}
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 1000"
+                  />
+                </div>
+
+                {/* Buying Price */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1">Buying Price</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={buyingPrice}
+                    onChange={(e) => setBuyingPrice(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
+                {/* Selling Price */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1">Selling Price</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
                 {/* Gold Carat */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">Gold Carat</label>
                   <input
                     type="number"
@@ -992,7 +1036,7 @@ const JewelleryStockPage = () => {
                 </div>
 
                 {/* Weight */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">Weight (grams)</label>
                   <input
                     type="number"
@@ -1006,7 +1050,7 @@ const JewelleryStockPage = () => {
                 </div>
 
                 {/* Assay Certificate */}
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="block text-sm font-medium mb-1">Assay Certificate</label>
                   <input
                     type="text"
@@ -1018,7 +1062,7 @@ const JewelleryStockPage = () => {
                 </div>
 
                 {/* Is Solid Gold */}
-                <div className="mb-3 flex items-center">
+                <div className="mb-2 flex items-center">
                   <label className="flex items-center">
                     <input
                       type="checkbox"
@@ -1108,6 +1152,14 @@ const JewelleryStockPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-500">Product Added</p>
                 <p className="text-base">{formatDate(detailsItem.product_added)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Making Charges</p>
+                <p className="text-base">{detailsItem.making_charges ? formatCurrency(detailsItem.making_charges) : '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Additional Materials Charges</p>
+                <p className="text-base">{detailsItem.additional_materials_charges ? formatCurrency(detailsItem.additional_materials_charges) : '-'}</p>
               </div>
             </div>
 
