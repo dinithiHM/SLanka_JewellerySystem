@@ -421,6 +421,27 @@ router.post("/create", (req, res) => {
           }
         });
 
+        // Check if offered_gold_value column exists
+        con.query("SHOW COLUMNS FROM orders LIKE 'offered_gold_value'", (offeredGoldColumnErr, offeredGoldColumnResults) => {
+          if (offeredGoldColumnErr) {
+            console.error("Error checking for offered_gold_value column:", offeredGoldColumnErr);
+          } else if (offeredGoldColumnResults.length === 0) {
+            // Add the offered_gold_value column if it doesn't exist
+            const alterTableSql = `
+              ALTER TABLE orders
+              ADD COLUMN offered_gold_value DECIMAL(10,2) DEFAULT 0 COMMENT 'Value of offered gold material deducted from total price'
+            `;
+
+            con.query(alterTableSql, (alterErr) => {
+              if (alterErr) {
+                console.error("Error adding offered_gold_value column:", alterErr);
+              } else {
+                console.log("Added offered_gold_value column to orders table");
+              }
+            });
+          }
+        });
+
         // Check if selectedKarat and goldPurity columns exist
         con.query("SHOW COLUMNS FROM orders LIKE 'selectedKarat'", (karatColumnErr, karatColumnResults) => {
           if (karatColumnErr) {
@@ -456,6 +477,7 @@ router.post("/create", (req, res) => {
       const baseEstimatedPrice = req.body.baseEstimatedPrice || null; // Base gold price (gold * weight)
       const estimatedPrice = req.body.estimatedPrice || null; // Total estimate with all charges
       const totalAmount = req.body.totalAmount || null;
+      const offeredGoldValue = req.body.offeredGoldValue || 0; // Value of offered gold material
 
       // Extract gold karat and purity information
       const selectedKarat = req.body.selectedKarat_db || req.body.selectedKarat || null;
@@ -493,8 +515,9 @@ router.post("/create", (req, res) => {
               payment_status,
               selectedKarat,
               goldPurity,
+              offered_gold_value,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -518,7 +541,8 @@ router.post("/create", (req, res) => {
             totalPaymentAmount,
             paymentStatus,
             selectedKarat,
-            goldPurity
+            goldPurity,
+            offeredGoldValue
           ];
       } else {
           // Include price fields without branch_id
@@ -544,8 +568,9 @@ router.post("/create", (req, res) => {
               payment_status,
               selectedKarat,
               goldPurity,
+              offered_gold_value,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           values = [
@@ -568,7 +593,8 @@ router.post("/create", (req, res) => {
             totalPaymentAmount,
             paymentStatus,
             selectedKarat,
-            goldPurity
+            goldPurity,
+            offeredGoldValue
           ];
       }
       } else {
