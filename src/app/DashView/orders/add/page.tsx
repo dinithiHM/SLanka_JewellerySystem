@@ -77,6 +77,7 @@ const AddOrderPage = () => {
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState(0);
   const [estimatedPrice, setEstimatedPrice] = useState(0); // Base estimate (gold + weight)
+  const [offeredGoldValue, setOfferedGoldValue] = useState(0); // Value of offered gold material
   const [totalEstimatedPrice, setTotalEstimatedPrice] = useState(0); // Total estimate including all charges
   const [totalAmount, setTotalAmount] = useState(0);
   const [isLoadingGoldPrice, setIsLoadingGoldPrice] = useState(false);
@@ -364,6 +365,34 @@ const AddOrderPage = () => {
     goldPricePerGramFromQuery
   ]);
 
+  // Calculate offered gold value when karatValues or goldPricePerGram changes
+  useEffect(() => {
+    if (offerGold === 'yes') {
+      // Calculate the total value of offered gold
+      let totalOfferedGoldValue = 0;
+
+      Object.keys(selectedKarats).forEach(karat => {
+        if (selectedKarats[karat] && karatValues[karat] > 0) {
+          // Find the purity for this karat
+          const purityMatch = karat.match(/(\d+)K/);
+          if (purityMatch) {
+            const karatNumber = parseInt(purityMatch[1], 10);
+            const purity = karatNumber / 24; // Calculate purity as a fraction of 24K
+
+            // Calculate the value of this gold
+            const karatPrice = baseGoldPrice * purity; // Price per gram for this karat
+            const value = karatPrice * karatValues[karat]; // Total value for this amount of gold
+            totalOfferedGoldValue += value;
+          }
+        }
+      });
+
+      setOfferedGoldValue(totalOfferedGoldValue);
+    } else {
+      setOfferedGoldValue(0);
+    }
+  }, [offerGold, selectedKarats, karatValues, baseGoldPrice]);
+
   // Calculate estimated price
   useEffect(() => {
     if (!useCustomPrice) {
@@ -375,13 +404,34 @@ const AddOrderPage = () => {
       const totalEstimate = baseEstimate + makingCharges + additionalMaterialsCharges;
       setTotalEstimatedPrice(totalEstimate);
 
+      // Log the calculation for debugging
+      console.log('Price calculation:', {
+        baseEstimate,
+        makingCharges,
+        additionalMaterialsCharges,
+        offeredGoldValue,
+        totalEstimate
+      });
+
       // Keep custom price in sync with total estimate
-      setCustomPrice(totalEstimate);
+      setCustomPrice(Math.max(0, totalEstimate));
     }
 
     // Calculate total amount
     const pricePerUnit = useCustomPrice ? customPrice : totalEstimatedPrice;
-    const total = pricePerUnit * quantity;
+    const subtotal = pricePerUnit * quantity;
+
+    // Subtract offered gold value from the total amount
+    const total = Math.max(0, subtotal - offeredGoldValue);
+
+    console.log('Total amount calculation:', {
+      pricePerUnit,
+      quantity,
+      subtotal,
+      offeredGoldValue,
+      finalTotal: total
+    });
+
     setTotalAmount(total);
 
     // Calculate minimum advance payment (25% of total)
@@ -392,7 +442,7 @@ const AddOrderPage = () => {
     if (advancePaymentAmount === 0) {
       setAdvancePaymentAmount(minPayment);
     }
-  }, [goldPricePerGram, weightInGrams, makingCharges, additionalMaterialsCharges, useCustomPrice, customPrice, quantity, estimatedPrice, totalEstimatedPrice, advancePaymentAmount]);
+  }, [goldPricePerGram, weightInGrams, makingCharges, additionalMaterialsCharges, offeredGoldValue, useCustomPrice, customPrice, quantity, estimatedPrice, totalEstimatedPrice, advancePaymentAmount]);
 
   // Handle image upload with compression
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -577,6 +627,7 @@ const AddOrderPage = () => {
         makingCharges,
         additionalMaterialsCharges,
         baseEstimatedPrice: estimatedPrice, // Base estimate (gold * weight)
+        offeredGoldValue: offerGold === 'yes' ? offeredGoldValue : 0, // Value of offered gold material
         estimatedPrice: useCustomPrice ? customPrice : totalEstimatedPrice, // Total estimate with all charges
         totalAmount,
         // Payment information
@@ -1102,7 +1153,9 @@ const AddOrderPage = () => {
                   <label className="block text-sm font-medium mb-1">Base Gold Price (per unit)</label>
                   <div className="p-2 bg-white border border-gray-300 rounded-md">
                     Rs. {estimatedPrice.toFixed(2).toLocaleString()}
-                    <span className="text-xs text-gray-500 block">Gold price × weight</span>
+                    <span className="text-xs text-gray-500 block">
+                      Gold price × weight
+                    </span>
                   </div>
                 </div>
 
@@ -1114,7 +1167,10 @@ const AddOrderPage = () => {
                   <div className="p-2 bg-white border border-gray-300 rounded-md">
                     Rs. {useCustomPrice ? customPrice.toFixed(2).toLocaleString() : totalEstimatedPrice.toFixed(2).toLocaleString()}
                     <span className="text-xs text-gray-500 block">
-                      {useCustomPrice ? "Custom price" : "Gold + making + additional materials"}
+                      {useCustomPrice
+                        ? "Custom price"
+                        : "Base gold price + making + additional materials"
+                      }
                     </span>
                   </div>
                 </div>
@@ -1127,7 +1183,20 @@ const AddOrderPage = () => {
                         <div>Gold Cost: Rs. {estimatedPrice.toFixed(2).toLocaleString()}</div>
                         <div>Making Charges: Rs. {makingCharges.toFixed(2).toLocaleString()}</div>
                         <div>Additional Materials: Rs. {additionalMaterialsCharges.toFixed(2).toLocaleString()}</div>
-                        <div className="font-semibold">Total: Rs. {totalEstimatedPrice.toFixed(2).toLocaleString()}</div>
+                        <div className="font-semibold col-span-2 pt-1 border-t border-gray-300 mt-1">
+                          Total Per Unit: Rs. {totalEstimatedPrice.toFixed(2).toLocaleString()}
+                        </div>
+                        <div className="col-span-2">
+                          Subtotal ({quantity} {quantity === 1 ? 'unit' : 'units'}): Rs. {(totalEstimatedPrice * quantity).toFixed(2).toLocaleString()}
+                        </div>
+                        {offerGold === 'yes' && offeredGoldValue > 0 && (
+                          <div className="text-green-600 col-span-2">
+                            Offered Gold Value: -Rs. {offeredGoldValue.toFixed(2).toLocaleString()}
+                          </div>
+                        )}
+                        <div className="font-semibold col-span-2 pt-1 border-t border-gray-300 mt-1 text-yellow-700">
+                          Final Total: Rs. {totalAmount.toFixed(2).toLocaleString()}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1139,7 +1208,8 @@ const AddOrderPage = () => {
                   <div className="p-2 bg-white border border-gray-300 rounded-md font-semibold text-yellow-700">
                     Rs. {totalAmount.toFixed(2).toLocaleString()}
                     <span className="text-xs text-gray-500 block">
-                      {quantity} {quantity === 1 ? 'unit' : 'units'} × Rs. {(useCustomPrice ? customPrice : totalEstimatedPrice).toFixed(2).toLocaleString()}
+                      ({quantity} {quantity === 1 ? 'unit' : 'units'} × Rs. {(useCustomPrice ? customPrice : totalEstimatedPrice).toFixed(2).toLocaleString()})
+                      {offerGold === 'yes' && offeredGoldValue > 0 && ` - Rs. ${offeredGoldValue.toFixed(2).toLocaleString()} (offered gold value)`}
                     </span>
                   </div>
                 </div>
