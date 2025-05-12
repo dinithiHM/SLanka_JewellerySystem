@@ -118,7 +118,9 @@ router.post("/create", (req, res) => {
     gold_carat,
     weight,
     assay_certificate,
-    is_solid_gold
+    is_solid_gold,
+    making_charges,
+    additional_materials_charges
   } = req.body;
 
   console.log('POST /jewellery-items/create - Creating new jewellery item');
@@ -141,8 +143,10 @@ router.post("/create", (req, res) => {
       weight,
       assay_certificate,
       is_solid_gold,
+      making_charges,
+      additional_materials_charges,
       product_added
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
 
   const values = [
@@ -155,7 +159,9 @@ router.post("/create", (req, res) => {
     gold_carat || null,
     weight || null,
     assay_certificate || null,
-    is_solid_gold !== undefined ? is_solid_gold : true
+    is_solid_gold !== undefined ? is_solid_gold : true,
+    making_charges || null,
+    additional_materials_charges || null
   ];
 
   con.query(sql, values, (err, result) => {
@@ -184,7 +190,9 @@ router.put("/update/:id", (req, res) => {
     gold_carat,
     weight,
     assay_certificate,
-    is_solid_gold
+    is_solid_gold,
+    making_charges,
+    additional_materials_charges
   } = req.body;
 
   console.log('PUT /jewellery-items/update/:id - Updating jewellery item');
@@ -208,6 +216,8 @@ router.put("/update/:id", (req, res) => {
       weight = ?,
       assay_certificate = ?,
       is_solid_gold = ?,
+      making_charges = ?,
+      additional_materials_charges = ?,
       updated_at = NOW()
     WHERE item_id = ?
   `;
@@ -223,6 +233,8 @@ router.put("/update/:id", (req, res) => {
     weight || null,
     assay_certificate || null,
     is_solid_gold !== undefined ? is_solid_gold : true,
+    making_charges || null,
+    additional_materials_charges || null,
     itemId
   ];
 
