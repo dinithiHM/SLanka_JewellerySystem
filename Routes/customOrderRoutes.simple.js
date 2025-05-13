@@ -41,6 +41,10 @@ router.post("/create", (req, res) => {
   console.log('POST /custom-orders/create - Creating new custom order');
   console.log('Request body:', req.body);
 
+  // Log all request headers for debugging
+  console.log('Request headers:');
+  console.log(req.headers);
+
   // Get form data
   const {
     customer_name,
@@ -56,6 +60,26 @@ router.post("/create", (req, res) => {
     created_by,
     branch_id
   } = req.body;
+
+  // Log the raw form data for debugging
+  console.log('Raw form data keys:', Object.keys(req.body));
+  console.log('Raw supplier_id from form:', req.body.supplier_id, 'type:', typeof req.body.supplier_id);
+  console.log('Full request body:', JSON.stringify(req.body, null, 2));
+
+  // Log each field individually for debugging
+  console.log('Extracted fields:');
+  console.log('customer_name:', customer_name);
+  console.log('customer_phone:', customer_phone);
+  console.log('customer_email:', customer_email);
+  console.log('estimated_amount:', estimated_amount);
+  console.log('advance_amount:', advance_amount);
+  console.log('estimated_completion_date:', estimated_completion_date);
+  console.log('category_id:', category_id, 'type:', typeof category_id);
+  console.log('supplier_id:', supplier_id, 'type:', typeof supplier_id);
+  console.log('description:', description);
+  console.log('special_requirements:', special_requirements);
+  console.log('created_by:', created_by);
+  console.log('branch_id:', branch_id);
 
   // Validate required fields
   if (!customer_name || !estimated_amount) {
@@ -73,214 +97,341 @@ router.post("/create", (req, res) => {
 
   console.log('Payment status:', payment_status);
 
-  // Start transaction
-  con.beginTransaction(err => {
-    if (err) {
-      console.error("Error starting transaction:", err);
-      return res.status(500).json({ message: "Database error", error: err.message });
+  // First, verify the supplier exists if a supplier_id was provided
+  // Convert numeric fields to their proper types
+  const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+
+  // Simplified supplier_id parsing - both tables use INT for supplier_id
+  let parsedSupplierId = null;
+  if (supplier_id) {
+    console.log('SUPPLIER DEBUG - Raw supplier_id received:', supplier_id, 'type:', typeof supplier_id);
+
+    // Simple direct parsing - convert to number
+    if (typeof supplier_id === 'number') {
+      parsedSupplierId = supplier_id;
+    } else if (typeof supplier_id === 'string') {
+      // Try to parse as integer
+      parsedSupplierId = parseInt(supplier_id, 10);
+
+      // If parsing fails, try to extract a number from the string
+      if (isNaN(parsedSupplierId)) {
+        const matches = supplier_id.match(/\d+/);
+        if (matches && matches.length > 0) {
+          parsedSupplierId = parseInt(matches[0], 10);
+          console.log('SUPPLIER DEBUG - Extracted number from string:', parsedSupplierId);
+        }
+      }
     }
 
-    // Insert order
-    const insertSql = `
-      INSERT INTO custom_orders (
-        order_reference,
-        customer_name,
-        customer_phone,
-        customer_email,
-        estimated_completion_date,
-        estimated_amount,
-        advance_amount,
-        order_status,
-        payment_status,
-        category_id,
-        supplier_id,
-        description,
-        special_requirements,
-        created_by,
-        branch_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Final validation
+    if (isNaN(parsedSupplierId) || parsedSupplierId <= 0) {
+      console.error('SUPPLIER DEBUG - Invalid supplier_id, setting to null');
+      parsedSupplierId = null;
+    } else {
+      console.log('SUPPLIER DEBUG - Final parsed supplier_id:', parsedSupplierId, 'type:', typeof parsedSupplierId);
+    }
+  }
 
-    // Convert numeric fields to their proper types
-    const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
-    const parsedSupplierId = supplier_id ? parseInt(supplier_id, 10) : null;
-    const parsedCreatedBy = created_by ? parseInt(created_by, 10) : null;
-    const parsedBranchId = branch_id ? parseInt(branch_id, 10) : null;
+  const parsedCreatedBy = created_by ? parseInt(created_by, 10) : null;
+  const parsedBranchId = branch_id ? parseInt(branch_id, 10) : null;
 
-    const insertParams = [
-      order_reference,
-      customer_name,
-      customer_phone || null,
-      customer_email || null,
-      estimated_completion_date || null,
-      parseFloat(estimated_amount),
-      parseFloat(advance_amount) || 0,
-      'Pending',
-      payment_status,
-      parsedCategoryId,
-      parsedSupplierId,
-      description || '',
-      special_requirements || '',
-      parsedCreatedBy,
-      parsedBranchId
-    ];
+  console.log('SUPPLIER DEBUG - Final supplier_id for database:', parsedSupplierId, 'from original:', supplier_id);
 
-    console.log('Insert parameters:', insertParams);
+  // First, verify the supplier exists if a supplier_id was provided
+  if (parsedSupplierId !== null) {
+    // Make sure we're using the correct column name from the suppliers table
+    con.query('SELECT supplier_id FROM suppliers WHERE supplier_id = ?', [parsedSupplierId], (err, results) => {
+      if (err) {
+        console.error('SUPPLIER DEBUG - Error checking supplier existence:', err);
+        // Continue with the transaction but log the error
+        proceedWithTransaction();
+      } else if (results.length === 0) {
+        console.error(`SUPPLIER DEBUG - Supplier with ID ${parsedSupplierId} does not exist in database`);
+        // If supplier doesn't exist, set to null to avoid foreign key constraint errors
+        parsedSupplierId = null;
+        console.log('SUPPLIER DEBUG - Set supplier_id to null because supplier not found');
+        proceedWithTransaction();
+      } else {
+        console.log(`SUPPLIER DEBUG - Verified supplier with ID ${parsedSupplierId} exists in database`);
+        // Double check the actual supplier_id from the database to ensure it matches
+        const verifiedSupplierId = results[0].supplier_id;
+        console.log(`SUPPLIER DEBUG - Database returned supplier_id: ${verifiedSupplierId}`);
 
-    con.query(insertSql, insertParams, (insertErr, insertResult) => {
-      if (insertErr) {
-        return con.rollback(() => {
-          console.error("Error creating custom order:", insertErr);
-          console.error("SQL query:", insertSql);
-          console.error("Parameters:", insertParams);
-          res.status(500).json({
-            message: "Database error",
-            error: insertErr.message,
-            sqlState: insertErr.sqlState,
-            sqlCode: insertErr.code,
-            sqlNumber: insertErr.errno
-          });
-        });
+        // Use the verified supplier_id from the database
+        parsedSupplierId = verifiedSupplierId;
+        proceedWithTransaction();
+      }
+    });
+  } else {
+    proceedWithTransaction();
+  }
+
+  // Function to proceed with the transaction after supplier verification
+  function proceedWithTransaction() {
+    con.beginTransaction(err => {
+      if (err) {
+        console.error("Error starting transaction:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
       }
 
-      const orderId = insertResult.insertId;
-      console.log('Order created with ID:', orderId);
+      // Insert order
+      // Construct SQL query with explicit column values for debugging
+      const insertSql = `
+        INSERT INTO custom_orders (
+          order_reference,
+          customer_name,
+          customer_phone,
+          customer_email,
+          estimated_completion_date,
+          estimated_amount,
+          advance_amount,
+          order_status,
+          payment_status,
+          category_id,
+          supplier_id,
+          description,
+          special_requirements,
+          created_by,
+          branch_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
 
-      // If advance payment was made, record it
-      if (parseFloat(advance_amount) > 0) {
-        // First, insert into custom_order_payments
-        const paymentSql = `
-          INSERT INTO custom_order_payments (
-            order_id,
-            payment_amount,
-            payment_method,
-            notes
-          ) VALUES (?, ?, ?, ?)
-        `;
+      // Log the SQL query for debugging
+      console.log('SQL Query:', insertSql);
 
-        const paymentParams = [
-          orderId,
-          parseFloat(advance_amount),
-          'Cash', // Default payment method
-          'Initial advance payment'
-        ];
+      const insertParams = [
+        order_reference,
+        customer_name,
+        customer_phone || null,
+        customer_email || null,
+        estimated_completion_date || null,
+        parseFloat(estimated_amount),
+        parseFloat(advance_amount) || 0,
+        'Pending',
+        payment_status,
+        parsedCategoryId,
+        parsedSupplierId,
+        description || '',
+        special_requirements || '',
+        parsedCreatedBy,
+        parsedBranchId
+      ];
 
-        con.query(paymentSql, paymentParams, (paymentErr) => {
-          if (paymentErr) {
-            return con.rollback(() => {
-              console.error("Error recording payment:", paymentErr);
-              res.status(500).json({ message: "Database error", error: paymentErr.message });
+      console.log('Insert parameters:', insertParams);
+
+      // Log each parameter individually for clarity
+      console.log('Parameter details:');
+      console.log('1. order_reference:', insertParams[0]);
+      console.log('2. customer_name:', insertParams[1]);
+      console.log('3. customer_phone:', insertParams[2]);
+      console.log('4. customer_email:', insertParams[3]);
+      console.log('5. estimated_completion_date:', insertParams[4]);
+      console.log('6. estimated_amount:', insertParams[5]);
+      console.log('7. advance_amount:', insertParams[6]);
+      console.log('8. order_status:', insertParams[7]);
+      console.log('9. payment_status:', insertParams[8]);
+      console.log('10. category_id:', insertParams[9]);
+      console.log('11. supplier_id:', insertParams[10], 'type:', typeof insertParams[10]);
+      console.log('12. description:', insertParams[11]);
+      console.log('13. special_requirements:', insertParams[12]);
+      console.log('14. created_by:', insertParams[13]);
+      console.log('15. branch_id:', insertParams[14]);
+
+      // Enhanced debugging for supplier_id
+      console.log('SUPPLIER DEBUG - Final supplier_id being inserted:', parsedSupplierId, 'type:', typeof parsedSupplierId);
+
+      // Create a copy of the parameters for logging
+      const paramsCopy = [...insertParams];
+
+      // Log each parameter with its position and value
+      console.log('SUPPLIER DEBUG - All parameters being inserted:');
+      paramsCopy.forEach((param, index) => {
+        console.log(`Param ${index + 1}: ${param === null ? 'NULL' : param} (${typeof param})`);
+      });
+
+      // Log the SQL query with actual values for debugging
+      let debugSql = insertSql;
+      paramsCopy.forEach((param) => {
+        if (param === null) {
+          debugSql = debugSql.replace('?', 'NULL');
+        } else {
+          debugSql = debugSql.replace('?', typeof param === 'string' ? `'${param}'` : param);
+        }
+      });
+      console.log('SUPPLIER DEBUG - Complete SQL with values:');
+      console.log(debugSql);
+
+      // Try to execute the query with detailed error handling
+      con.query(insertSql, insertParams, (insertErr, insertResult) => {
+        if (insertErr) {
+          return con.rollback(() => {
+            console.error("Error creating custom order:", insertErr);
+            console.error("SQL query:", insertSql);
+            console.error("Parameters:", insertParams);
+
+            // Log more detailed error information
+            console.error("Error code:", insertErr.code);
+            console.error("Error number:", insertErr.errno);
+            console.error("SQL state:", insertErr.sqlState);
+            console.error("SQL message:", insertErr.message);
+
+            // Check for specific error types
+            if (insertErr.code === 'ER_BAD_NULL_ERROR') {
+              console.error("NULL value error - check which column doesn't allow NULL");
+            } else if (insertErr.code === 'ER_NO_REFERENCED_ROW_2') {
+              console.error("Foreign key constraint error - supplier_id might not exist in suppliers table");
+            }
+
+            res.status(500).json({
+              message: "Database error",
+              error: insertErr.message,
+              sqlState: insertErr.sqlState,
+              sqlCode: insertErr.code,
+              sqlNumber: insertErr.errno,
+              sqlMessage: insertErr.message
             });
-          }
+          });
+        }
 
-          // Now, also insert into advance_payments table
-          // Generate a reference number for the advance payment
-          const year = new Date().getFullYear();
-          const referencePrefix = `ADV-${year}-`;
+        const orderId = insertResult.insertId;
+        console.log('Order created with ID:', orderId);
 
-          // Find the next sequence number
-          const sequenceQuery = `
-            SELECT MAX(CAST(SUBSTRING_INDEX(payment_reference, '-', -1) AS UNSIGNED)) as max_seq
-            FROM advance_payments
-            WHERE payment_reference LIKE ?
+        // If advance payment was made, record it
+        if (parseFloat(advance_amount) > 0) {
+          // First, insert into custom_order_payments
+          const paymentSql = `
+            INSERT INTO custom_order_payments (
+              order_id,
+              payment_amount,
+              payment_method,
+              notes
+            ) VALUES (?, ?, ?, ?)
           `;
 
-          con.query(sequenceQuery, [`${referencePrefix}%`], (seqErr, seqResults) => {
-            if (seqErr) {
+          const paymentParams = [
+            orderId,
+            parseFloat(advance_amount),
+            'Cash', // Default payment method
+            'Initial advance payment'
+          ];
+
+          con.query(paymentSql, paymentParams, (paymentErr) => {
+            if (paymentErr) {
               return con.rollback(() => {
-                console.error("Error generating payment reference:", seqErr);
-                res.status(500).json({ message: "Database error", error: seqErr.message });
+                console.error("Error recording payment:", paymentErr);
+                res.status(500).json({ message: "Database error", error: paymentErr.message });
               });
             }
 
-            let nextSeq = 1;
-            if (seqResults[0].max_seq) {
-              nextSeq = parseInt(seqResults[0].max_seq) + 1;
-            }
+            // Now, also insert into advance_payments table
+            // Generate a reference number for the advance payment
+            const year = new Date().getFullYear();
+            const referencePrefix = `ADV-${year}-`;
 
-            const payment_reference = `${referencePrefix}${nextSeq.toString().padStart(4, '0')}`;
-
-            // Calculate balance amount
-            const balance_amount = parseFloat(estimated_amount) - parseFloat(advance_amount);
-            const payment_status = balance_amount <= 0 ? 'Completed' : 'Partially Paid';
-
-            // Insert into advance_payments table
-            const advancePaymentSql = `
-              INSERT INTO advance_payments (
-                payment_reference,
-                customer_name,
-                payment_date,
-                total_amount,
-                advance_amount,
-                balance_amount,
-                payment_status,
-                payment_method,
-                notes,
-                created_by,
-                branch_id,
-                is_custom_order,
-                order_id
-              ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            // Find the next sequence number
+            const sequenceQuery = `
+              SELECT MAX(CAST(SUBSTRING_INDEX(payment_reference, '-', -1) AS UNSIGNED)) as max_seq
+              FROM advance_payments
+              WHERE payment_reference LIKE ?
             `;
 
-            con.query(advancePaymentSql, [
-              payment_reference,
-              customer_name,
-              parseFloat(estimated_amount),
-              parseFloat(advance_amount),
-              balance_amount,
-              payment_status,
-              'Cash', // Default payment method
-              'Initial advance payment for custom order',
-              parsedCreatedBy,
-              parsedBranchId,
-              1, // is_custom_order = true
-              orderId
-            ], (advPayErr) => {
-              if (advPayErr) {
+            con.query(sequenceQuery, [`${referencePrefix}%`], (seqErr, seqResults) => {
+              if (seqErr) {
                 return con.rollback(() => {
-                  console.error("Error creating advance payment:", advPayErr);
-                  res.status(500).json({ message: "Database error", error: advPayErr.message });
+                  console.error("Error generating payment reference:", seqErr);
+                  res.status(500).json({ message: "Database error", error: seqErr.message });
                 });
               }
 
-              // Commit transaction
-              con.commit((commitErr) => {
-                if (commitErr) {
+              let nextSeq = 1;
+              if (seqResults[0].max_seq) {
+                nextSeq = parseInt(seqResults[0].max_seq) + 1;
+              }
+
+              const payment_reference = `${referencePrefix}${nextSeq.toString().padStart(4, '0')}`;
+
+              // Calculate balance amount
+              const balance_amount = parseFloat(estimated_amount) - parseFloat(advance_amount);
+              const payment_status = balance_amount <= 0 ? 'Completed' : 'Partially Paid';
+
+              // Insert into advance_payments table
+              const advancePaymentSql = `
+                INSERT INTO advance_payments (
+                  payment_reference,
+                  customer_name,
+                  payment_date,
+                  total_amount,
+                  advance_amount,
+                  balance_amount,
+                  payment_status,
+                  payment_method,
+                  notes,
+                  created_by,
+                  branch_id,
+                  is_custom_order,
+                  order_id
+                ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `;
+
+              con.query(advancePaymentSql, [
+                payment_reference,
+                customer_name,
+                parseFloat(estimated_amount),
+                parseFloat(advance_amount),
+                balance_amount,
+                payment_status,
+                'Cash', // Default payment method
+                'Initial advance payment for custom order',
+                parsedCreatedBy,
+                parsedBranchId,
+                1, // is_custom_order = true
+                orderId
+              ], (advPayErr) => {
+                if (advPayErr) {
                   return con.rollback(() => {
-                    console.error("Error committing transaction:", commitErr);
-                    res.status(500).json({ message: "Database error", error: commitErr.message });
+                    console.error("Error creating advance payment:", advPayErr);
+                    res.status(500).json({ message: "Database error", error: advPayErr.message });
                   });
                 }
 
-                res.status(201).json({
-                  message: "Custom order created successfully",
-                  order_id: orderId,
-                  order_reference
+                // Commit transaction
+                con.commit((commitErr) => {
+                  if (commitErr) {
+                    return con.rollback(() => {
+                      console.error("Error committing transaction:", commitErr);
+                      res.status(500).json({ message: "Database error", error: commitErr.message });
+                    });
+                  }
+
+                  res.status(201).json({
+                    message: "Custom order created successfully",
+                    order_id: orderId,
+                    order_reference
+                  });
                 });
               });
             });
           });
-        });
-      } else {
-        // No advance payment, commit transaction directly
-        con.commit((commitErr) => {
-          if (commitErr) {
-            return con.rollback(() => {
-              console.error("Error committing transaction:", commitErr);
-              res.status(500).json({ message: "Database error", error: commitErr.message });
-            });
-          }
+        } else {
+          // No advance payment, commit transaction directly
+          con.commit((commitErr) => {
+            if (commitErr) {
+              return con.rollback(() => {
+                console.error("Error committing transaction:", commitErr);
+                res.status(500).json({ message: "Database error", error: commitErr.message });
+              });
+            }
 
-          res.status(201).json({
-            message: "Custom order created successfully",
-            order_id: orderId,
-            order_reference
+            res.status(201).json({
+              message: "Custom order created successfully",
+              order_id: orderId,
+              order_reference
+            });
           });
-        });
-      }
+        }
+      });
     });
-  });
+  }
 });
 
 // Get all custom orders with payment information and branch-based filtering
@@ -554,19 +705,28 @@ router.get("/:id", (req, res) => {
   });
 });
 
-// Send payment reminder email for a custom order
+// Send payment reminder for a custom order
 router.post("/:id/send-reminder", async (req, res) => {
   const orderId = req.params.id;
 
   console.log(`POST /custom-orders/${orderId}/send-reminder - Sending payment reminder email`);
 
-  // Get the order details
-  const orderSql = `
-    SELECT * FROM custom_order_details
-    WHERE order_id = ?
+  // Get the order details with customer email
+  console.log(`Fetching order details for order ID: ${orderId} for email reminder`);
+  const sql = `
+    SELECT co.*,
+           co.customer_email as customer_email,
+           co.order_id as order_id,
+           co.customer_name as customer_name,
+           co.estimated_amount as estimated_amount,
+           co.advance_amount as advance_amount,
+           co.order_date as order_date,
+           co.estimated_completion_date as estimated_completion_date
+    FROM custom_orders co
+    WHERE co.order_id = ?
   `;
 
-  con.query(orderSql, [orderId], async (err, results) => {
+  con.query(sql, [orderId], async (err, results) => {
     if (err) {
       console.error("Error fetching custom order:", err);
       return res.status(500).json({
@@ -584,28 +744,38 @@ router.post("/:id/send-reminder", async (req, res) => {
     }
 
     const order = results[0];
-    console.log("Order details:", order);
+    console.log("Found order:", order);
 
     // Check if customer email exists
     if (!order.customer_email) {
+      console.log("No customer email found for order:", orderId);
       return res.status(400).json({
         success: false,
         message: "Customer email not available for this order"
       });
     }
 
+    console.log("Customer email found:", order.customer_email);
+
     try {
       console.log(`Attempting to send email to ${order.customer_email}`);
 
-      // We're already handling nodemailer availability at the top of the file
-      // The code will use either the real email service or the mock email service
+      // Check if sendCustomOrderPaymentReminder is defined
+      if (typeof sendCustomOrderPaymentReminder !== 'function') {
+        console.error("sendCustomOrderPaymentReminder is not a function:", sendCustomOrderPaymentReminder);
+        return res.status(500).json({
+          success: false,
+          message: "Email service not properly initialized"
+        });
+      }
 
       // Send the reminder email
+      console.log("Calling sendCustomOrderPaymentReminder with order:", order.order_id);
       const emailResult = await sendCustomOrderPaymentReminder(order, order.customer_email);
       console.log("Email sending result:", emailResult);
 
       if (emailResult.success) {
-        // Log the email sent in the database
+        // Log the email sent in the database if email_logs table exists
         try {
           const logSql = `
             INSERT INTO email_logs (
@@ -672,203 +842,59 @@ router.post("/:id/send-reminder", async (req, res) => {
         });
       }
     } catch (error) {
-      console.error("Error sending payment reminder:", error);
+      console.error("Error in send-reminder endpoint:", error);
       return res.status(500).json({
         success: false,
-        message: "Error sending payment reminder",
+        message: "Server error while sending reminder",
         error: error.message
       });
     }
   });
 });
 
-// Add payment to custom order
-router.post("/:id/payments", (req, res) => {
-  const orderId = req.params.id;
-  const { payment_amount, payment_method, notes } = req.body;
+// Test endpoint for email service
+router.post("/test-email", async (req, res) => {
+  console.log("Testing email service...");
 
-  if (!payment_amount || parseFloat(payment_amount) <= 0) {
-    return res.status(400).json({ message: "Invalid payment amount" });
-  }
-
-  // Start transaction
-  con.beginTransaction((transErr) => {
-    if (transErr) {
-      console.error("Error starting transaction:", transErr);
-      return res.status(500).json({ message: "Database error", error: transErr.message });
+  try {
+    // Check if sendCustomOrderPaymentReminder is defined
+    if (typeof sendCustomOrderPaymentReminder !== 'function') {
+      console.error("sendCustomOrderPaymentReminder is not a function:", sendCustomOrderPaymentReminder);
+      return res.status(500).json({
+        success: false,
+        message: "Email service not properly initialized"
+      });
     }
 
-    // Get current order details
-    const orderSql = `
-      SELECT order_id, customer_name, estimated_amount, advance_amount, created_by, branch_id
-      FROM custom_orders
-      WHERE order_id = ?
-    `;
+    // Create a test order object
+    const testOrder = {
+      order_id: 999,
+      customer_name: "Test Customer",
+      customer_email: "test@example.com",
+      estimated_amount: 100000,
+      advance_amount: 25000,
+      order_date: new Date().toISOString(),
+      estimated_completion_date: new Date().toISOString()
+    };
 
-    con.query(orderSql, [orderId], (orderErr, orderResults) => {
-      if (orderErr) {
-        return con.rollback(() => {
-          console.error("Error fetching order details:", orderErr);
-          res.status(500).json({ message: "Database error", error: orderErr.message });
-        });
-      }
+    // Send test email
+    console.log("Sending test email to:", testOrder.customer_email);
+    const emailResult = await sendCustomOrderPaymentReminder(testOrder, testOrder.customer_email);
+    console.log("Test email result:", emailResult);
 
-      if (orderResults.length === 0) {
-        return con.rollback(() => {
-          res.status(404).json({ message: "Custom order not found" });
-        });
-      }
-
-      const order = orderResults[0];
-
-      // Insert payment into custom_order_payments
-      const paymentSql = `
-        INSERT INTO custom_order_payments (
-          order_id,
-          payment_amount,
-          payment_method,
-          notes
-        ) VALUES (?, ?, ?, ?)
-      `;
-
-      con.query(paymentSql, [
-        orderId,
-        parseFloat(payment_amount),
-        payment_method || 'Cash',
-        notes || 'Additional payment'
-      ], (paymentErr, paymentResult) => {
-        if (paymentErr) {
-          return con.rollback(() => {
-            console.error("Error adding payment:", paymentErr);
-            res.status(500).json({ message: "Database error", error: paymentErr.message });
-          });
-        }
-
-        // Now, also insert into advance_payments table
-        // Generate a reference number for the advance payment
-        const year = new Date().getFullYear();
-        const referencePrefix = `ADV-${year}-`;
-
-        // Find the next sequence number
-        const sequenceQuery = `
-          SELECT MAX(CAST(SUBSTRING_INDEX(payment_reference, '-', -1) AS UNSIGNED)) as max_seq
-          FROM advance_payments
-          WHERE payment_reference LIKE ?
-        `;
-
-        con.query(sequenceQuery, [`${referencePrefix}%`], (seqErr, seqResults) => {
-          if (seqErr) {
-            return con.rollback(() => {
-              console.error("Error generating payment reference:", seqErr);
-              res.status(500).json({ message: "Database error", error: seqErr.message });
-            });
-          }
-
-          let nextSeq = 1;
-          if (seqResults[0].max_seq) {
-            nextSeq = parseInt(seqResults[0].max_seq) + 1;
-          }
-
-          const payment_reference = `${referencePrefix}${nextSeq.toString().padStart(4, '0')}`;
-
-          // Calculate total payments for this order
-          const getTotalPaymentsSql = `
-            SELECT SUM(payment_amount) as total_payments
-            FROM custom_order_payments
-            WHERE order_id = ?
-          `;
-
-          con.query(getTotalPaymentsSql, [orderId], (totalErr, totalResults) => {
-            if (totalErr) {
-              return con.rollback(() => {
-                console.error("Error calculating total payments:", totalErr);
-                res.status(500).json({ message: "Database error", error: totalErr.message });
-              });
-            }
-
-            const totalPayments = totalResults[0].total_payments || 0;
-            const balance_amount = parseFloat(order.estimated_amount) - parseFloat(totalPayments);
-            const payment_status = balance_amount <= 0 ? 'Completed' : 'Partially Paid';
-
-            // Insert into advance_payments table
-            const advancePaymentSql = `
-              INSERT INTO advance_payments (
-                payment_reference,
-                customer_name,
-                payment_date,
-                total_amount,
-                advance_amount,
-                balance_amount,
-                payment_status,
-                payment_method,
-                notes,
-                created_by,
-                branch_id,
-                is_custom_order,
-                order_id
-              ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-
-            con.query(advancePaymentSql, [
-              payment_reference,
-              order.customer_name,
-              parseFloat(order.estimated_amount),
-              parseFloat(payment_amount),
-              balance_amount,
-              payment_status,
-              payment_method || 'Cash',
-              notes || 'Additional payment for custom order',
-              order.created_by,
-              order.branch_id,
-              1, // is_custom_order = true
-              orderId
-            ], (advPayErr) => {
-              if (advPayErr) {
-                return con.rollback(() => {
-                  console.error("Error creating advance payment:", advPayErr);
-                  res.status(500).json({ message: "Database error", error: advPayErr.message });
-                });
-              }
-
-              // Update the custom order with the new advance amount and payment status
-              const updateOrderSql = `
-                UPDATE custom_orders
-                SET advance_amount = ?,
-                    payment_status = ?
-                WHERE order_id = ?
-              `;
-
-              con.query(updateOrderSql, [totalPayments, payment_status, orderId], (updateErr) => {
-                if (updateErr) {
-                  return con.rollback(() => {
-                    console.error("Error updating order:", updateErr);
-                    res.status(500).json({ message: "Database error", error: updateErr.message });
-                  });
-                }
-
-                // Commit transaction
-                con.commit((commitErr) => {
-                  if (commitErr) {
-                    return con.rollback(() => {
-                      console.error("Error committing transaction:", commitErr);
-                      res.status(500).json({ message: "Database error", error: commitErr.message });
-                    });
-                  }
-
-                  res.status(201).json({
-                    message: "Payment added successfully",
-                    payment_id: paymentResult.insertId,
-                    new_advance_amount: totalPayments,
-                    payment_status: payment_status
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Test email sent",
+      result: emailResult
     });
-  });
+  } catch (error) {
+    console.error("Error in test-email endpoint:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error sending test email",
+      error: error.message
+    });
+  }
 });
 
-export { router as customOrderRouter };
+export const customOrderRouter = router;
