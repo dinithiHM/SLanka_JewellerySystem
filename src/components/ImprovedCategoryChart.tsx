@@ -19,15 +19,18 @@ interface ChartProps {
 
 interface Supplier {
   supplier_id: string;
-  supplier_name: string;
-  name?: string;
+  name: string; // Primary name field from database
+  supplier_name?: string; // For backward compatibility
   category?: string;
   manufacturing_items?: string;
+  order_count?: number; // Number of orders for this supplier
 }
 
-interface Category {
-  category_id: number;
-  category_name: string;
+interface OrderStat {
+  supplier_id: string;
+  name: string;
+  category: string;
+  order_count: number;
 }
 
 interface ChartDataItem {
@@ -39,7 +42,6 @@ interface ChartDataItem {
 const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSupplierSelect }) => {
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,11 +72,6 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
         let suppliersData = await suppliersResponse.json() as Supplier[];
         console.log('Fetched suppliers:', suppliersData);
 
-        // Log each supplier's name and ID for debugging
-        suppliersData.forEach(supplier => {
-          console.log(`Supplier ID: ${supplier.supplier_id}, Name: ${supplier.supplier_name || supplier.name || 'No name'}, Category: ${supplier.category || 'No category'}`);
-        });
-
         // Filter suppliers by category if a specific category is selected
         if (selectedCategory !== 'All') {
           suppliersData = suppliersData.filter(supplier =>
@@ -84,57 +81,44 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
           console.log(`Filtered suppliers for category ${selectedCategory}:`, suppliersData);
         }
 
-        // Store the suppliers for the dropdown
+        // Fetch actual order counts for suppliers in this category
+        const orderStatsResponse = await fetch(`http://localhost:3002/suppliers/actual-orders/${selectedCategory}`);
+        if (!orderStatsResponse.ok) {
+          throw new Error(`Failed to fetch order stats: ${orderStatsResponse.status}`);
+        }
+
+        const orderStatsData = await orderStatsResponse.json() as OrderStat[];
+        console.log('Fetched order stats:', orderStatsData);
+
+        // Create a map of supplier ID to order count
+        const supplierOrderCounts = new Map<string, number>();
+        orderStatsData.forEach((stat: OrderStat) => {
+          if (stat.category === selectedCategory) {
+            supplierOrderCounts.set(stat.supplier_id.toString(), stat.order_count);
+          }
+        });
+
+        // Update suppliers with order counts and sort by order count (highest first)
+        suppliersData = suppliersData.map(supplier => ({
+          ...supplier,
+          order_count: supplierOrderCounts.get(supplier.supplier_id.toString()) || 0
+        })).sort((a, b) => (b.order_count || 0) - (a.order_count || 0));
+
+        // Store the suppliers for the chart
         setSuppliers(suppliersData);
 
-        // Fetch categories
-        const categoriesResponse = await fetch(`http://localhost:3002/categories?t=${timestamp}`);
-        if (!categoriesResponse.ok) {
-          throw new Error(`Failed to fetch categories: ${categoriesResponse.status}`);
-        }
-        
-        const categoriesData = await categoriesResponse.json() as Category[];
-        
-        // Create chart data
-        let finalChartData: ChartDataItem[] = [];
-        
-        if (selectedCategory === 'All') {
-          // For 'All' categories, show all categories with supplier counts
-          finalChartData = categoriesData.map(category => {
-            const item: ChartDataItem = {
-              name: category.category_name,
-              categoryId: category.category_id
-            };
-            
-            // Count suppliers for each category
-            suppliersData.forEach(supplier => {
-              const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
-              
-              if (supplier.category === category.category_name || 
-                  (supplier.manufacturing_items && supplier.manufacturing_items.includes(category.category_name))) {
-                item[supplierName] = 1; // Mark as available
-              } else {
-                item[supplierName] = 0; // Mark as unavailable
-              }
-            });
-            
-            return item;
-          });
-        } else {
-          // For a specific category, create a single item with all suppliers
-          const item: ChartDataItem = {
-            name: selectedCategory
-          };
-          
-          // Add all suppliers as 1 (available)
-          suppliersData.forEach(supplier => {
-            const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
-            item[supplierName] = 1;
-          });
-          
-          finalChartData = [item];
-        }
-        
+        // Create chart data for the selected category
+        const item: ChartDataItem = {
+          name: selectedCategory
+        };
+
+        // Add suppliers with their order counts
+        suppliersData.forEach(supplier => {
+          const supplierName = supplier.name || supplier.supplier_name || `Supplier ${supplier.supplier_id}`;
+          item[supplierName] = supplier.order_count || 0;
+        });
+
+        const finalChartData = [item];
         console.log('Final chart data:', finalChartData);
         setChartData(finalChartData);
       } catch (err) {
@@ -151,18 +135,6 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
     fetchData();
   }, [selectedCategory]);
 
-  const handleSupplierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const supplierId = e.target.value;
-    setSelectedSupplier(supplierId);
-    
-    if (onSupplierSelect && supplierId) {
-      const supplier = suppliers.find(s => s.supplier_id === supplierId);
-      if (supplier) {
-        onSupplierSelect(supplierId, supplier.supplier_name || supplier.name || `Supplier ${supplierId}`);
-      }
-    }
-  };
-
   if (loading) {
     return <div className="flex justify-center items-center h-64">
       <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
@@ -175,15 +147,15 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
 
   if (chartData.length === 0) {
     return <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-6 text-center">Supplier Distribution by Category</h2>
+      <h2 className="text-xl font-bold mb-6 text-center">Supplier Order Counts by Category</h2>
       <div className="text-right mb-2">
         <span className="inline-block bg-yellow-400 w-4 h-4 mr-2"></span>
         <span className="text-sm">{selectedCategory === 'All' ? 'All Categories' : selectedCategory}</span>
       </div>
       <div className="text-center py-10 text-gray-500">
         {selectedCategory ?
-          `No suppliers found for ${selectedCategory === 'All' ? 'any category' : `the ${selectedCategory} category`}. Please select a different category or add suppliers for this category.` :
-          'Please select a category to see supplier availability'}
+          `No order data found for ${selectedCategory === 'All' ? 'any category' : `the ${selectedCategory} category`}. Please select a different category or check if there are orders for this category.` :
+          'Please select a category to see supplier order counts'}
       </div>
     </div>;
   }
@@ -207,37 +179,17 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-6 text-center">Supplier Distribution by Category</h2>
-      
-      {/* Supplier Selection Dropdown */}
-      <div className="mb-6">
-        <label htmlFor="supplier-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Select Supplier
-        </label>
-        <select
-          id="supplier-select"
-          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          value={selectedSupplier}
-          onChange={handleSupplierChange}
-        >
-          <option value="">-- Select a Supplier --</option>
-          {suppliers.map(supplier => (
-            <option key={supplier.supplier_id} value={supplier.supplier_id}>
-              {supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`}
-            </option>
-          ))}
-        </select>
-      </div>
-      
+      <h2 className="text-xl font-bold mb-6 text-center">Supplier Order Counts by Category</h2>
+
       <div className="text-right mb-2">
         <span className="inline-block bg-yellow-400 w-4 h-4 mr-2"></span>
         <span className="text-sm">{selectedCategory === 'All' ? 'All Categories' : selectedCategory}</span>
       </div>
-      
+
       <div className="text-center text-sm text-gray-500 mb-4">
-        Showing supplier availability for {selectedCategory === 'All' ? 'all categories' : `the ${selectedCategory} category`}
+        Showing supplier order counts for {selectedCategory === 'All' ? 'all categories' : `the ${selectedCategory} category`}
       </div>
-      
+
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -245,23 +197,23 @@ const ImprovedCategoryChart: React.FC<ChartProps> = ({ selectedCategory, onSuppl
             margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="name" 
-              angle={-45} 
-              textAnchor="end" 
-              height={60} 
+            <XAxis
+              dataKey="name"
+              angle={-45}
+              textAnchor="end"
+              height={60}
               interval={0}
             />
-            <YAxis label={{ value: 'Supplier Availability', angle: -90, position: 'insideLeft' }} />
+            <YAxis label={{ value: 'Order Count', angle: -90, position: 'insideLeft' }} />
             <Tooltip />
             <Legend wrapperStyle={{ bottom: 0 }} />
             {suppliers.map((supplier, index) => {
-              const supplierName = supplier.supplier_name || supplier.name || `Supplier ${supplier.supplier_id}`;
+              const supplierName = supplier.name || supplier.supplier_name || `Supplier ${supplier.supplier_id}`;
               return (
-                <Bar 
-                  key={supplier.supplier_id} 
-                  dataKey={supplierName} 
-                  fill={colors[index]} 
+                <Bar
+                  key={supplier.supplier_id}
+                  dataKey={supplierName}
+                  fill={colors[index]}
                   name={supplierName}
                 />
               );
