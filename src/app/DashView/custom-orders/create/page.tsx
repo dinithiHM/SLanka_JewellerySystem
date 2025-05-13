@@ -44,8 +44,19 @@ const CreateCustomOrderPage = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
+  // Define Supplier interface
+  interface Supplier {
+    supplier_id: number | string;
+    name: string;
+    supplier_name?: string; // Some suppliers might use this field instead of name
+    category?: string;
+    manufacturing_items?: string; // Items the supplier manufactures
+    order_count?: number; // Number of orders for this supplier
+  }
+
   // State for data
   const [categories, setCategories] = useState<Category[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
 
   // State for UI
@@ -55,23 +66,33 @@ const CreateCustomOrderPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderReference, setOrderReference] = useState<string | null>(null);
 
-  // Fetch categories on component mount
+  // Fetch categories and suppliers on component mount
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3002/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data);
+        // Fetch categories
+        const categoriesResponse = await fetch('http://localhost:3002/categories');
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          setCategories(categoriesData);
         } else {
           console.error('Failed to fetch categories');
         }
+
+        // Fetch suppliers
+        const suppliersResponse = await fetch('http://localhost:3002/suppliers');
+        if (suppliersResponse.ok) {
+          const suppliersData = await suppliersResponse.json();
+          setSuppliers(suppliersData);
+        } else {
+          console.error('Failed to fetch suppliers');
+        }
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        console.error('Error fetching data:', err);
       }
     };
 
-    fetchCategories();
+    fetchData();
   }, []);
 
   // Calculate balance amount and minimum advance payment when estimated amount changes
@@ -171,8 +192,15 @@ const CreateCustomOrderPage = () => {
 
       // Add selected supplier if available
       if (selectedSupplierId) {
-        formData.append('supplier_id', selectedSupplierId);
-        console.log(`Adding supplier ID ${selectedSupplierId} to the form submission`);
+        // Try to convert to a number if it's a string
+        const numericId = parseInt(selectedSupplierId, 10);
+        if (!isNaN(numericId)) {
+          formData.append('supplier_id', numericId.toString());
+          console.log(`Adding supplier ID ${numericId} (numeric) to the form submission`);
+        } else {
+          formData.append('supplier_id', selectedSupplierId);
+          console.log(`Adding supplier ID ${selectedSupplierId} (string) to the form submission`);
+        }
       }
 
       formData.append('description', description);
@@ -189,16 +217,72 @@ const CreateCustomOrderPage = () => {
       // File uploads are now handled separately to avoid form submission issues
       console.log('File uploads are now handled separately');
 
-      // Send request
-      console.log('Sending form data to server...');
+      // Log all form data for debugging
+      console.log('Form data being sent to server:');
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
+      // Double-check if supplier_id is included
+      if (selectedSupplierId && !formData.has('supplier_id')) {
+        console.log(`Adding supplier_id ${selectedSupplierId} to form data (double-check)`);
+        formData.append('supplier_id', selectedSupplierId);
+      }
+
+      // Convert FormData to a regular object for JSON submission
+      const formDataObj: Record<string, any> = {};
+      for (const [key, value] of formData.entries()) {
+        // Convert numeric strings to numbers for the database
+        if (key === 'supplier_id' || key === 'category_id' || key === 'created_by' || key === 'branch_id') {
+          const numValue = parseInt(value.toString(), 10);
+          if (!isNaN(numValue)) {
+            formDataObj[key] = numValue; // Store as number, not string
+            console.log(`Converting ${key} from string "${value}" to number ${numValue}`);
+          } else {
+            formDataObj[key] = value;
+          }
+        } else {
+          formDataObj[key] = value;
+        }
+      }
+
+      // ALWAYS include supplier_id if it's selected - ensure it's a number for the database
+      if (selectedSupplierId) {
+        const numericId = parseInt(selectedSupplierId, 10);
+        if (!isNaN(numericId)) {
+          console.log(`Adding supplier_id ${numericId} (numeric) to JSON data`);
+          formDataObj.supplier_id = numericId; // Store as number, not string
+        } else {
+          console.log(`Adding supplier_id ${selectedSupplierId} (string) to JSON data`);
+          formDataObj.supplier_id = selectedSupplierId;
+        }
+
+        // Log the supplier details for debugging
+        const supplier = suppliers.find(s => s.supplier_id.toString() === selectedSupplierId);
+        console.log('Selected supplier details:', supplier);
+      }
+
+      // Final check to ensure supplier_id is included
+      console.log('Final formDataObj with supplier_id:', formDataObj);
+
+      console.log('Sending JSON data to server:', formDataObj);
+
+      // Ensure supplier_id is included in the request body
+      if (selectedSupplierId) {
+        const numericId = parseInt(selectedSupplierId, 10);
+        if (!isNaN(numericId)) {
+          formDataObj.supplier_id = numericId;
+        }
+      }
+
+      // Send request as JSON instead of FormData
       const response = await fetch('http://localhost:3002/custom-orders/create', {
         method: 'POST',
-        // Don't set Content-Type header when using FormData - browser will set it with boundary
         headers: {
-          // Let the browser set the Content-Type with proper boundary for multipart/form-data
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: formData
+        body: JSON.stringify(formDataObj)
       });
 
       // Clone the response so we can read it multiple times if needed
@@ -380,6 +464,59 @@ const CreateCustomOrderPage = () => {
                   </select>
                 </div>
               </div>
+
+              {/* Supplier Selection Dropdown */}
+              <div>
+                <label htmlFor="supplier" className="block text-sm font-medium text-gray-700 mb-1">
+                  Supplier
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <select
+                    id="supplier"
+                    name="supplier_id"
+                    className="block w-full pl-10 p-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+                    value={selectedSupplierId || ''}
+                    onChange={(e) => {
+                      const supplierId = e.target.value;
+                      setSelectedSupplierId(supplierId);
+                      console.log(`Selected supplier ID from dropdown: ${supplierId}`);
+                    }}
+                  >
+                    <option value="">Select a supplier</option>
+                    {suppliers
+                      .filter(supplier =>
+                        !categoryId ||
+                        supplier.category === categories.find(c => c.category_id === categoryId)?.category_name ||
+                        (supplier.manufacturing_items && categories.find(c => c.category_id === categoryId)?.category_name &&
+                         supplier.manufacturing_items.includes(categories.find(c => c.category_id === categoryId)?.category_name || ''))
+                      )
+                      .map(supplier => (
+                        <option key={supplier.supplier_id} value={supplier.supplier_id}>
+                          {supplier.name || supplier.supplier_name || `Supplier ${supplier.supplier_id}`}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+              </div>
+
+              {/* Selected Supplier Display */}
+              {selectedSupplierId && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-medium">Selected Supplier:</span> {
+                      // Find the supplier name from the ID
+                      (() => {
+                        const supplier = suppliers.find(s => s.supplier_id.toString() === selectedSupplierId);
+                        return supplier ? supplier.name : `Supplier ID: ${selectedSupplierId}`;
+                      })()
+                    }
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="estimatedCompletionDate" className="block text-sm font-medium text-gray-700 mb-1">
@@ -574,6 +711,8 @@ const CreateCustomOrderPage = () => {
               </div>
             </div>
 
+            {/* Supplier ID is now handled by the dropdown */}
+
             {/* Action Buttons */}
             <div className="flex justify-between">
               <button
@@ -596,15 +735,9 @@ const CreateCustomOrderPage = () => {
 
         {/* Supplier vs Category Graph */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-4">Supplier Distribution by Category</h2>
+          <h2 className="text-lg font-semibold mb-4">Supplier Order Counts by Category</h2>
           <ImprovedCategoryChart
             selectedCategory={categoryId ? categories.find(c => c.category_id === categoryId)?.category_name || 'All' : 'All'}
-            onSupplierSelect={(supplierId, supplierName) => {
-              console.log(`Selected supplier: ${supplierName} (ID: ${supplierId})`);
-              setSelectedSupplierId(supplierId);
-              // Show a notification to the user
-              alert(`Selected supplier: ${supplierName} for this custom order`);
-            }}
           />
         </div>
       </div>
