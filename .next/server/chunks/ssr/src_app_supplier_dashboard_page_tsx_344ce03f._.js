@@ -23,7 +23,8 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 ;
 function SupplierDashboard() {
     const [supplier, setSupplier] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
-    const [orders, setOrders] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [regularOrders, setRegularOrders] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [customOrders, setCustomOrders] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(true);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])('');
     const [selectedOrder, setSelectedOrder] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -62,7 +63,12 @@ function SupplierDashboard() {
                 throw new Error('Failed to fetch orders');
             }
             const data = await response.json();
-            setOrders(data);
+            // Separate orders by type
+            const regular = data.filter((order)=>order.order_type === 'regular');
+            const custom = data.filter((order)=>order.order_type === 'custom');
+            setRegularOrders(regular);
+            setCustomOrders(custom);
+            console.log(`Fetched ${regular.length} regular orders and ${custom.length} custom orders`);
         } catch (err) {
             setError(err.message || 'An error occurred while fetching orders');
         } finally{
@@ -81,32 +87,59 @@ function SupplierDashboard() {
     };
     const handleViewOrder = (order)=>{
         setSelectedOrder(order);
-        setStatusUpdate(order.status);
+        // Use order_status for custom orders, status for regular orders
+        if (order.order_type === 'custom') {
+            const customOrder = order;
+            setStatusUpdate(customOrder.order_status || 'Pending');
+        } else {
+            const regularOrder = order;
+            setStatusUpdate(regularOrder.status || 'Pending');
+        }
         setNotes(order.supplier_notes || '');
         setShowOrderModal(true);
     };
     const handleUpdateStatus = async ()=>{
         if (!selectedOrder) return;
         try {
-            const response = await fetch(`http://localhost:3002/suppliers/update-order-status/${selectedOrder.order_id}`, {
+            // Different endpoints for regular vs custom orders
+            const endpoint = selectedOrder.order_type === 'custom' ? `http://localhost:3002/custom-orders/update-status/${selectedOrder.order_id}` : `http://localhost:3002/suppliers/update-order-status/${selectedOrder.order_id}`;
+            // Different payload structure for each type
+            const payload = selectedOrder.order_type === 'custom' ? {
+                order_status: statusUpdate,
+                supplier_notes: notes
+            } : {
+                status: statusUpdate,
+                supplier_notes: notes
+            };
+            const response = await fetch(endpoint, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    status: statusUpdate,
-                    supplier_notes: notes
-                })
+                body: JSON.stringify(payload)
             });
             if (!response.ok) {
-                throw new Error('Failed to update order status');
+                throw new Error(`Failed to update ${selectedOrder.order_type} order status`);
             }
             // Update the order in the local state
-            setOrders(orders.map((order)=>order.order_id === selectedOrder.order_id ? {
-                    ...order,
-                    status: statusUpdate,
-                    supplier_notes: notes
-                } : order));
+            setOrders(orders.map((order)=>{
+                if (order.order_id === selectedOrder.order_id) {
+                    if (order.order_type === 'custom') {
+                        return {
+                            ...order,
+                            order_status: statusUpdate,
+                            supplier_notes: notes
+                        };
+                    } else {
+                        return {
+                            ...order,
+                            status: statusUpdate,
+                            supplier_notes: notes
+                        };
+                    }
+                }
+                return order;
+            }));
             setShowOrderModal(false);
             // Show success message
             alert('Order status updated successfully');
@@ -139,12 +172,12 @@ function SupplierDashboard() {
                 className: "w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
             }, void 0, false, {
                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                lineNumber: 158,
+                lineNumber: 217,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-            lineNumber: 157,
+            lineNumber: 216,
             columnNumber: 7
         }, this);
     }
@@ -163,7 +196,7 @@ function SupplierDashboard() {
                                     children: "Supplier Dashboard"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 169,
+                                    lineNumber: 228,
                                     columnNumber: 13
                                 }, this),
                                 supplier && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -174,13 +207,13 @@ function SupplierDashboard() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 171,
+                                    lineNumber: 230,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                            lineNumber: 168,
+                            lineNumber: 227,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -194,14 +227,14 @@ function SupplierDashboard() {
                                             className: "mr-2 h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 179,
+                                            lineNumber: 238,
                                             columnNumber: 15
                                         }, this),
                                         "Refresh"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 175,
+                                    lineNumber: 234,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -212,31 +245,31 @@ function SupplierDashboard() {
                                             className: "mr-2 h-4 w-4"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 186,
+                                            lineNumber: 245,
                                             columnNumber: 15
                                         }, this),
                                         "Logout"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 182,
+                                    lineNumber: 241,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                            lineNumber: 174,
+                            lineNumber: 233,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                    lineNumber: 167,
+                    lineNumber: 226,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                lineNumber: 166,
+                lineNumber: 225,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -252,12 +285,12 @@ function SupplierDashboard() {
                                     children: "Supplier Information"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 199,
+                                    lineNumber: 258,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 198,
+                                lineNumber: 257,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -273,7 +306,7 @@ function SupplierDashboard() {
                                                     children: "Name"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 204,
+                                                    lineNumber: 263,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -281,13 +314,13 @@ function SupplierDashboard() {
                                                     children: supplier.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 205,
+                                                    lineNumber: 264,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 203,
+                                            lineNumber: 262,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -298,7 +331,7 @@ function SupplierDashboard() {
                                                     children: "Contact Number"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 208,
+                                                    lineNumber: 267,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -306,13 +339,13 @@ function SupplierDashboard() {
                                                     children: supplier.contact_no
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 209,
+                                                    lineNumber: 268,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 207,
+                                            lineNumber: 266,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -323,7 +356,7 @@ function SupplierDashboard() {
                                                     children: "Address"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 212,
+                                                    lineNumber: 271,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -331,13 +364,13 @@ function SupplierDashboard() {
                                                     children: supplier.address
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 213,
+                                                    lineNumber: 272,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 211,
+                                            lineNumber: 270,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -348,7 +381,7 @@ function SupplierDashboard() {
                                                     children: "Category"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 216,
+                                                    lineNumber: 275,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -356,13 +389,13 @@ function SupplierDashboard() {
                                                     children: supplier.category
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 217,
+                                                    lineNumber: 276,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 215,
+                                            lineNumber: 274,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -373,7 +406,7 @@ function SupplierDashboard() {
                                                     children: "Manufacturing Items"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 220,
+                                                    lineNumber: 279,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("dd", {
@@ -381,112 +414,113 @@ function SupplierDashboard() {
                                                     children: supplier.manufacturing_items
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 221,
+                                                    lineNumber: 280,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 219,
+                                            lineNumber: 278,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 202,
+                                    lineNumber: 261,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 201,
+                                lineNumber: 260,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                        lineNumber: 197,
+                        lineNumber: 256,
                         columnNumber: 11
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "bg-white shadow overflow-hidden sm:rounded-lg",
+                    error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "bg-red-50 border-l-4 border-red-400 p-4 m-4",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex",
+                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "ml-3",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "text-sm text-red-700",
+                                    children: error
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                    lineNumber: 292,
+                                    columnNumber: 17
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                lineNumber: 291,
+                                columnNumber: 15
+                            }, this)
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                            lineNumber: 290,
+                            columnNumber: 13
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                        lineNumber: 289,
+                        columnNumber: 11
+                    }, this),
+                    loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "px-4 py-5 sm:p-6 flex justify-center",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                            lineNumber: 301,
+                            columnNumber: 13
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                        lineNumber: 300,
+                        columnNumber: 11
+                    }, this),
+                    !loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "bg-white shadow overflow-hidden sm:rounded-lg mb-8",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "px-4 py-5 sm:px-6 flex justify-between items-center",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
                                         className: "text-lg leading-6 font-medium text-gray-900",
-                                        children: "Your Orders"
+                                        children: "Your Regular Orders"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                        lineNumber: 231,
-                                        columnNumber: 13
+                                        lineNumber: 309,
+                                        columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         className: "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800",
                                         children: [
-                                            orders.length,
+                                            regularOrders.length,
                                             " Orders"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                        lineNumber: 232,
-                                        columnNumber: 13
+                                        lineNumber: 310,
+                                        columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 230,
-                                columnNumber: 11
-                            }, this),
-                            error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "bg-red-50 border-l-4 border-red-400 p-4 m-4",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "flex",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "ml-3",
-                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "text-sm text-red-700",
-                                            children: error
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 241,
-                                            columnNumber: 19
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                        lineNumber: 240,
-                                        columnNumber: 17
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 239,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 238,
+                                lineNumber: 308,
                                 columnNumber: 13
                             }, this),
-                            loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "px-4 py-5 sm:p-6 flex justify-center",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 249,
-                                    columnNumber: 15
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 248,
-                                columnNumber: 13
-                            }, this) : orders.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            regularOrders.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "px-4 py-5 sm:p-6 text-center text-gray-500",
-                                children: "No orders found. New orders will appear here."
+                                children: "No regular orders found."
                             }, void 0, false, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 252,
-                                columnNumber: 13
+                                lineNumber: 316,
+                                columnNumber: 15
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "overflow-x-auto",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -502,8 +536,8 @@ function SupplierDashboard() {
                                                         children: "Order ID"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 260,
-                                                        columnNumber: 21
+                                                        lineNumber: 324,
+                                                        columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                         scope: "col",
@@ -511,8 +545,8 @@ function SupplierDashboard() {
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 263,
-                                                        columnNumber: 21
+                                                        lineNumber: 327,
+                                                        columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                         scope: "col",
@@ -520,8 +554,8 @@ function SupplierDashboard() {
                                                         children: "Quantity"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 266,
-                                                        columnNumber: 21
+                                                        lineNumber: 330,
+                                                        columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                         scope: "col",
@@ -529,8 +563,8 @@ function SupplierDashboard() {
                                                         children: "Status"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 269,
-                                                        columnNumber: 21
+                                                        lineNumber: 333,
+                                                        columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                         scope: "col",
@@ -538,8 +572,8 @@ function SupplierDashboard() {
                                                         children: "Date"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 272,
-                                                        columnNumber: 21
+                                                        lineNumber: 336,
+                                                        columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                         scope: "col",
@@ -547,23 +581,23 @@ function SupplierDashboard() {
                                                         children: "Actions"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                        lineNumber: 275,
-                                                        columnNumber: 21
+                                                        lineNumber: 339,
+                                                        columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                lineNumber: 259,
-                                                columnNumber: 19
+                                                lineNumber: 323,
+                                                columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 258,
-                                            columnNumber: 17
+                                            lineNumber: 322,
+                                            columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
                                             className: "bg-white divide-y divide-gray-200",
-                                            children: orders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                            children: regularOrders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
                                                     className: "hover:bg-gray-50",
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -574,47 +608,47 @@ function SupplierDashboard() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 283,
-                                                            columnNumber: 23
+                                                            lineNumber: 347,
+                                                            columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
                                                             children: order.category
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 286,
-                                                            columnNumber: 23
+                                                            lineNumber: 350,
+                                                            columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
                                                             children: order.quantity
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 289,
-                                                            columnNumber: 23
+                                                            lineNumber: 353,
+                                                            columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap",
                                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                                className: `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.status)}`,
-                                                                children: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+                                                                className: `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.status || 'Pending')}`,
+                                                                children: (order.status || 'Pending').charAt(0).toUpperCase() + (order.status || 'Pending').slice(1)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                lineNumber: 293,
-                                                                columnNumber: 25
+                                                                lineNumber: 357,
+                                                                columnNumber: 27
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 292,
-                                                            columnNumber: 23
+                                                            lineNumber: 356,
+                                                            columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
-                                                            children: formatDate(order.created_at)
+                                                            children: formatDate(order.created_at || '')
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 297,
-                                                            columnNumber: 23
+                                                            lineNumber: 364,
+                                                            columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
                                                             className: "px-6 py-4 whitespace-nowrap text-sm font-medium",
@@ -625,51 +659,285 @@ function SupplierDashboard() {
                                                                     className: "h-5 w-5"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 305,
-                                                                    columnNumber: 27
+                                                                    lineNumber: 372,
+                                                                    columnNumber: 29
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                lineNumber: 301,
-                                                                columnNumber: 25
+                                                                lineNumber: 368,
+                                                                columnNumber: 27
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 300,
-                                                            columnNumber: 23
+                                                            lineNumber: 367,
+                                                            columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, order.order_id, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 282,
-                                                    columnNumber: 21
+                                                    lineNumber: 346,
+                                                    columnNumber: 23
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 280,
-                                            columnNumber: 17
+                                            lineNumber: 344,
+                                            columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 257,
-                                    columnNumber: 15
+                                    lineNumber: 321,
+                                    columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 256,
-                                columnNumber: 13
+                                lineNumber: 320,
+                                columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                        lineNumber: 229,
-                        columnNumber: 9
+                        lineNumber: 307,
+                        columnNumber: 11
+                    }, this),
+                    !loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "bg-white shadow overflow-hidden sm:rounded-lg",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "px-4 py-5 sm:px-6 flex justify-between items-center",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                        className: "text-lg leading-6 font-medium text-gray-900",
+                                        children: "Your Custom Orders"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                        lineNumber: 388,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        className: "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800",
+                                        children: [
+                                            customOrders.length,
+                                            " Orders"
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                        lineNumber: 389,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                lineNumber: 387,
+                                columnNumber: 13
+                            }, this),
+                            customOrders.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "px-4 py-5 sm:p-6 text-center text-gray-500",
+                                children: "No custom orders found."
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                lineNumber: 395,
+                                columnNumber: 15
+                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "overflow-x-auto",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
+                                    className: "min-w-full divide-y divide-gray-200",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
+                                            className: "bg-gray-50",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Order ID"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 403,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Reference"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 406,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Customer"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 409,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Category"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 412,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Status"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 415,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Date"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 418,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                        scope: "col",
+                                                        className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                                                        children: "Actions"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                        lineNumber: 421,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                lineNumber: 402,
+                                                columnNumber: 21
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                            lineNumber: 401,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
+                                            className: "bg-white divide-y divide-gray-200",
+                                            children: customOrders.map((order)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                                    className: "hover:bg-gray-50",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900",
+                                                            children: [
+                                                                "#",
+                                                                order.order_id
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 429,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
+                                                            children: order.order_reference || '-'
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 432,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
+                                                            children: order.customer_name || '-'
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 435,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
+                                                            children: order.category
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 438,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap",
+                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                className: `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.order_status || 'Pending')}`,
+                                                                children: (order.order_status || 'Pending').charAt(0).toUpperCase() + (order.order_status || 'Pending').slice(1)
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                lineNumber: 442,
+                                                                columnNumber: 27
+                                                            }, this)
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 441,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm text-gray-500",
+                                                            children: formatDate(order.order_date || '')
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 449,
+                                                            columnNumber: 25
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                            className: "px-6 py-4 whitespace-nowrap text-sm font-medium",
+                                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                                onClick: ()=>handleViewOrder(order),
+                                                                className: "text-yellow-600 hover:text-yellow-900",
+                                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$eye$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Eye$3e$__["Eye"], {
+                                                                    className: "h-5 w-5"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 457,
+                                                                    columnNumber: 29
+                                                                }, this)
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                lineNumber: 453,
+                                                                columnNumber: 27
+                                                            }, this)
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                            lineNumber: 452,
+                                                            columnNumber: 25
+                                                        }, this)
+                                                    ]
+                                                }, order.order_id, true, {
+                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                    lineNumber: 428,
+                                                    columnNumber: 23
+                                                }, this))
+                                        }, void 0, false, {
+                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                            lineNumber: 426,
+                                            columnNumber: 19
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                    lineNumber: 400,
+                                    columnNumber: 17
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                lineNumber: 399,
+                                columnNumber: 15
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                        lineNumber: 386,
+                        columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                lineNumber: 194,
+                lineNumber: 253,
                 columnNumber: 7
             }, this),
             showOrderModal && selectedOrder && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -684,12 +952,12 @@ function SupplierDashboard() {
                                 className: "absolute inset-0 bg-gray-500 opacity-75"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                lineNumber: 322,
+                                lineNumber: 475,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                            lineNumber: 321,
+                            lineNumber: 474,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -698,7 +966,7 @@ function SupplierDashboard() {
                             children: "​"
                         }, void 0, false, {
                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                            lineNumber: 325,
+                            lineNumber: 478,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -720,7 +988,7 @@ function SupplierDashboard() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 331,
+                                                    lineNumber: 484,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -733,7 +1001,7 @@ function SupplierDashboard() {
                                                                     children: "Category"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 337,
+                                                                    lineNumber: 490,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -741,39 +1009,145 @@ function SupplierDashboard() {
                                                                     children: selectedOrder.category
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 338,
+                                                                    lineNumber: 491,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 336,
+                                                            lineNumber: 489,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                                     className: "text-sm text-gray-500",
-                                                                    children: "Quantity"
+                                                                    children: "Order Type"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 341,
+                                                                    lineNumber: 494,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                                     className: "font-medium",
-                                                                    children: selectedOrder.quantity
+                                                                    children: selectedOrder.order_type === 'custom' ? 'Custom Order' : 'Regular Order'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 342,
+                                                                    lineNumber: 495,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 340,
+                                                            lineNumber: 493,
                                                             columnNumber: 23
                                                         }, this),
+                                                        selectedOrder.order_type === 'custom' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Customer"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 501,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: selectedOrder.customer_name || 'N/A'
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 502,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 500,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Estimated Amount"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 505,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: [
+                                                                                "Rs. ",
+                                                                                selectedOrder.estimated_amount?.toLocaleString() || '0'
+                                                                            ]
+                                                                        }, void 0, true, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 506,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 504,
+                                                                    columnNumber: 27
+                                                                }, this)
+                                                            ]
+                                                        }, void 0, true) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Quantity"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 512,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: selectedOrder.quantity || 'N/A'
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 513,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 511,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Date"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 516,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: formatDate(selectedOrder.created_at || '')
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 517,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 515,
+                                                                    columnNumber: 27
+                                                                }, this)
+                                                            ]
+                                                        }, void 0, true),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -781,21 +1155,21 @@ function SupplierDashboard() {
                                                                     children: "Date"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 345,
+                                                                    lineNumber: 523,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                                     className: "font-medium",
-                                                                    children: formatDate(selectedOrder.created_at)
+                                                                    children: formatDate(selectedOrder.order_type === 'custom' ? selectedOrder.order_date || '' : selectedOrder.created_at || '')
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 346,
+                                                                    lineNumber: 524,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 344,
+                                                            lineNumber: 522,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -805,27 +1179,79 @@ function SupplierDashboard() {
                                                                     children: "Current Status"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 349,
+                                                                    lineNumber: 529,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                                    className: `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`,
-                                                                    children: selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)
+                                                                    className: `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.order_type === 'custom' ? selectedOrder.order_status || 'Pending' : selectedOrder.status || 'Pending')}`,
+                                                                    children: (selectedOrder.order_type === 'custom' ? selectedOrder.order_status || 'Pending' : selectedOrder.status || 'Pending').charAt(0).toUpperCase() + (selectedOrder.order_type === 'custom' ? selectedOrder.order_status || 'Pending' : selectedOrder.status || 'Pending').slice(1)
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 350,
+                                                                    lineNumber: 530,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 348,
+                                                            lineNumber: 528,
                                                             columnNumber: 23
-                                                        }, this)
+                                                        }, this),
+                                                        selectedOrder.order_type === 'custom' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Payment Status"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 545,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: selectedOrder.payment_status || 'Not Paid'
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 546,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 544,
+                                                                    columnNumber: 27
+                                                                }, this),
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                                    children: [
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "text-sm text-gray-500",
+                                                                            children: "Description"
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 549,
+                                                                            columnNumber: 29
+                                                                        }, this),
+                                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                            className: "font-medium",
+                                                                            children: selectedOrder.description || 'N/A'
+                                                                        }, void 0, false, {
+                                                                            fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                            lineNumber: 550,
+                                                                            columnNumber: 29
+                                                                        }, this)
+                                                                    ]
+                                                                }, void 0, true, {
+                                                                    fileName: "[project]/src/app/supplier/dashboard/page.tsx",
+                                                                    lineNumber: 548,
+                                                                    columnNumber: 27
+                                                                }, this)
+                                                            ]
+                                                        }, void 0, true)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 335,
+                                                    lineNumber: 488,
                                                     columnNumber: 21
                                                 }, this),
                                                 selectedOrder.design_image_url && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -836,7 +1262,7 @@ function SupplierDashboard() {
                                                             children: "Design Image"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 358,
+                                                            lineNumber: 558,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -851,18 +1277,18 @@ function SupplierDashboard() {
                                                                 className: "rounded-md"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                lineNumber: 360,
+                                                                lineNumber: 560,
                                                                 columnNumber: 27
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 359,
+                                                            lineNumber: 559,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 357,
+                                                    lineNumber: 557,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -874,7 +1300,7 @@ function SupplierDashboard() {
                                                             children: "Update Status"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 372,
+                                                            lineNumber: 572,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -889,7 +1315,7 @@ function SupplierDashboard() {
                                                                     children: "Pending"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 382,
+                                                                    lineNumber: 582,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -897,7 +1323,7 @@ function SupplierDashboard() {
                                                                     children: "Processing"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 383,
+                                                                    lineNumber: 583,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -905,7 +1331,7 @@ function SupplierDashboard() {
                                                                     children: "Completed"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 384,
+                                                                    lineNumber: 584,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -913,19 +1339,19 @@ function SupplierDashboard() {
                                                                     children: "Cancelled"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                                    lineNumber: 385,
+                                                                    lineNumber: 585,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 375,
+                                                            lineNumber: 575,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 371,
+                                                    lineNumber: 571,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -937,7 +1363,7 @@ function SupplierDashboard() {
                                                             children: "Notes"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 390,
+                                                            lineNumber: 590,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -950,29 +1376,29 @@ function SupplierDashboard() {
                                                             onChange: (e)=>setNotes(e.target.value)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                            lineNumber: 393,
+                                                            lineNumber: 593,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                                    lineNumber: 389,
+                                                    lineNumber: 589,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 330,
+                                            lineNumber: 483,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                        lineNumber: 329,
+                                        lineNumber: 482,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 328,
+                                    lineNumber: 481,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -985,7 +1411,7 @@ function SupplierDashboard() {
                                             children: "Update Order"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 407,
+                                            lineNumber: 607,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -995,36 +1421,36 @@ function SupplierDashboard() {
                                             children: "Cancel"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                            lineNumber: 414,
+                                            lineNumber: 614,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                                    lineNumber: 406,
+                                    lineNumber: 606,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                            lineNumber: 327,
+                            lineNumber: 480,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                    lineNumber: 320,
+                    lineNumber: 473,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-                lineNumber: 319,
+                lineNumber: 472,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/supplier/dashboard/page.tsx",
-        lineNumber: 164,
+        lineNumber: 223,
         columnNumber: 5
     }, this);
 }
