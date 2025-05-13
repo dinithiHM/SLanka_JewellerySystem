@@ -5,6 +5,27 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+// Determine which email service to use (real or mock)
+let emailService;
+try {
+  // Force use of real email service since we know nodemailer is installed
+  console.log("Using real email service");
+  emailService = await import('../utils/emailService.js');
+} catch (e) {
+  console.error("Error importing email service:", e);
+
+  // Fallback to mock service if there's an error
+  try {
+    console.log("Falling back to mock email service");
+    emailService = await import('../utils/mockEmailService.js');
+  } catch (mockError) {
+    console.error("Error importing mock email service:", mockError);
+    // If both fail, we'll get an error when trying to use sendCustomOrderPaymentReminder
+  }
+}
+
+const { sendCustomOrderPaymentReminder } = emailService;
+
 const router = express.Router();
 
 // Get current directory
@@ -222,6 +243,10 @@ router.post("/create", (req, res) => {
   console.log('Request headers:', req.headers);
   console.log('Request files:', req.files);
   console.log('Request body (raw):', req.body);
+  console.log('Request body (stringified):', JSON.stringify(req.body, null, 2));
+
+  // Specifically log the supplier_id from the request body
+  console.log('SUPPLIER DEBUG - supplier_id in request body:', req.body.supplier_id, 'type:', typeof req.body.supplier_id);
 
   // Get form data
   const {
@@ -313,7 +338,40 @@ router.post("/create", (req, res) => {
 
       // Convert numeric fields to their proper types
       const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
-      const parsedSupplierId = supplier_id ? parseInt(supplier_id, 10) : null;
+
+      // Enhanced supplier_id parsing with detailed logging
+      let parsedSupplierId = null;
+      if (supplier_id) {
+        console.log('SUPPLIER DEBUG - Raw supplier_id received:', supplier_id, 'type:', typeof supplier_id);
+
+        // Simple direct parsing - convert to number
+        if (typeof supplier_id === 'number') {
+          parsedSupplierId = supplier_id;
+        } else if (typeof supplier_id === 'string') {
+          // Try to parse as integer
+          parsedSupplierId = parseInt(supplier_id, 10);
+
+          // If parsing fails, try to extract a number from the string
+          if (isNaN(parsedSupplierId)) {
+            const matches = supplier_id.match(/\d+/);
+            if (matches && matches.length > 0) {
+              parsedSupplierId = parseInt(matches[0], 10);
+              console.log('SUPPLIER DEBUG - Extracted number from string:', parsedSupplierId);
+            }
+          }
+        }
+
+        // Final validation
+        if (isNaN(parsedSupplierId) || parsedSupplierId <= 0) {
+          console.error('SUPPLIER DEBUG - Invalid supplier_id, setting to null');
+          parsedSupplierId = null;
+        } else {
+          console.log('SUPPLIER DEBUG - Final parsed supplier_id:', parsedSupplierId, 'type:', typeof parsedSupplierId);
+        }
+      }
+
+      console.log('SUPPLIER DEBUG - Final supplier_id for database:', parsedSupplierId, 'from original:', supplier_id);
+
       const parsedCreatedBy = created_by ? parseInt(created_by, 10) : null;
       const parsedBranchId = branch_id ? parseInt(branch_id, 10) : null;
 
@@ -863,6 +921,198 @@ router.get("/categories/suppliers", (req, res) => {
 
     res.json(Object.values(categories));
   });
+});
+
+// Send payment reminder for a custom order
+router.post("/:id/send-reminder", async (req, res) => {
+  const orderId = req.params.id;
+
+  console.log(`POST /custom-orders/${orderId}/send-reminder - Sending payment reminder email`);
+
+  // Get the order details with customer email
+  console.log(`Fetching order details for order ID: ${orderId} for email reminder`);
+  const sql = `
+    SELECT co.*,
+           co.customer_email as customer_email,
+           co.order_id as order_id,
+           co.customer_name as customer_name,
+           co.estimated_amount as estimated_amount,
+           co.advance_amount as advance_amount,
+           co.order_date as order_date,
+           co.estimated_completion_date as estimated_completion_date
+    FROM custom_orders co
+    WHERE co.order_id = ?
+  `;
+
+  con.query(sql, [orderId], async (err, results) => {
+    if (err) {
+      console.error("Error fetching custom order:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom order not found"
+      });
+    }
+
+    const order = results[0];
+    console.log("Found order:", order);
+
+    // Check if customer email exists
+    if (!order.customer_email) {
+      console.log("No customer email found for order:", orderId);
+      return res.status(400).json({
+        success: false,
+        message: "Customer email not available for this order"
+      });
+    }
+
+    console.log("Customer email found:", order.customer_email);
+
+    try {
+      console.log(`Attempting to send email to ${order.customer_email}`);
+
+      // Check if sendCustomOrderPaymentReminder is defined
+      if (typeof sendCustomOrderPaymentReminder !== 'function') {
+        console.error("sendCustomOrderPaymentReminder is not a function:", sendCustomOrderPaymentReminder);
+        return res.status(500).json({
+          success: false,
+          message: "Email service not properly initialized"
+        });
+      }
+
+      // Send the reminder email
+      console.log("Calling sendCustomOrderPaymentReminder with order:", order.order_id);
+      const emailResult = await sendCustomOrderPaymentReminder(order, order.customer_email);
+      console.log("Email sending result:", emailResult);
+
+      if (emailResult.success) {
+        // Log the email sent in the database if email_logs table exists
+        try {
+          const logSql = `
+            INSERT INTO email_logs (
+              order_id,
+              email_type,
+              recipient_email,
+              sent_at,
+              status,
+              message_id,
+              error_message
+            ) VALUES (?, ?, ?, NOW(), ?, ?, ?)
+          `;
+
+          // Check if this is a mock email
+          const isMockEmail = emailResult.mockEmail === true;
+          const status = isMockEmail ? 'mock_sent' : 'sent';
+          const notes = isMockEmail ? 'Mock email (nodemailer not installed)' : null;
+
+          con.query(logSql, [
+            orderId,
+            'payment_reminder',
+            order.customer_email,
+            status,
+            emailResult.messageId || null,
+            notes
+          ], (logErr) => {
+            if (logErr) {
+              console.error("Error logging email:", logErr);
+              // Continue anyway since the email was sent
+            } else {
+              console.log(`Email log saved to database (${isMockEmail ? 'mock' : 'real'} email)`);
+            }
+          });
+        } catch (logError) {
+          console.error("Error with email logging:", logError);
+          // Continue anyway since the email was sent
+        }
+
+        // Check if this is a mock email
+        const isMockEmail = emailResult.mockEmail === true;
+        const message = isMockEmail
+          ? "Mock payment reminder email generated successfully (nodemailer not installed)"
+          : "Real payment reminder email sent successfully to " + order.customer_email;
+
+        console.log("Email sending result:", {
+          success: true,
+          isMock: isMockEmail,
+          message: message,
+          messageId: emailResult.messageId
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: message,
+          messageId: emailResult.messageId,
+          isMockEmail: isMockEmail
+        });
+      } else {
+        console.error("Email sending failed:", emailResult.error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send payment reminder email",
+          error: emailResult.error
+        });
+      }
+    } catch (error) {
+      console.error("Error in send-reminder endpoint:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error while sending reminder",
+        error: error.message
+      });
+    }
+  });
+});
+
+// Test endpoint for email service
+router.post("/test-email", async (req, res) => {
+  console.log("Testing email service...");
+
+  try {
+    // Check if sendCustomOrderPaymentReminder is defined
+    if (typeof sendCustomOrderPaymentReminder !== 'function') {
+      console.error("sendCustomOrderPaymentReminder is not a function:", sendCustomOrderPaymentReminder);
+      return res.status(500).json({
+        success: false,
+        message: "Email service not properly initialized"
+      });
+    }
+
+    // Create a test order object
+    const testOrder = {
+      order_id: 999,
+      customer_name: "Test Customer",
+      customer_email: "test@example.com",
+      estimated_amount: 100000,
+      advance_amount: 25000,
+      order_date: new Date().toISOString(),
+      estimated_completion_date: new Date().toISOString()
+    };
+
+    // Send test email
+    console.log("Sending test email to:", testOrder.customer_email);
+    const emailResult = await sendCustomOrderPaymentReminder(testOrder, testOrder.customer_email);
+    console.log("Test email result:", emailResult);
+
+    return res.status(200).json({
+      success: true,
+      message: "Test email sent",
+      result: emailResult
+    });
+  } catch (error) {
+    console.error("Error in test-email endpoint:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error sending test email",
+      error: error.message
+    });
+  }
 });
 
 export { router as customOrderRouter };
