@@ -369,8 +369,8 @@ router.get("/order-stats/:category", (req, res) => {
   const category = req.params.category;
   console.log(`Fetching order stats for category: ${category}`);
 
-  // Get all suppliers
-  con.query("SELECT supplier_id, supplier_name FROM suppliers", (suppErr, suppliers) => {
+  // Get all suppliers - using 'name' column instead of 'supplier_name'
+  con.query("SELECT supplier_id, name FROM suppliers", (suppErr, suppliers) => {
     if (suppErr) {
       console.error("Error fetching suppliers:", suppErr);
       return res.status(500).json({ message: "Database error", error: suppErr.message });
@@ -403,7 +403,7 @@ router.get("/order-stats/:category", (req, res) => {
         categories.forEach(cat => {
           result.push({
             supplier_id: supplier.supplier_id,
-            name: supplier.supplier_name,
+            name: supplier.name, // Using 'name' instead of 'supplier_name'
             category: cat.category_name,
             order_count: orderCounts[supplier.supplier_id]
           });
@@ -466,18 +466,18 @@ router.get("/my-orders/:supplierId", (req, res) => {
     return res.status(400).json({ message: "Supplier ID is required" });
   }
 
-  // Get all orders for this supplier
+  // First, get regular orders for this supplier
   con.query(
-    "SELECT * FROM orders WHERE supplier_id = ? ORDER BY created_at DESC",
+    "SELECT *, 'regular' as order_type FROM orders WHERE supplier_id = ? ORDER BY created_at DESC",
     [supplierId],
-    (err, results) => {
+    (err, regularOrders) => {
       if (err) {
-        console.error("Database error fetching supplier orders:", err);
+        console.error("Database error fetching supplier regular orders:", err);
         return res.status(500).json({ message: "Database error", error: err.message });
       }
 
-      // Process image URLs
-      const processedOrders = results.map(order => {
+      // Process image URLs for regular orders
+      const processedRegularOrders = regularOrders.map(order => {
         if (order.design_image) {
           // Construct the full URL for the image
           const imagePath = order.design_image.startsWith('uploads/')
@@ -489,7 +489,42 @@ router.get("/my-orders/:supplierId", (req, res) => {
         return order;
       });
 
-      res.json(processedOrders);
+      // Next, get custom orders for this supplier
+      con.query(
+        `SELECT
+          co.*,
+          'custom' as order_type,
+          c.category_name as category
+        FROM
+          custom_orders co
+        LEFT JOIN
+          categories c ON co.category_id = c.category_id
+        WHERE
+          co.supplier_id = ?
+        ORDER BY
+          co.order_date DESC`,
+        [supplierId],
+        (customErr, customOrders) => {
+          if (customErr) {
+            console.error("Database error fetching supplier custom orders:", customErr);
+            return res.status(500).json({ message: "Database error", error: customErr.message });
+          }
+
+          console.log(`Found ${customOrders.length} custom orders for supplier ${supplierId}`);
+
+          // Combine both types of orders
+          const allOrders = [...processedRegularOrders, ...customOrders];
+
+          // Sort by date (newest first)
+          allOrders.sort((a, b) => {
+            const dateA = a.order_type === 'custom' ? new Date(a.order_date) : new Date(a.created_at);
+            const dateB = b.order_type === 'custom' ? new Date(b.order_date) : new Date(b.created_at);
+            return dateB - dateA;
+          });
+
+          res.json(allOrders);
+        }
+      );
     }
   );
 });
@@ -533,7 +568,7 @@ router.get("/actual-orders/:category", (req, res) => {
 
   try {
     // Get all suppliers
-    con.query("SELECT supplier_id, supplier_name FROM suppliers", (suppErr, suppliers) => {
+    con.query("SELECT supplier_id, name FROM suppliers", (suppErr, suppliers) => {
       if (suppErr) {
         console.error("Error fetching suppliers:", suppErr);
         return res.status(500).json({ message: "Database error", error: suppErr.message });
@@ -541,8 +576,8 @@ router.get("/actual-orders/:category", (req, res) => {
 
       // Get categories
       const catQuery = category === 'All' ?
-        "SELECT category_name FROM categories" :
-        "SELECT category_name FROM categories WHERE category_name = ?";
+        "SELECT category_id, category_name FROM categories" :
+        "SELECT category_id, category_name FROM categories WHERE category_name = ?";
       const catParams = category === 'All' ? [] : [category];
 
       con.query(catQuery, catParams, (catErr, categories) => {
@@ -551,38 +586,71 @@ router.get("/actual-orders/:category", (req, res) => {
           return res.status(500).json({ message: "Database error", error: catErr.message });
         }
 
-        // For simplicity, let's just return suppliers with hardcoded order counts for now
-        // This ensures we have something to display while we debug the real data issue
-        const result = [];
+        // Create a map to store supplier order counts by category
+        const supplierOrderCounts = {};
 
-        // Create a mapping of supplier IDs to order counts (for testing)
-        const orderCounts = {};
+        // Initialize counts for all suppliers and categories
         suppliers.forEach(supplier => {
-          // For testing, assign 1-3 orders to the first few suppliers
-          if (supplier.supplier_id <= 3) {
-            orderCounts[supplier.supplier_id] = supplier.supplier_id; // 1, 2, or 3 orders
-          } else {
-            orderCounts[supplier.supplier_id] = 0; // No orders for other suppliers
-          }
-        });
-
-        // Generate data with actual supplier and category names
-        suppliers.forEach(supplier => {
+          supplierOrderCounts[supplier.supplier_id] = {};
           categories.forEach(cat => {
-            result.push({
-              supplier_id: supplier.supplier_id,
-              name: supplier.supplier_name,
-              category: cat.category_name,
-              order_count: orderCounts[supplier.supplier_id] || 0
-            });
+            supplierOrderCounts[supplier.supplier_id][cat.category_name] = 0;
           });
         });
 
-        // Sort by order count descending
-        result.sort((a, b) => b.order_count - a.order_count);
+        // Build the query to get actual order counts from custom_orders table
+        // Note: Using custom_order_details table which is the actual table name
+        const orderCountQuery = category === 'All' ?
+          `SELECT supplier_id, c.category_name, COUNT(*) as order_count
+           FROM custom_order_details co
+           JOIN categories c ON co.category_id = c.category_id
+           WHERE supplier_id IS NOT NULL
+           GROUP BY supplier_id, c.category_name` :
+          `SELECT supplier_id, c.category_name, COUNT(*) as order_count
+           FROM custom_order_details co
+           JOIN categories c ON co.category_id = c.category_id
+           WHERE supplier_id IS NOT NULL AND c.category_name = ?
+           GROUP BY supplier_id, c.category_name`;
 
-        console.log(`Returning ${result.length} order stats records with test counts`);
-        return res.json(result);
+        console.log("Executing SQL query:", orderCountQuery);
+        console.log("With parameters:", category === 'All' ? [] : [category]);
+
+        con.query(orderCountQuery, category === 'All' ? [] : [category], (countErr, orderCounts) => {
+          if (countErr) {
+            console.error("Error fetching order counts:", countErr);
+            return res.status(500).json({ message: "Database error", error: countErr.message });
+          }
+
+          console.log("Order counts from database:", orderCounts);
+
+          // Update the counts with actual data
+          orderCounts.forEach(count => {
+            if (supplierOrderCounts[count.supplier_id] &&
+                supplierOrderCounts[count.supplier_id][count.category_name] !== undefined) {
+              supplierOrderCounts[count.supplier_id][count.category_name] = count.order_count;
+            }
+          });
+
+          // Generate the final result array
+          const result = [];
+          suppliers.forEach(supplier => {
+            categories.forEach(cat => {
+              const orderCount = supplierOrderCounts[supplier.supplier_id][cat.category_name] || 0;
+              // Include all suppliers for the selected category
+              result.push({
+                supplier_id: supplier.supplier_id,
+                name: supplier.name,
+                category: cat.category_name,
+                order_count: orderCount
+              });
+            });
+          });
+
+          // Sort by order count descending
+          result.sort((a, b) => b.order_count - a.order_count);
+
+          console.log(`Returning ${result.length} order stats records with ACTUAL counts`);
+          return res.json(result);
+        });
       });
     });
   } catch (error) {
