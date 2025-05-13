@@ -6,15 +6,38 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Eye, LogOut, RefreshCw } from 'lucide-react';
 
-interface Order {
+// Regular order interface
+interface RegularOrder {
   order_id: number;
   category: string;
-  quantity: number;
-  status: string;
-  created_at: string;
+  quantity?: number;
+  status?: string;
+  created_at?: string;
   design_image_url?: string;
   supplier_notes?: string;
+  order_type: 'regular';
 }
+
+// Custom order interface
+interface CustomOrder {
+  order_id: number;
+  category: string;
+  order_status?: string;
+  order_date?: string;
+  supplier_notes?: string;
+  order_type: 'custom';
+  customer_name?: string;
+  estimated_amount?: number;
+  advance_amount?: number;
+  balance_amount?: number;
+  payment_status?: string;
+  description?: string;
+  special_requirements?: string;
+  order_reference?: string;
+}
+
+// Combined type for order operations
+type Order = RegularOrder | CustomOrder;
 
 interface Supplier {
   supplier_id: string;
@@ -27,7 +50,8 @@ interface Supplier {
 
 export default function SupplierDashboard() {
   const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [regularOrders, setRegularOrders] = useState<RegularOrder[]>([]);
+  const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -70,7 +94,15 @@ export default function SupplierDashboard() {
       }
 
       const data = await response.json();
-      setOrders(data);
+
+      // Separate orders by type
+      const regular = data.filter(order => order.order_type === 'regular') as RegularOrder[];
+      const custom = data.filter(order => order.order_type === 'custom') as CustomOrder[];
+
+      setRegularOrders(regular);
+      setCustomOrders(custom);
+
+      console.log(`Fetched ${regular.length} regular orders and ${custom.length} custom orders`);
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching orders');
     } finally {
@@ -92,7 +124,16 @@ export default function SupplierDashboard() {
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
-    setStatusUpdate(order.status);
+
+    // Use order_status for custom orders, status for regular orders
+    if (order.order_type === 'custom') {
+      const customOrder = order as CustomOrder;
+      setStatusUpdate(customOrder.order_status || 'Pending');
+    } else {
+      const regularOrder = order as RegularOrder;
+      setStatusUpdate(regularOrder.status || 'Pending');
+    }
+
     setNotes(order.supplier_notes || '');
     setShowOrderModal(true);
   };
@@ -101,27 +142,45 @@ export default function SupplierDashboard() {
     if (!selectedOrder) return;
 
     try {
-      const response = await fetch(`http://localhost:3002/suppliers/update-order-status/${selectedOrder.order_id}`, {
+      // Different endpoints for regular vs custom orders
+      const endpoint = selectedOrder.order_type === 'custom'
+        ? `http://localhost:3002/custom-orders/update-status/${selectedOrder.order_id}`
+        : `http://localhost:3002/suppliers/update-order-status/${selectedOrder.order_id}`;
+
+      // Different payload structure for each type
+      const payload = selectedOrder.order_type === 'custom'
+        ? {
+            order_status: statusUpdate,
+            supplier_notes: notes,
+          }
+        : {
+            status: statusUpdate,
+            supplier_notes: notes,
+          };
+
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          status: statusUpdate,
-          supplier_notes: notes,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update order status');
+        throw new Error(`Failed to update ${selectedOrder.order_type} order status`);
       }
 
       // Update the order in the local state
-      setOrders(orders.map(order =>
-        order.order_id === selectedOrder.order_id
-          ? { ...order, status: statusUpdate, supplier_notes: notes }
-          : order
-      ));
+      setOrders(orders.map(order => {
+        if (order.order_id === selectedOrder.order_id) {
+          if (order.order_type === 'custom') {
+            return { ...order, order_status: statusUpdate, supplier_notes: notes };
+          } else {
+            return { ...order, status: statusUpdate, supplier_notes: notes };
+          }
+        }
+        return order;
+      }));
 
       setShowOrderModal(false);
 
@@ -225,93 +284,187 @@ export default function SupplierDashboard() {
           </div>
         )}
 
-        {/* Orders Section */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Your Orders</h3>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              {orders.length} Orders
-            </span>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {loading ? (
-            <div className="px-4 py-5 sm:p-6 flex justify-center">
-              <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+        {/* Loading Indicator */}
+        {loading && (
+          <div className="px-4 py-5 sm:p-6 flex justify-center">
+            <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {/* Regular Orders Section */}
+        {!loading && (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Your Regular Orders</h3>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                {regularOrders.length} Orders
+              </span>
             </div>
-          ) : orders.length === 0 ? (
-            <div className="px-4 py-5 sm:p-6 text-center text-gray-500">
-              No orders found. New orders will appear here.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order ID
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order.order_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{order.order_id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(order.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleViewOrder(order)}
-                          className="text-yellow-600 hover:text-yellow-900"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
-                      </td>
+
+            {regularOrders.length === 0 ? (
+              <div className="px-4 py-5 sm:p-6 text-center text-gray-500">
+                No regular orders found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order ID
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Quantity
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {regularOrders.map((order) => (
+                      <tr key={order.order_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{order.order_id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.category}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            getStatusBadgeColor(order.status || 'Pending')
+                          }`}>
+                            {(order.status || 'Pending').charAt(0).toUpperCase() +
+                             (order.status || 'Pending').slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(order.created_at || '')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleViewOrder(order)}
+                            className="text-yellow-600 hover:text-yellow-900"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Custom Orders Section */}
+        {!loading && (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Your Custom Orders</h3>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                {customOrders.length} Orders
+              </span>
             </div>
-          )}
-        </div>
+
+            {customOrders.length === 0 ? (
+              <div className="px-4 py-5 sm:p-6 text-center text-gray-500">
+                No custom orders found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order ID
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reference
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {customOrders.map((order) => (
+                      <tr key={order.order_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{order.order_id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.order_reference || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.customer_name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.category}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            getStatusBadgeColor(order.order_status || 'Pending')
+                          }`}>
+                            {(order.order_status || 'Pending').charAt(0).toUpperCase() +
+                             (order.order_status || 'Pending').slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(order.order_date || '')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleViewOrder(order)}
+                            className="text-yellow-600 hover:text-yellow-900"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Order Detail Modal */}
@@ -338,19 +491,66 @@ export default function SupplierDashboard() {
                         <p className="font-medium">{selectedOrder.category}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Quantity</p>
-                        <p className="font-medium">{selectedOrder.quantity}</p>
+                        <p className="text-sm text-gray-500">Order Type</p>
+                        <p className="font-medium">{selectedOrder.order_type === 'custom' ? 'Custom Order' : 'Regular Order'}</p>
                       </div>
+
+                      {selectedOrder.order_type === 'custom' ? (
+                        <>
+                          <div>
+                            <p className="text-sm text-gray-500">Customer</p>
+                            <p className="font-medium">{selectedOrder.customer_name || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Estimated Amount</p>
+                            <p className="font-medium">Rs. {selectedOrder.estimated_amount?.toLocaleString() || '0'}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-sm text-gray-500">Quantity</p>
+                            <p className="font-medium">{selectedOrder.quantity || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Date</p>
+                            <p className="font-medium">{formatDate(selectedOrder.created_at || '')}</p>
+                          </div>
+                        </>
+                      )}
+
                       <div>
                         <p className="text-sm text-gray-500">Date</p>
-                        <p className="font-medium">{formatDate(selectedOrder.created_at)}</p>
+                        <p className="font-medium">
+                          {formatDate(selectedOrder.order_type === 'custom' ? selectedOrder.order_date || '' : selectedOrder.created_at || '')}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Current Status</p>
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
-                          {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          getStatusBadgeColor(selectedOrder.order_type === 'custom' ? selectedOrder.order_status || 'Pending' : selectedOrder.status || 'Pending')
+                        }`}>
+                          {(selectedOrder.order_type === 'custom'
+                            ? (selectedOrder.order_status || 'Pending')
+                            : (selectedOrder.status || 'Pending')).charAt(0).toUpperCase() +
+                           (selectedOrder.order_type === 'custom'
+                            ? (selectedOrder.order_status || 'Pending')
+                            : (selectedOrder.status || 'Pending')).slice(1)}
                         </span>
                       </div>
+
+                      {selectedOrder.order_type === 'custom' && (
+                        <>
+                          <div>
+                            <p className="text-sm text-gray-500">Payment Status</p>
+                            <p className="font-medium">{selectedOrder.payment_status || 'Not Paid'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Description</p>
+                            <p className="font-medium">{selectedOrder.description || 'N/A'}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {selectedOrder.design_image_url && (
