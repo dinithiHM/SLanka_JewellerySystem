@@ -37,6 +37,8 @@ import { notificationsRouter } from "./Routes/notificationsRoutes.js"; // ✅ Im
 import { lowStockNotificationsRouter } from "./Routes/lowStockNotificationsRoute.js"; // ✅ Import Low Stock Notifications Routes
 import { goldStockRouter } from "./Routes/goldStockRoutes.js"; // ✅ Import Gold Stock Routes
 import reportsRouter from "./Routes/reportsRoutes.js"; // ✅ Import Reports Routes
+import userPasswordResetRouter from "./Routes/userPasswordResetRoute.js"; // ✅ Import User Password Reset Routes
+import adminPasswordResetRouter from "./Routes/adminPasswordResetRoute.js"; // ✅ Import Admin Password Reset Routes
 
 const app = express();
 
@@ -115,6 +117,8 @@ app.use("/notifications", notificationsRouter); // ✅ Add notifications routes
 app.use("/low-stock-notifications", lowStockNotificationsRouter); // ✅ Add low stock notifications routes
 app.use("/gold-stock", goldStockRouter); // ✅ Add gold stock routes
 app.use("/api/reports", reportsRouter); // ✅ Add reports routes
+app.use("/users", userPasswordResetRouter); // ✅ Add user password reset routes
+app.use("/auth", adminPasswordResetRouter); // ✅ Add admin password reset routes
 
 // ✅ Start the server
 const PORT = 3002;

@@ -173,6 +173,232 @@ router.get("/finance", (req, res) => {
   });
 });
 
+// Get top selling items
+// IMPORTANT: This route must be defined BEFORE the /:id route to avoid being caught by it
+router.get("/top-selling-items", (req, res) => {
+  console.log('GET /sales/top-selling-items - Fetching top selling items');
+
+  // Get query parameters
+  const limit = req.query.limit ? parseInt(req.query.limit) : 3; // Default to top 3 items
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id) : null; // Optional branch filter
+  const period = req.query.period || 'all'; // 'today', 'week', 'month', 'all'
+
+  // Calculate date range based on period
+  const now = new Date();
+  let startDate = null;
+
+  if (period === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (period === 'week') {
+    // Last 7 days
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 7);
+  } else if (period === 'month') {
+    // Last 30 days
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 30);
+  }
+
+  // Build the SQL query to get top selling items
+  let sql = `
+    SELECT
+      ji.item_id,
+      ji.product_title,
+      ji.category,
+      COALESCE(ji.gold_carat, '') AS gold_carat,
+      SUM(si.quantity) AS total_quantity,
+      SUM(si.subtotal) AS total_amount,
+      COUNT(DISTINCT s.sale_id) AS sale_count
+    FROM
+      sales s
+    JOIN
+      sale_items si ON s.sale_id = si.sale_id
+    JOIN
+      jewellery_items ji ON si.item_id = ji.item_id
+  `;
+
+  // Add WHERE clause if filters are provided
+  const whereConditions = [];
+  const queryParams = [];
+
+  // Add date filter if period is specified
+  if (startDate) {
+    whereConditions.push('s.sale_date >= ?');
+    queryParams.push(startDate.toISOString().split('T')[0]);
+  }
+
+  // Add branch filter if provided
+  if (branchId) {
+    whereConditions.push('s.branch_id = ?');
+    queryParams.push(branchId);
+  }
+
+  if (whereConditions.length > 0) {
+    sql += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Group by item, order by quantity sold (most sold items first), and limit results
+  sql += `
+    GROUP BY ji.item_id, ji.product_title, ji.category, ji.gold_carat
+    ORDER BY total_quantity DESC, total_amount DESC
+    LIMIT ?
+  `;
+  queryParams.push(limit);
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error("Error fetching top selling items:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log('Top selling items results:', results);
+
+    // Check if we have any results
+    if (!results || results.length === 0) {
+      console.log('No top selling items found for the given filters');
+      return res.json([]);
+    }
+
+    // Format the results
+    const formattedResults = results.map(item => ({
+      item_id: item.item_id,
+      product_title: item.product_title,
+      category: item.category,
+      gold_carat: item.gold_carat,
+      total_quantity: item.total_quantity,
+      total_amount: parseFloat(item.total_amount),
+      sale_count: item.sale_count
+    }));
+
+    res.json(formattedResults);
+  });
+});
+
+// Get recent sales with item details for today only
+router.get("/recent", (req, res) => {
+  console.log('GET /sales/recent - Fetching today\'s sales with item details');
+
+  // Get query parameters
+  const limit = req.query.limit ? parseInt(req.query.limit) : 5; // Default to 5 recent sales
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id) : null; // Optional branch filter
+  const debug = req.query.debug === 'true'; // Debug mode to show all sales regardless of date
+
+  // Get today's date in YYYY-MM-DD format
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  console.log('Current server time:', now);
+  console.log('Filtering for today\'s date:', today);
+
+  // Build the SQL query to get today's sales with item details
+  let sql = `
+    SELECT
+      s.sale_id,
+      s.customer_name,
+      s.total_amount,
+      s.payment_method,
+      s.sale_date,
+      si.item_id,
+      si.quantity,
+      si.unit_price,
+      si.subtotal,
+      COALESCE(ji.product_title, 'Unknown Item') AS product_title,
+      COALESCE(ji.category, 'Uncategorized') AS category,
+      TIME_FORMAT(s.sale_date, '%h:%i %p') AS sale_time,
+      DATE_FORMAT(s.sale_date, '%M %d, %Y') AS sale_date_formatted
+    FROM
+      sales s
+    JOIN
+      sale_items si ON s.sale_id = si.sale_id
+    LEFT JOIN
+      jewellery_items ji ON si.item_id = ji.item_id
+  `;
+
+  // Add WHERE clause for today's date and branch filter if provided
+  const whereConditions = [];
+  const queryParams = [];
+
+  // Filter for today's date unless in debug mode
+  if (!debug) {
+    // Use a more flexible date comparison to handle timezone differences
+    whereConditions.push('DATE(s.sale_date) = DATE(?)');
+    queryParams.push(today);
+    console.log('Applying date filter for today:', today);
+  } else {
+    console.log('Debug mode: showing all sales regardless of date');
+  }
+
+  // Add branch filter if provided
+  if (branchId) {
+    whereConditions.push('s.branch_id = ?');
+    queryParams.push(branchId);
+  }
+
+  // Add WHERE clause if there are any conditions
+  if (whereConditions.length > 0) {
+    sql += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Order by sale date (most recent first) and limit results
+  sql += ' ORDER BY s.sale_date DESC LIMIT ?';
+  queryParams.push(limit);
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error("Error fetching recent sales:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log('Query results:', results);
+
+    // Check if we have any results
+    if (!results || results.length === 0) {
+      console.log('No sales found for the given filters');
+      return res.json([]);
+    }
+
+    // Group results by sale_id to handle multiple items in one sale
+    const salesMap = {};
+
+    results.forEach(row => {
+      if (!salesMap[row.sale_id]) {
+        salesMap[row.sale_id] = {
+          sale_id: row.sale_id,
+          customer_name: row.customer_name,
+          total_amount: row.total_amount,
+          payment_method: row.payment_method,
+          sale_date: row.sale_date,
+          sale_time: row.sale_time,
+          sale_date_formatted: row.sale_date_formatted,
+          items: []
+        };
+      }
+
+      salesMap[row.sale_id].items.push({
+        item_id: row.item_id,
+        product_title: row.product_title,
+        category: row.category,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        subtotal: row.subtotal
+      });
+    });
+
+    // Convert map to array
+    const sales = Object.values(salesMap);
+
+    console.log(`Found ${sales.length} sales for today`);
+
+    // Return empty array if no sales found
+    res.json(sales || []);
+  });
+});
+
 // Get sale details by ID including items
 router.get("/:id", (req, res) => {
   const saleId = req.params.id;
@@ -1104,6 +1330,201 @@ router.get("/available-items", (_req, res) => {
     console.error('Unexpected error in /available-items route:', error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
+});
+
+
+
+// Get top selling items
+router.get("/top-selling-items", (req, res) => {
+  console.log('GET /sales/top-selling-items - Fetching top selling items');
+
+  // Get query parameters
+  const limit = req.query.limit ? parseInt(req.query.limit) : 3; // Default to top 3 items
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id) : null; // Optional branch filter
+  const period = req.query.period || 'all'; // 'today', 'week', 'month', 'all'
+
+  // Calculate date range based on period
+  const now = new Date();
+  let startDate = null;
+
+  if (period === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (period === 'week') {
+    // Last 7 days
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 7);
+  } else if (period === 'month') {
+    // Last 30 days
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 30);
+  }
+
+  // Convert to YYYY-MM-DD format if needed
+  const startDateStr = startDate ? startDate.toISOString().split('T')[0] : null;
+
+  console.log(`Fetching top ${limit} selling items${startDateStr ? ' since ' + startDateStr : ''}`);
+
+  // Build the SQL query to get top selling items
+  let sql = `
+    SELECT
+      ji.item_id,
+      COALESCE(ji.product_title, 'Unknown Item') AS product_title,
+      COALESCE(ji.category, 'Uncategorized') AS category,
+      SUM(si.quantity) AS total_quantity,
+      SUM(si.subtotal) AS total_amount
+    FROM
+      sales s
+    JOIN
+      sale_items si ON s.sale_id = si.sale_id
+    LEFT JOIN
+      jewellery_items ji ON si.item_id = ji.item_id
+  `;
+
+  // Add WHERE clause if filters are provided
+  const whereConditions = [];
+  const queryParams = [];
+
+  // Add date filter if period is specified
+  if (startDateStr) {
+    whereConditions.push('DATE(s.sale_date) >= ?');
+    queryParams.push(startDateStr);
+  }
+
+  // Add branch filter if provided
+  if (branchId) {
+    whereConditions.push('s.branch_id = ?');
+    queryParams.push(branchId);
+  }
+
+  // Add WHERE clause if there are any conditions
+  if (whereConditions.length > 0) {
+    sql += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Group by item, order by quantity sold (most sold items first), and limit results
+  sql += `
+    GROUP BY ji.item_id, ji.product_title, ji.category
+    ORDER BY total_quantity DESC, total_amount DESC
+    LIMIT ?
+  `;
+  queryParams.push(limit);
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error("Error fetching top selling items:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log('Query results:', results);
+
+    // Check if we have any results
+    if (!results || results.length === 0) {
+      console.log('No top selling items found for the given filters');
+      return res.json([]);
+    }
+
+    // Format the results
+    const formattedResults = results.map((item, index) => ({
+      rank: index + 1,
+      item_id: item.item_id,
+      product_title: item.product_title,
+      category: item.category,
+      total_quantity: item.total_quantity,
+      total_amount: parseFloat(item.total_amount)
+    }));
+
+    console.log(`Found ${formattedResults.length} top selling items`);
+    res.json(formattedResults);
+  });
+});
+
+
+
+// Get top categories by sales
+router.get("/categories-by-sales", (req, res) => {
+  console.log('GET /sales/categories-by-sales - Fetching top categories by sales');
+
+  // Get query parameters
+  const saleIds = req.query.sale_ids ? req.query.sale_ids.split(',').map(id => parseInt(id)) : [];
+  const date = req.query.date; // Optional date filter (YYYY-MM-DD)
+  const branchId = req.query.branch_id ? parseInt(req.query.branch_id) : null; // Optional branch filter
+
+  console.log(`Fetching categories by sales${date ? ' for date: ' + date : ''}${saleIds.length > 0 ? ' for sale IDs: ' + saleIds.join(',') : ''}`);
+
+  // Build the SQL query
+  let sql = `
+    SELECT
+      COALESCE(c.category_name, ji.category) AS category_name,
+      COUNT(DISTINCT s.sale_id) AS sale_count,
+      COUNT(*) AS item_count,
+      SUM(si.quantity) AS total_quantity,
+      SUM(si.subtotal) AS total_amount
+    FROM
+      sales s
+    JOIN
+      sale_items si ON s.sale_id = si.sale_id
+    JOIN
+      jewellery_items ji ON si.item_id = ji.item_id
+    LEFT JOIN
+      categories c ON ji.category = c.category_name
+  `;
+
+  // Add WHERE clause if filters are provided
+  const whereConditions = [];
+  const queryParams = [];
+
+  if (saleIds.length > 0) {
+    // Handle array of IDs properly
+    if (saleIds.length === 1) {
+      whereConditions.push('s.sale_id = ?');
+      queryParams.push(saleIds[0]);
+    } else {
+      const placeholders = saleIds.map(() => '?').join(',');
+      whereConditions.push(`s.sale_id IN (${placeholders})`);
+      queryParams.push(...saleIds);
+    }
+  }
+
+  if (date) {
+    whereConditions.push('DATE(s.sale_date) = ?');
+    queryParams.push(date);
+  }
+
+  if (branchId) {
+    whereConditions.push('s.branch_id = ?');
+    queryParams.push(branchId);
+  }
+
+  if (whereConditions.length > 0) {
+    sql += ' WHERE ' + whereConditions.join(' AND ');
+  }
+
+  // Group by category and order by count (most sold items first)
+  sql += ' GROUP BY COALESCE(c.category_name, ji.category) ORDER BY total_quantity DESC, total_amount DESC';
+
+  console.log('Executing SQL:', sql);
+  console.log('With parameters:', queryParams);
+
+  con.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error("Error fetching categories by sales:", err);
+      return res.status(500).json({ message: "Database error", error: err.message });
+    }
+
+    console.log("Categories by sales results:", results);
+
+    // Check if we have any results
+    if (!results || results.length === 0) {
+      console.log("No categories found for the given filters");
+    } else {
+      console.log(`Found ${results.length} categories, top category: ${results[0].category_name}`);
+    }
+
+    res.json(results || []);
+  });
 });
 
 export { router as salesRouter };
