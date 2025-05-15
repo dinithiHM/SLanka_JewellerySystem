@@ -146,6 +146,28 @@ const CustomOrderDetailPage = ({ params }: { params: Promise<{ id: string }> | {
         }
       }
 
+      // Also fetch payment history to get the most accurate payment information
+      try {
+        const historyResponse = await fetch(`http://localhost:3002/advance-payments/history/order/${orderId}`);
+        if (historyResponse.ok) {
+          const historyData = await historyResponse.json();
+          console.log('Payment history data:', historyData);
+
+          // Update the order data with the correct payment information
+          if (historyData && historyData.total_paid !== undefined) {
+            data.advance_amount = historyData.total_paid;
+            data.balance_amount = historyData.remaining_balance;
+            console.log('Updated payment data from history:', {
+              total_paid: historyData.total_paid,
+              remaining_balance: historyData.remaining_balance
+            });
+          }
+        }
+      } catch (historyErr) {
+        console.error('Error fetching payment history:', historyErr);
+        // Continue with the original order data
+      }
+
       setOrder(data);
 
       // Set the first image as selected if available
@@ -184,19 +206,21 @@ const CustomOrderDetailPage = ({ params }: { params: Promise<{ id: string }> | {
     setUserBranchId(numericBranchId);
   }, []);
 
-  // Set up auto-refresh and initial fetch
+  // Initial fetch only, auto-refresh disabled
   useEffect(() => {
     if (orderId && userRole) {
       fetchOrderDetails();
 
-      // Set up auto-refresh every 30 seconds
-      const refreshInterval = setInterval(() => {
-        console.log('Auto-refreshing order details...');
-        fetchOrderDetails();
-      }, 30000); // 30 seconds
+      // Auto-refresh disabled
+      // const refreshInterval = setInterval(() => {
+      //   console.log('Auto-refreshing order details...');
+      //   fetchOrderDetails();
+      // }, 30000); // 30 seconds
 
-      // Clean up interval on unmount
-      return () => clearInterval(refreshInterval);
+      // Clean up function (no interval to clear)
+      return () => {
+        // No interval to clear
+      };
     }
   }, [orderId, userRole, userBranchId]);
 

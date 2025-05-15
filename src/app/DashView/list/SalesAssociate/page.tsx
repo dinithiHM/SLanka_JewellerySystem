@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import { Filter, SortDesc } from "lucide-react";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import DeleteConfirmationModal from "@/components/DeleteConfirmationModal";
+import UserActionButtons from "@/components/UserActionButtons";
 
 // Add interface for SalesAssociate
 interface SalesAssociate {
@@ -41,6 +40,7 @@ const columns: Column[] = [
 
 const SalesAssociateListPage = () => {
   const [salesAssociates, setSalesAssociates] = useState<SalesAssociate[]>([]);
+  const [filteredAssociates, setFilteredAssociates] = useState<SalesAssociate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("");
@@ -96,6 +96,9 @@ const SalesAssociateListPage = () => {
 
       // Remove the deleted item from the state
       setSalesAssociates(prevAssociates =>
+        prevAssociates.filter(associate => associate.id !== id)
+      );
+      setFilteredAssociates(prevAssociates =>
         prevAssociates.filter(associate => associate.id !== id)
       );
 
@@ -161,6 +164,7 @@ const SalesAssociateListPage = () => {
           }));
 
           setSalesAssociates(mappedData);
+          setFilteredAssociates(mappedData);
         } else {
           throw new Error('Invalid data format received');
         }
@@ -193,40 +197,66 @@ const SalesAssociateListPage = () => {
   );
 
   const renderActions = (item: SalesAssociate) => (
-    <div className="flex items-center gap-2">
-      <Link href={`/list/sales-associates/${item.id}`}>
-        <button
-          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]"
-          title="View details"
-        >
-          <Image src="/view.png" alt="View" width={16} height={16} />
-        </button>
-      </Link>
-
-      {userRole.toLowerCase() === "admin" && (
-        <DeleteConfirmationModal
-          itemName={`${item.first_name} ${item.last_name}`}
-          onDelete={() => handleDelete(item.id)}
-        />
-      )}
-    </div>
+    <UserActionButtons
+      id={item.id}
+      name={`${item.first_name} ${item.last_name}`}
+      userType="sales-associate"
+      currentUserRole={userRole}
+      onDelete={handleDelete}
+    />
   );
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  // Handle search functionality
+  const handleSearch = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredAssociates(salesAssociates);
+      return;
+    }
+
+    const lowerCaseSearch = searchTerm.toLowerCase();
+    const filtered = salesAssociates.filter(associate =>
+      associate.first_name.toLowerCase().includes(lowerCaseSearch) ||
+      associate.last_name.toLowerCase().includes(lowerCaseSearch) ||
+      associate.email.toLowerCase().includes(lowerCaseSearch) ||
+      associate.username.toLowerCase().includes(lowerCaseSearch) ||
+      associate.phone.toLowerCase().includes(lowerCaseSearch) ||
+      (associate.nic && associate.nic.toLowerCase().includes(lowerCaseSearch))
+    );
+
+    setFilteredAssociates(filtered);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+        <div className="p-4 bg-red-100 text-red-700 rounded-md">
+          <h2 className="text-lg font-semibold mb-2">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       <div className="flex items-center justify-between">
         <h1 className="hidden md:block text-lg font-semibold">Sales Associates</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch onSearch={handleSearch} placeholder="Search sales associates..." />
           <div className="flex items-center gap-4 self-end">
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FFF6BD]">
-              <Image src="/filter.png" alt="Filter" width={14} height={14} />
+              <Filter size={14} className="text-gray-700" />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
-              <Image src="/sort.png" alt="Sort" width={14} height={14} />
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FFF6BD]">
+              <SortDesc size={14} className="text-gray-700" />
             </button>
             {userRole.toLowerCase() === "admin" && (
               <FormModal table="sales-associate" type="create"/>
@@ -234,8 +264,18 @@ const SalesAssociateListPage = () => {
           </div>
         </div>
       </div>
-      <Table columns={columns} renderRow={renderRow} data={salesAssociates} />
-      <Pagination />
+
+      {/* LIST */}
+      {filteredAssociates.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          No sales associates found.
+        </div>
+      ) : (
+        <Table columns={columns} renderRow={renderRow} data={filteredAssociates} />
+      )}
+
+      {/* PAGINATION */}
+      {filteredAssociates.length > 0 && <Pagination />}
     </div>
   );
 };

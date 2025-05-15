@@ -178,8 +178,36 @@ const ViewAdvancePaymentsPage = () => {
       }
 
       const data = await response.json();
-      setPayments(data);
-      setFilteredPayments(data);
+
+      // For each custom order payment, fetch the payment history to get accurate balance
+      const updatedPayments = await Promise.all(data.map(async (payment: AdvancePayment) => {
+        try {
+          if (payment.is_custom_order && payment.order_id) {
+            // Fetch payment history for custom orders
+            const historyResponse = await fetch(`http://localhost:3002/advance-payments/history/order/${payment.order_id}`);
+
+            if (historyResponse.ok) {
+              const historyData = await historyResponse.json();
+
+              // Update the payment with accurate data from history
+              return {
+                ...payment,
+                total_paid_amount: historyData.total_paid,
+                actual_balance_amount: historyData.remaining_balance,
+                actual_payment_status: historyData.payment_status
+              };
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching history for payment ${payment.payment_id}:`, err);
+        }
+
+        // Return the original payment if we couldn't fetch history
+        return payment;
+      }));
+
+      setPayments(updatedPayments);
+      setFilteredPayments(updatedPayments);
     } catch (err) {
       console.error('Error fetching advance payments:', err);
       setError(err instanceof Error ? err.message : 'An error occurred while fetching payments');
@@ -288,9 +316,53 @@ const ViewAdvancePaymentsPage = () => {
   // This function has been replaced by fetchCustomOrderPaymentHistory and fetchInventoryItemPaymentHistory
 
   // Handle view details
-  const handleViewDetails = (payment: AdvancePayment) => {
+  const handleViewDetails = async (payment: AdvancePayment) => {
+    // First set the payment to show the modal quickly
     setSelectedPayment(payment);
     setShowDetailsModal(true);
+
+    try {
+      // If this is a custom order, fetch the payment history to get accurate balance
+      if (payment.is_custom_order && payment.order_id) {
+        const response = await fetch(`http://localhost:3002/advance-payments/history/order/${payment.order_id}`);
+
+        if (response.ok) {
+          const historyData = await response.json();
+          console.log('Fetched payment history for details modal:', historyData);
+
+          // Update the payment with accurate data from history
+          const updatedPayment = {
+            ...payment,
+            total_paid_amount: historyData.total_paid,
+            actual_balance_amount: historyData.remaining_balance,
+            actual_payment_status: historyData.payment_status
+          };
+
+          setSelectedPayment(updatedPayment);
+        }
+      } else if (!payment.is_custom_order && payment.item_id) {
+        // For inventory items, fetch payment history
+        const response = await fetch(`http://localhost:3002/advance-payments/history/item/${payment.item_id}?customer=${encodeURIComponent(payment.customer_name)}`);
+
+        if (response.ok) {
+          const historyData = await response.json();
+          console.log('Fetched inventory payment history for details modal:', historyData);
+
+          // Update the payment with accurate data from history
+          const updatedPayment = {
+            ...payment,
+            total_paid_amount: historyData.total_paid,
+            actual_balance_amount: historyData.remaining_balance,
+            actual_payment_status: historyData.remaining_balance <= 0 ? 'Completed' : 'Partially Paid'
+          };
+
+          setSelectedPayment(updatedPayment);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching payment details:', err);
+      // Continue with the original payment data
+    }
   };
 
   // Handle view payment history
@@ -653,27 +725,24 @@ const ViewAdvancePaymentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DollarSign className="h-5 w-5 text-gray-400 mr-1" />
                         <span>{formatCurrency(payment.total_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DollarSign className="h-5 w-5 text-green-500 mr-1" />
                         <span>{formatCurrency(payment.total_paid_amount || payment.advance_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DollarSign className="h-5 w-5 text-red-500 mr-1" />
                         <span>{formatCurrency(payment.actual_balance_amount || payment.balance_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.actual_payment_status || payment.payment_status)}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(payment.actual_payment_status || (payment.actual_balance_amount <= 0 ? 'Completed' : payment.payment_status))}`}>
                         <div className="flex items-center">
-                          {getStatusIcon(payment.actual_payment_status || payment.payment_status)}
-                          {payment.actual_payment_status || payment.payment_status}
+                          {getStatusIcon(payment.actual_payment_status || (payment.actual_balance_amount <= 0 ? 'Completed' : payment.payment_status))}
+                          {payment.actual_payment_status || (payment.actual_balance_amount <= 0 ? 'Completed' : payment.payment_status)}
                         </div>
                       </span>
                     </td>
@@ -691,7 +760,7 @@ const ViewAdvancePaymentsPage = () => {
                         >
                           History
                         </button>
-                        {(payment.actual_payment_status || payment.payment_status) !== 'Completed' && (
+                        {(payment.actual_payment_status || (payment.actual_balance_amount <= 0 ? 'Completed' : payment.payment_status)) !== 'Completed' && (
                           <button
                             onClick={() => handleMakeAdditionalPayment(payment)}
                             className="text-green-600 hover:text-green-900"
@@ -796,20 +865,20 @@ const ViewAdvancePaymentsPage = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Balance</h3>
-                  <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(selectedPayment.actual_balance_amount || selectedPayment.balance_amount)}</p>
+                  <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(selectedPayment.actual_balance_amount !== undefined ? selectedPayment.actual_balance_amount : selectedPayment.balance_amount)}</p>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-between">
-              <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedPayment.actual_payment_status || selectedPayment.payment_status)}`}>
+              <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeColor(selectedPayment.actual_payment_status || (selectedPayment.actual_balance_amount <= 0 ? 'Completed' : selectedPayment.payment_status))}`}>
                 <div className="flex items-center">
-                  {getStatusIcon(selectedPayment.actual_payment_status || selectedPayment.payment_status)}
-                  {selectedPayment.actual_payment_status || selectedPayment.payment_status}
+                  {getStatusIcon(selectedPayment.actual_payment_status || (selectedPayment.actual_balance_amount <= 0 ? 'Completed' : selectedPayment.payment_status))}
+                  {selectedPayment.actual_payment_status || (selectedPayment.actual_balance_amount <= 0 ? 'Completed' : selectedPayment.payment_status)}
                 </div>
               </span>
 
-              {(selectedPayment.actual_payment_status || selectedPayment.payment_status) !== 'Completed' && (
+              {(selectedPayment.actual_payment_status || (selectedPayment.actual_balance_amount <= 0 ? 'Completed' : selectedPayment.payment_status)) !== 'Completed' && (
                 <button
                   onClick={() => {
                     setShowDetailsModal(false);
@@ -962,7 +1031,6 @@ const ViewAdvancePaymentsPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <DollarSign className="h-5 w-5 text-green-500 mr-1" />
                               <span>{formatCurrency(payment.advance_amount)}</span>
                             </div>
                           </td>

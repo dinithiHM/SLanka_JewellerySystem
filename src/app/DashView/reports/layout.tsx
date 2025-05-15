@@ -32,18 +32,18 @@ export default function ReportsLayout({
       path: '/DashView/reports/financial',
       description: 'Revenue, profit margins, and payment analysis'
     },
-    { 
-      name: 'Customer Reports', 
-      icon: <Users className="w-5 h-5" />, 
-      path: '/DashView/reports/customer',
-      description: 'Customer purchase history and outstanding payments'
-    },
-    { 
-      name: 'Custom Reports', 
-      icon: <FileText className="w-5 h-5" />, 
-      path: '/DashView/reports/custom',
-      description: 'Build your own custom reports'
-    },
+    // { 
+    //   name: 'Customer Reports', 
+    //   icon: <Users className="w-5 h-5" />, 
+    //   path: '/DashView/reports/customer',
+    //   description: 'Customer purchase history and outstanding payments'
+    // },
+    // { 
+    //   name: 'Custom Reports', 
+    //   icon: <FileText className="w-5 h-5" />, 
+    //   path: '/DashView/reports/custom',
+    //   description: 'Build your own custom reports'
+    // },
   ];
 
   return (

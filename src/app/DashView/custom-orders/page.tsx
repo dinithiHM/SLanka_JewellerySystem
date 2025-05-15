@@ -237,11 +237,11 @@ const CustomOrdersPage = () => {
     // Initial fetch
     fetchOrders();
 
-    // Set up auto-refresh every 10 seconds
-    const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing orders...');
-      fetchOrders();
-    }, 10000); // 10 seconds
+    // Auto-refresh disabled
+    // const refreshInterval = setInterval(() => {
+    //   console.log('Auto-refreshing orders...');
+    //   fetchOrders();
+    // }, 10000); // 10 seconds
 
     // Add visibility change listener to refresh when tab becomes visible again
     const handleVisibilityChange = () => {
@@ -253,9 +253,9 @@ const CustomOrdersPage = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Clean up interval and event listeners on unmount
+    // Clean up event listeners on unmount
     return () => {
-      clearInterval(refreshInterval);
+      // clearInterval(refreshInterval); // Auto-refresh disabled
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [filterByBranch, showAllBranches, userBranchId, selectedBranchId, userRole, fetchOrders]);

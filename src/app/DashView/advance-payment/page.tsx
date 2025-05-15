@@ -385,6 +385,15 @@ const AdvancePaymentPage = () => {
               setBalanceAmount(historyData.remaining_balance);
               console.log(`Setting balance from payment history: ${historyData.remaining_balance}`);
 
+              // Force update the balance amount input field
+              setTimeout(() => {
+                const balanceInput = document.getElementById('balanceAmount') as HTMLInputElement;
+                if (balanceInput) {
+                  balanceInput.value = historyData.remaining_balance.toString();
+                  console.log('Directly updated balance input field to:', historyData.remaining_balance);
+                }
+              }, 100);
+
               // Add payment history information to notes
               let paymentNotes = '';
               if (historyData.payments && historyData.payments.length > 0) {
@@ -428,6 +437,15 @@ const AdvancePaymentPage = () => {
 
           // Update the balance amount field with the server's calculation
           setBalanceAmount(remainingBalance);
+
+          // Force update the balance amount input field
+          setTimeout(() => {
+            const balanceInput = document.getElementById('balanceAmount') as HTMLInputElement;
+            if (balanceInput) {
+              balanceInput.value = remainingBalance.toString();
+              console.log('Directly updated balance input field to:', remainingBalance);
+            }
+          }, 100);
         }
 
         // Add any notes about the order
@@ -1018,10 +1036,10 @@ const AdvancePaymentPage = () => {
                 type="number"
                 id="balanceAmount"
                 className="block w-full pl-10 p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-yellow-500 focus:border-yellow-500"
-                value={balanceAmount || ''}
+                value={selectedOrder?.actual_balance_amount || balanceAmount || ''}
                 readOnly
                 // Add key to force re-render when balance changes
-                key={`balance-${balanceAmount}-${Date.now()}`}
+                key={`balance-${selectedOrder?.actual_balance_amount || balanceAmount}-${Date.now()}`}
               />
             </div>
           </div>

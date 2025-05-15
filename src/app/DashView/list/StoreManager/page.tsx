@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import { Filter, SortDesc } from "lucide-react";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import DeleteConfirmationModal from "@/components/DeleteConfirmationModal";
+import UserActionButtons from "@/components/UserActionButtons";
 
 type StoreManager = {
   id: number;
@@ -33,7 +32,10 @@ const columns = [
 
 const StoreManagerListPage = () => {
   const [storeManagers, setStoreManagers] = useState<StoreManager[]>([]);
+  const [filteredManagers, setFilteredManagers] = useState<StoreManager[]>([]);
   const [userRole, setUserRole] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Add delete handler
   const handleDelete = async (id: number) => {
@@ -80,6 +82,9 @@ const StoreManagerListPage = () => {
       setStoreManagers(prevManagers =>
         prevManagers.filter(manager => manager.id !== id)
       );
+      setFilteredManagers(prevManagers =>
+        prevManagers.filter(manager => manager.id !== id)
+      );
 
       // Show success message
       alert(responseData?.message || "Store Manager deleted successfully");
@@ -95,6 +100,26 @@ const StoreManagerListPage = () => {
     }
   };
 
+  // Handle search functionality
+  const handleSearch = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredManagers(storeManagers);
+      return;
+    }
+
+    const lowerCaseSearch = searchTerm.toLowerCase();
+    const filtered = storeManagers.filter(manager =>
+      manager.first_name.toLowerCase().includes(lowerCaseSearch) ||
+      manager.last_name.toLowerCase().includes(lowerCaseSearch) ||
+      manager.email.toLowerCase().includes(lowerCaseSearch) ||
+      manager.username.toLowerCase().includes(lowerCaseSearch) ||
+      manager.phone.toLowerCase().includes(lowerCaseSearch) ||
+      (manager.nic && manager.nic.toLowerCase().includes(lowerCaseSearch))
+    );
+
+    setFilteredManagers(filtered);
+  };
+
   useEffect(() => {
     // Get role from localStorage
     const storedRole = localStorage.getItem("role");
@@ -103,17 +128,18 @@ const StoreManagerListPage = () => {
     }
 
     const fetchStoreManagers = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const response = await fetch("http://localhost:3002/store-managers");
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch store managers: ${response.status}`);
+        }
+
         const data = await response.json();
 
-        console.log("Fetched data:", data);  // Log the data to verify its format
         if (Array.isArray(data)) {
-          // Log the first item to see its structure
-          if (data.length > 0) {
-            console.log('Sample store manager data:', data[0]);
-          }
-
           // Map the data to ensure it has the correct property names
           const mappedData = data.map(item => ({
             id: item.user_id || item.id, // Try both possible ID field names
@@ -128,11 +154,15 @@ const StoreManagerListPage = () => {
           }));
 
           setStoreManagers(mappedData);
+          setFilteredManagers(mappedData);
         } else {
-          console.error("Expected an array but got:", data);
+          throw new Error("Expected an array but got different data format");
         }
       } catch (error) {
         console.error("Error fetching Store Managers:", error);
+        setError(error instanceof Error ? error.message : "An unknown error occurred");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -154,24 +184,37 @@ const StoreManagerListPage = () => {
       <td className="hidden lg:table-cell">{item.phone}</td>
       <td className="hidden lg:table-cell">{item.address}</td>
       <td>
-        <div className="flex items-center gap-2">
-          <Link href={`/list/StoreManager/${item.id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FFF6BD]">
-              <Image src="/view.png" alt="" width={16} height={16} />
-            </button>
-          </Link>
-          {userRole.toLowerCase() === "admin" && (
-            <DeleteConfirmationModal
-              itemName={`${item.first_name} ${item.last_name}`}
-              onDelete={() => handleDelete(item.id)}
-            />
-          )}
-        </div>
+        <UserActionButtons
+          id={item.id}
+          name={`${item.first_name} ${item.last_name}`}
+          userType="store-manager"
+          currentUserRole={userRole}
+          onDelete={handleDelete}
+        />
       </td>
     </tr>
   );
 
 
+
+  if (isLoading) {
+    return (
+      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+        <div className="p-4 bg-red-100 text-red-700 rounded-md">
+          <h2 className="text-lg font-semibold mb-2">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
@@ -179,13 +222,13 @@ const StoreManagerListPage = () => {
       <div className="flex items-center justify-between">
         <h1 className="hidden md:block text-lg font-semibold">Store Managers</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch onSearch={handleSearch} placeholder="Search store managers..." />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-#FFF6BD">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FFF6BD]">
+              <Filter size={14} className="text-gray-700" />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
-              <Image src="/sort.png" alt="" width={14} height={14} />
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FFF6BD]">
+              <SortDesc size={14} className="text-gray-700" />
             </button>
             {userRole.toLowerCase() === "admin" && (
               <FormModal table="store-manager" type="create"/>
@@ -193,11 +236,18 @@ const StoreManagerListPage = () => {
           </div>
         </div>
       </div>
+
       {/* LIST */}
-      <Table columns={columns} renderRow={renderRow} data={storeManagers} />
+      {filteredManagers.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          No store managers found.
+        </div>
+      ) : (
+        <Table columns={columns} renderRow={renderRow} data={filteredManagers} />
+      )}
 
       {/* PAGINATION */}
-      <Pagination />
+      {filteredManagers.length > 0 && <Pagination />}
     </div>
   );
 };

@@ -49,29 +49,29 @@ export default function ReportsPage() {
         { name: 'Discount Analysis', path: '/DashView/reports/financial/discounts' },
       ]
     },
-    { 
-      name: 'Customer Reports', 
-      icon: <Users className="w-6 h-6" />, 
-      path: '/DashView/reports/customer',
-      color: 'bg-yellow-50 text-yellow-700',
-      iconBg: 'bg-yellow-100',
-      reports: [
-        { name: 'Customer Purchases', path: '/DashView/reports/customer/purchases' },
-        { name: 'Outstanding Payments', path: '/DashView/reports/customer/outstanding' },
-        { name: 'Customer Loyalty', path: '/DashView/reports/customer/loyalty' },
-      ]
-    },
-    { 
-      name: 'Custom Reports', 
-      icon: <FileText className="w-6 h-6" />, 
-      path: '/DashView/reports/custom',
-      color: 'bg-red-50 text-red-700',
-      iconBg: 'bg-red-100',
-      reports: [
-        { name: 'Report Builder', path: '/DashView/reports/custom/builder' },
-        { name: 'Saved Reports', path: '/DashView/reports/custom/saved' },
-      ]
-    },
+    // { 
+    //   name: 'Customer Reports', 
+    //   icon: <Users className="w-6 h-6" />, 
+    //   path: '/DashView/reports/customer',
+    //   color: 'bg-yellow-50 text-yellow-700',
+    //   iconBg: 'bg-yellow-100',
+    //   reports: [
+    //     { name: 'Customer Purchases', path: '/DashView/reports/customer/purchases' },
+    //     { name: 'Outstanding Payments', path: '/DashView/reports/customer/outstanding' },
+    //     { name: 'Customer Loyalty', path: '/DashView/reports/customer/loyalty' },
+    //   ]
+    // },
+    // { 
+    //   name: 'Custom Reports', 
+    //   icon: <FileText className="w-6 h-6" />, 
+    //   path: '/DashView/reports/custom',
+    //   color: 'bg-red-50 text-red-700',
+    //   iconBg: 'bg-red-100',
+    //   reports: [
+    //     { name: 'Report Builder', path: '/DashView/reports/custom/builder' },
+    //     { name: 'Saved Reports', path: '/DashView/reports/custom/saved' },
+    //   ]
+    // },
   ];
 
   // Recent reports (would be fetched from API in a real implementation)
