@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file://D%3A/JewelleryWEBApp/front_end/src/app/supplier/layout.tsx"],"sourcesContent":["'use client';\n\nimport { LanguageProvider } from \"@/contexts/LanguageContext\";\n\nexport default function SupplierLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <LanguageProvider>\n      {children}\n    </LanguageProvider>\n  );\n}\n"],"names":[],"mappings":";;;;AAEA;AAFA;;;AAIe,SAAS,eAAe,EAAE,QAAQ,EAAiC;IAChF,qBACE,8OAAC,mIAAA,CAAA,mBAAgB;kBACd;;;;;;AAGP","debugId":null}},
-    {"offset": {"line": 24, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
-}
