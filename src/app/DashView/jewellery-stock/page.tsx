@@ -25,6 +25,7 @@ interface JewelleryItem {
   is_solid_gold?: number; // 1 for true, 0 for false
   making_charges?: number;
   additional_materials_charges?: number;
+  profit_percentage?: number; // Profit percentage
 }
 
 interface Category {
@@ -76,6 +77,7 @@ const JewelleryStockPage = () => {
   const [inStock, setInStock] = useState<number>(0);
   const [buyingPrice, setBuyingPrice] = useState<number>(0);
   const [sellingPrice, setSellingPrice] = useState<number>(0);
+  const [profitPercentage, setProfitPercentage] = useState<number>(0);
   const [goldCarat, setGoldCarat] = useState<number | null>(null);
   const [weight, setWeight] = useState<number | null>(null);
   const [assayCertificate, setAssayCertificate] = useState<string>('');
@@ -344,15 +346,33 @@ const JewelleryStockPage = () => {
 
   // Handle edit item
   const handleEditItem = (item: JewelleryItem) => {
-    setCurrentItem(item);
-    setProductTitle(item.product_title);
-    setCategory(item.category_name || item.category);
-    setInStock(item.in_stock);
-    setBuyingPrice(item.buying_price);
-    setSellingPrice(item.selling_price);
+    console.log('Editing item:', JSON.stringify(item, null, 2));
+
+    // Store the complete item object
+    setCurrentItem({...item});
+
+    // Set individual form fields
+    console.log('Setting product title to:', item.product_title);
+    setProductTitle(item.product_title || '');
+    setCategory(item.category_name || item.category || '');
+    setInStock(item.in_stock || 0);
+    setBuyingPrice(item.buying_price || 0);
+    setSellingPrice(item.selling_price || 0);
     if (item.branch_id) {
       setUserBranchId(item.branch_id);
     }
+
+    // Calculate profit percentage if not already set
+    if (item.profit_percentage !== undefined) {
+      setProfitPercentage(item.profit_percentage);
+    } else if (item.buying_price > 0) {
+      // Calculate profit percentage based on buying and selling price
+      const calculatedProfit = ((item.selling_price - item.buying_price) / item.buying_price) * 100;
+      setProfitPercentage(parseFloat(calculatedProfit.toFixed(2)));
+    } else {
+      setProfitPercentage(0);
+    }
+
     // Set gold details if available
     setGoldCarat(item.gold_carat !== undefined ? item.gold_carat : null);
     setWeight(item.weight !== undefined ? item.weight : null);
@@ -418,6 +438,7 @@ const JewelleryStockPage = () => {
     setInStock(0);
     setBuyingPrice(0);
     setSellingPrice(0);
+    setProfitPercentage(0);
     // Reset gold details
     setGoldCarat(null);
     setWeight(null);
@@ -441,6 +462,11 @@ const JewelleryStockPage = () => {
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('Form submission started');
+    console.log('Current form mode:', formMode);
+    console.log('Current item ID:', currentItem?.item_id);
+    console.log('Product title value:', productTitle);
+
     // Validate form
     if (!productTitle || !category || inStock < 0 || buyingPrice <= 0 || sellingPrice <= 0 || !userBranchId) {
       alert('Please fill all fields with valid values');
@@ -453,6 +479,7 @@ const JewelleryStockPage = () => {
       in_stock: inStock,
       buying_price: buyingPrice,
       selling_price: sellingPrice,
+      profit_percentage: profitPercentage,
       branch_id: userBranchId, // Include branch_id from user info
       gold_carat: goldCarat,
       weight: weight,
@@ -462,13 +489,14 @@ const JewelleryStockPage = () => {
       additional_materials_charges: additionalMaterialsCharges
     };
 
-    console.log('Submitting jewellery item data:', itemData);
+    console.log('Submitting jewellery item data:', JSON.stringify(itemData, null, 2));
 
     try {
       let response;
 
       if (formMode === 'add') {
         // Create new item
+        console.log('Creating new jewellery item');
         response = await fetch('http://localhost:3002/jewellery-items/create', {
           method: 'POST',
           headers: {
@@ -478,7 +506,15 @@ const JewelleryStockPage = () => {
         });
       } else {
         // Update existing item
-        response = await fetch(`http://localhost:3002/jewellery-items/update/${currentItem?.item_id}`, {
+        console.log(`Updating jewellery item with ID: ${currentItem?.item_id}`);
+
+        if (!currentItem?.item_id) {
+          console.error('Error: Missing item ID for update operation');
+          alert('Cannot update item: Missing item ID');
+          return;
+        }
+
+        response = await fetch(`http://localhost:3002/jewellery-items/update/${currentItem.item_id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -487,9 +523,16 @@ const JewelleryStockPage = () => {
         });
       }
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Failed to ${formMode} item`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to ${formMode} item: ${response.status} ${errorText}`);
       }
+
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
 
       // Refresh the list with branch filtering
       let fetchUrl = 'http://localhost:3002/jewellery-items';
@@ -553,6 +596,23 @@ const JewelleryStockPage = () => {
       }
 
       alert(`Item ${formMode === 'add' ? 'added' : 'updated'} successfully`);
+
+      // Clear form state
+      setCurrentItem(null);
+      setProductTitle('');
+      setCategory('');
+      setInStock(0);
+      setBuyingPrice(0);
+      setSellingPrice(0);
+      setProfitPercentage(0);
+      setGoldCarat(null);
+      setWeight(null);
+      setAssayCertificate('');
+      setIsSolidGold(true);
+      setMakingCharges(null);
+      setAdditionalMaterialsCharges(null);
+
+      // Close the form
       setShowForm(false);
 
       // Reset the source order ID and isAddingFromOrder flag
@@ -566,11 +626,27 @@ const JewelleryStockPage = () => {
 
   // Cancel form
   const handleCancelForm = () => {
+    console.log('Cancelling form');
     setShowForm(false);
 
     // Reset the source order ID and isAddingFromOrder flag
     setSourceOrderId(null);
     setIsAddingFromOrder(false);
+
+    // Clear form state
+    setCurrentItem(null);
+    setProductTitle('');
+    setCategory('');
+    setInStock(0);
+    setBuyingPrice(0);
+    setSellingPrice(0);
+    setProfitPercentage(0);
+    setGoldCarat(null);
+    setWeight(null);
+    setAssayCertificate('');
+    setIsSolidGold(true);
+    setMakingCharges(null);
+    setAdditionalMaterialsCharges(null);
   };
 
   // View item details
@@ -678,13 +754,15 @@ const JewelleryStockPage = () => {
                 </button>
               </>
             )}
-            <button
-              className="bg-yellow-400 hover:bg-yellow-500 text-black px-4 py-2 rounded-md font-medium flex items-center"
-              onClick={handleAddNewItem}
-            >
-              <Plus size={18} className="mr-1" />
-              Add new Item
-            </button>
+            {(userRole === 'admin' || userRole === 'store manager') && (
+              <button
+                className="bg-yellow-400 hover:bg-yellow-500 text-black px-4 py-2 rounded-md font-medium flex items-center"
+                onClick={handleAddNewItem}
+              >
+                <Plus size={18} className="mr-1" />
+                Add new Item
+              </button>
+            )}
           </div>
         </div>
 
@@ -818,15 +896,24 @@ const JewelleryStockPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Weight
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                {userRole === 'admin' || userRole === 'store manager' ? (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'admin' ? 8 : 7} className="px-6 py-4 text-center text-gray-500">
+                  <td
+                    colSpan={
+                      userRole === 'admin'
+                        ? 8
+                        : (userRole === 'store manager' ? 8 : 7)
+                    }
+                    className="px-6 py-4 text-center text-gray-500"
+                  >
                     No jewellery items found
                   </td>
                 </tr>
@@ -859,31 +946,33 @@ const JewelleryStockPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {item.weight ? `${item.weight} g` : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Details"
-                          onClick={() => handleViewDetails(item)}
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          className="text-yellow-600 hover:text-yellow-900"
-                          title="Edit Item"
-                          onClick={() => handleEditItem(item)}
-                        >
-                          <Pencil size={18} />
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Item"
-                          onClick={() => handleDeleteItem(item.item_id)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+                    {(userRole === 'admin' || userRole === 'store manager') ? (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View Details"
+                            onClick={() => handleViewDetails(item)}
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            className="text-yellow-600 hover:text-yellow-900"
+                            title="Edit Item"
+                            onClick={() => handleEditItem(item)}
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Item"
+                            onClick={() => handleDeleteItem(item.item_id)}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}
@@ -910,7 +999,11 @@ const JewelleryStockPage = () => {
                     type="text"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={productTitle}
-                    onChange={(e) => setProductTitle(e.target.value)}
+                    onChange={(e) => {
+                      const newTitle = e.target.value;
+                      console.log('Product title changed to:', newTitle);
+                      setProductTitle(newTitle);
+                    }}
                     required
                   />
                 </div>
@@ -1000,7 +1093,18 @@ const JewelleryStockPage = () => {
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={buyingPrice}
-                    onChange={(e) => setBuyingPrice(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newBuyingPrice = Number(e.target.value);
+                      setBuyingPrice(newBuyingPrice);
+
+                      // Recalculate profit percentage when buying price changes
+                      if (newBuyingPrice > 0) {
+                        const profit = ((sellingPrice - newBuyingPrice) / newBuyingPrice) * 100;
+                        // Limit profit to 15%
+                        const limitedProfit = Math.min(profit, 15);
+                        setProfitPercentage(parseFloat(limitedProfit.toFixed(2)));
+                      }
+                    }}
                     min="0"
                     step="0.01"
                     required
@@ -1014,11 +1118,55 @@ const JewelleryStockPage = () => {
                     type="number"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={sellingPrice}
-                    onChange={(e) => setSellingPrice(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newSellingPrice = Number(e.target.value);
+                      setSellingPrice(newSellingPrice);
+
+                      // Calculate profit percentage when selling price changes
+                      if (buyingPrice > 0) {
+                        const profit = ((newSellingPrice - buyingPrice) / buyingPrice) * 100;
+                        // Limit profit to 15%
+                        const limitedProfit = Math.min(profit, 15);
+                        setProfitPercentage(parseFloat(limitedProfit.toFixed(2)));
+                      }
+                    }}
                     min="0"
                     step="0.01"
                     required
                   />
+                </div>
+
+                {/* Profit Percentage */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Profit Percentage (Max 15%)
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={profitPercentage}
+                      onChange={(e) => {
+                        const newProfit = Number(e.target.value);
+                        // Limit profit to 15%
+                        const limitedProfit = Math.min(newProfit, 15);
+                        setProfitPercentage(limitedProfit);
+
+                        // Update selling price based on profit percentage
+                        if (buyingPrice > 0) {
+                          const newSellingPrice = buyingPrice * (1 + limitedProfit / 100);
+                          setSellingPrice(parseFloat(newSellingPrice.toFixed(2)));
+                        }
+                      }}
+                      min="0"
+                      max="15"
+                      step="0.01"
+                    />
+                    <span className="ml-2">%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum allowed profit is 15%
+                  </p>
                 </div>
 
                 {/* Gold Carat */}
@@ -1132,6 +1280,17 @@ const JewelleryStockPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-500">Selling Price</p>
                 <p className="text-base">{formatCurrency(detailsItem.selling_price)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Profit Percentage</p>
+                <p className="text-base">
+                  {detailsItem.profit_percentage !== undefined
+                    ? `${detailsItem.profit_percentage}%`
+                    : detailsItem.buying_price > 0
+                      ? `${((detailsItem.selling_price - detailsItem.buying_price) / detailsItem.buying_price * 100).toFixed(2)}%`
+                      : '-'
+                  }
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Gold Carat</p>
