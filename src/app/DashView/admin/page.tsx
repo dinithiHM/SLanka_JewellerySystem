@@ -1,7 +1,7 @@
 "use client";
 
-import Announcements from "@/components/Announcements";
-import AttendanceChart from "@/components/AttendanceChart";
+
+import StockLevelChart from "@/components/StockLevelChart";
 import CountChart from "@/components/CountChart";
 import EventCalendar from "@/components/EventCalendar";
 import FinanceChart from "@/components/FinanceChart";
@@ -28,9 +28,9 @@ const AdminPage = () => {
           <div className="w-full lg:w-1/3 h-[450px]">
             <CountChart />
           </div>
-          {/* ATTENDANCE CHART */}
+          {/* STOCK LEVELS CHART */}
           <div className="w-full lg:w-2/3 h-[450px]">
-            <AttendanceChart />
+            <StockLevelChart />
           </div>
         </div>
         {/* BOTTOM CHART */}
@@ -41,7 +41,6 @@ const AdminPage = () => {
       {/* RIGHT */}
       <div className="w-full lg:w-1/3 flex flex-col gap-8">
         <EventCalendar />
-        <Announcements/>
       </div>
     </div>
   );
