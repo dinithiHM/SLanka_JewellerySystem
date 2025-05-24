@@ -1,9 +1,4 @@
-/**
- * Mock Email Service
- *
- * This is a development replacement for the real email service when nodemailer is not available.
- * It logs email details to the console instead of actually sending emails.
- */
+
 
 export const sendEmail = async (options) => {
   console.log('\n=== MOCK EMAIL SERVICE ===');
