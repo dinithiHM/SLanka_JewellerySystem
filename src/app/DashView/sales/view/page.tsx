@@ -23,8 +23,10 @@ const ViewSalesPage = () => {
   const router = useRouter();
 
   const [sales, setSales] = useState<Sale[]>([]);
+  const [totalSalesCount, setTotalSalesCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingCount, setLoadingCount] = useState(true);
 
   // Filtering and search
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +40,7 @@ const ViewSalesPage = () => {
     const fetchSales = async () => {
       try {
         setLoading(true);
+        setLoadingCount(true);
 
         // Get user role and ID from localStorage
         const userRole = localStorage.getItem('role');
@@ -69,6 +72,37 @@ const ViewSalesPage = () => {
 
         console.log('Filtering sales by branch_id:', branchId);
 
+        // Fetch total count first
+        let countUrl = 'http://localhost:3002/sales/count';
+        const countQueryParams = [];
+
+        // Apply the same filters to the count endpoint
+        if (userRole === 'Cashier' && userId) {
+          countQueryParams.push(`user_id=${userId}`);
+        }
+
+        if (userRole !== 'Admin' && branchId) {
+          countQueryParams.push(`branch_id=${branchId}`);
+        }
+
+        if (countQueryParams.length > 0) {
+          countUrl += '?' + countQueryParams.join('&');
+        }
+
+        console.log('Fetching sales count from:', countUrl);
+        const countResponse = await fetch(countUrl);
+
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          console.log('Sales count received:', countData);
+          setTotalSalesCount(countData.total);
+        } else {
+          console.error('Failed to fetch sales count');
+        }
+
+        setLoadingCount(false);
+
+        // Now fetch the sales data
         console.log('Fetching sales from:', url);
         const response = await fetch(url);
 
@@ -214,6 +248,32 @@ const ViewSalesPage = () => {
       const userId = localStorage.getItem('userId');
       const branchId = localStorage.getItem('branchId');
 
+      // Refresh the count first
+      setLoadingCount(true);
+      let countUrl = 'http://localhost:3002/sales/count';
+      const countQueryParams = [];
+
+      // Apply the same filters to the count endpoint
+      if (userRole === 'Cashier' && userId) {
+        countQueryParams.push(`user_id=${userId}`);
+      }
+
+      if (userRole !== 'Admin' && branchId) {
+        countQueryParams.push(`branch_id=${branchId}`);
+      }
+
+      if (countQueryParams.length > 0) {
+        countUrl += '?' + countQueryParams.join('&');
+      }
+
+      const countResponse = await fetch(countUrl);
+      if (countResponse.ok) {
+        const countData = await countResponse.json();
+        setTotalSalesCount(countData.total);
+      }
+      setLoadingCount(false);
+
+      // Now refresh the sales data
       // Construct URL based on role and branch
       let refreshUrl = 'http://localhost:3002/sales';
       const queryParams = [];
@@ -245,7 +305,20 @@ const ViewSalesPage = () => {
   };
 
   // Calculate total sales amount
-  const totalSalesAmount = filteredSales.reduce((sum, sale) => sum + sale.total_amount, 0);
+  const totalSalesAmount = filteredSales.reduce((sum, sale) => {
+    // Ensure total_amount is a number
+    const amount = typeof sale.total_amount === 'string'
+      ? parseFloat(sale.total_amount)
+      : sale.total_amount;
+
+    // Log each sale amount for debugging
+    console.log(`Sale ID: ${sale.sale_id}, Amount: ${amount}, Running Total: ${sum + amount}`);
+
+    return sum + amount;
+  }, 0);
+
+  // Log the final total
+  console.log('Total Sales Amount:', totalSalesAmount);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -330,12 +403,21 @@ const ViewSalesPage = () => {
         <div className="bg-gray-100 p-4 rounded-md mb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-bold">Total Sales</h3>
+              <h3 className="font-bold">Total Sales Amount</h3>
               <p className="text-2xl font-bold">{formatCurrency(totalSalesAmount)}</p>
             </div>
             <div>
               <h3 className="font-bold">Number of Sales</h3>
-              <p className="text-2xl font-bold">{filteredSales.length}</p>
+              {loadingCount ? (
+                <p className="text-2xl font-bold">Loading...</p>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold">{totalSalesCount}</p>
+                  {filteredSales.length !== totalSalesCount && (
+                    <p className="text-xs text-gray-500">Showing {filteredSales.length} filtered sales</p>
+                  )}
+                </>
+              )}
             </div>
             <div className="flex gap-2">
               <button className="bg-white p-2 rounded-md border border-gray-300">
