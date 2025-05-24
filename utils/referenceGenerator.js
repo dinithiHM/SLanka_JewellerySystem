@@ -1,12 +1,8 @@
 /**
- * Generates a unique reference number for orders
- * Format: PREFIX-YYYY-XXXX where XXXX is a sequential number
+ * 
+ * 
  * @param {string} prefix - The prefix to use (e.g., 'CUST' for custom orders)
  * @returns {string} The generated reference number
- *
- * Note: This function now returns a placeholder. The actual sequential number
- * is generated in the route handlers by querying the database for the highest
- * existing number and incrementing it.
  */
 export function generateOrderReference(prefix = 'ORD') {
   const date = new Date();
@@ -18,7 +14,6 @@ export function generateOrderReference(prefix = 'ORD') {
 }
 
 /**
- * The original random reference generator, kept for backward compatibility
  * Format: PREFIX-YYYY-XXXX where XXXX is a random number
  * @param {string} prefix - The prefix to use (e.g., 'CUST' for custom orders)
  * @returns {string} The generated reference number with a random 4-digit number
