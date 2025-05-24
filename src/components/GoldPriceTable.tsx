@@ -26,8 +26,8 @@ const GoldPriceTable: React.FC = () => {
     setError(null);
 
     try {
-      // Since the API is not accessible, we'll use hardcoded data
-      // In a production environment, you would implement proper API access
+      // Since the API is not accessible, hardcoded data
+      
 
       // Base price for 24K gold per gram
       const basePrice = 31092;
@@ -88,10 +88,8 @@ const GoldPriceTable: React.FC = () => {
       const now = new Date();
       setLastUpdated(now.toLocaleString());
 
-      // Note: In a real implementation, you would need to:
-      // 1. Get proper API credentials for goldpricez.com
-      // 2. Or create a backend proxy to fetch the data securely
-      // 3. Or use a different gold price API that allows CORS
+     
+     
     } catch (err) {
       console.error('Error setting gold prices:', err);
       setError('Failed to load gold prices. Please try again later.');
@@ -206,7 +204,7 @@ const GoldPriceTable: React.FC = () => {
         </div>
       )}
 
-      {/* Note: This is a demo implementation with static data */}
+      
       <div className="bg-yellow-50 p-2 border-b border-yellow-100 text-yellow-700 text-sm">
         <strong>Note:</strong> This is a demonstration using static gold price data. In a production environment.
       </div>
